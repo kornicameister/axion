@@ -1,0 +1,119 @@
+---
+x-prepare: &install_prepare
+  run:
+    name: "Install/Upgrade tox & pip"
+    command: |
+      sudo chown -R circleci:circleci /usr/local/bin
+      sudo chown -R circleci:circleci /usr/local/lib/python$(python --version | sed -e 's/Python\s//g' | awk -F'.' '{print $1"."$2}')/site-packages
+      pip install pip tox==$(grep tox < test-requirements.txt | awk -F'==' '{print $2}') --upgrade
+
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.5
+jobs:
+  verify:
+    working_directory: ~/app
+    docker:
+      - image: circleci/python:3.7.4
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: Verify
+          command: tox -p auto -e yapf,mypy,flake8
+      - store_artifacts:
+          path: typingcov
+  test:
+    docker:
+      - image: circleci/python:3.7.4
+    working_directory: ~/app
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: Install pyenv
+          command: |
+            git clone https://github.com/pyenv/pyenv.git $HOME/.pyenv
+            cat \<< 'EOF' >> $BASH_ENV
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
+            EOF
+      - restore_cache:
+          keys:
+            - pyenv-v0-{{ arch }}
+      - run:
+          name: Install Pythons
+          command: |
+            eval "$(pyenv init -)"
+            pyenv install 3.6.8 -s
+            pyenv install 3.7.4 -s
+      - save_cache:
+          key: pyenv-v0-{{ arch }}
+          paths:
+            - $HOME/.pyenv/versions/3.6.8
+            - $HOME/.pyenv/versions/3.7.4
+      - run:
+          name: Mighty test run
+          command: |
+            eval "$(pyenv init -)"
+            pyenv shell 3.6.8 3.7.4
+            tox -p auto -e py36-test,py37-test
+      - store_test_results:
+          path: test-reports
+      - store_artifacts:
+          path: test-reports
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
+          when: on_success
+  install:
+    docker:
+      - image: circleci/python:3.7.4
+    working_directory: ~/app
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: setup.py install
+          command: python setup.py install
+
+  deploy:
+    docker:
+      - image: circleci/python:3.7.4
+    working_directory: ~/app
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run: pip install twine
+      - run: python setup.py twine --commit --rebuild --egg=all --sdist=all
+
+workflows:
+  version: 2
+  release:
+    jobs:
+      - verify:
+          filters: &release_filters
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+          requires:
+            - test
+      - test:
+          filters:
+            <<: *release_filters
+      - deploy:
+          filters:
+            <<: *release_filters
+          requires:
+            - verify
+  verify:
+    jobs:
+      - verify
+      - test:
+          requires:
+            - verify
+      - install:
+          requires:
+            - verify
