@@ -1,0 +1,7 @@
+tox==3.13.2
+setupmeta==2.6.3
+
+-r requirements/yapf.txt
+-r requirements/mypy.txt
+-r requirements/flake8.txt
+-r requirements/tests.txt
