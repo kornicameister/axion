@@ -1,0 +1,105 @@
+---
+x-prepare: &install_prepare
+  run:
+    name: "Install/Upgrade tox & pip"
+    command: |
+      sudo chown -R circleci:circleci /usr/local/bin
+      sudo chown -R circleci:circleci /usr/local/lib/python$(python --version | sed -e 's/Python\s//g' | awk -F'.' '{print $1"."$2}')/site-packages
+      pip install pip tox --upgrade
+x-test-steps: &test_steps
+  working_directory: ~/app
+  steps:
+    - checkout
+    - <<: *install_prepare
+    - run:
+        name: Mighty test run
+        command: tox -e test_[36,373,374]
+    - store_test_results:
+        path: test-reports
+    - store_artifacts:
+        path: test-reports
+    - store_artifacts:
+        path: htmlcov
+    - codecov/upload:
+        file: coverage.xml
+        when: on_success
+
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.5
+jobs:
+  verify:
+    working_directory: ~/app
+    docker:
+      - image: circleci/python:3.7.4
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: Check formatting
+          command: tox -e yapf
+      - run:
+          name: Check mypy
+          command: tox -e mypy
+      - run:
+          name: Check flake
+          command: tox -e flake8
+      - store_artifacts:
+          path: typingcov
+  test:
+    <<: *test_steps
+    docker:
+      - image: circleci/python:3.6.8
+      - image: circleci/python:3.7.3
+      - image: circleci/python:3.7.4
+  test_install:
+    docker:
+      - image: circleci/python:3.7.4
+    working_directory: ~/app
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: setup.py install
+          command: python setup.py install
+
+  deploy:
+    docker:
+      - image: circleci/python:3.7.4
+    working_directory: ~/app
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run: pip install twine
+      - run: python setup.py twine --commit --rebuild --egg=all --sdist=all
+
+workflows:
+  version: 2
+  release:
+    jobs:
+      - verify:
+          filters: &release_filters
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+          requires:
+            - test
+      - test:
+          filters:
+            <<: *release_filters
+      - deploy:
+          filters:
+            <<: *release_filters
+          requires:
+            - verify
+  verify:
+    jobs:
+      - verify
+      - test:
+          requires:
+            - verify
+      - test_install:
+          requires:
+            - verify
+            - test
