@@ -13,7 +13,7 @@ x-test-steps: &test_steps
     - <<: *install_prepare
     - run:
         name: Mighty test run
-        command: tox -e py36_test,py37_test
+        command: tox -e py36-test,py37-test
     - store_test_results:
         path: test-reports
     - store_artifacts:
