@@ -13,7 +13,7 @@ x-test-steps: &test_steps
     - <<: *install_prepare
     - run:
         name: Mighty test run
-        command: tox -e test_[36,373,374]
+        command: tox -e py36_test,py37_test
     - store_test_results:
         path: test-reports
     - store_artifacts:
@@ -50,7 +50,6 @@ jobs:
     <<: *test_steps
     docker:
       - image: circleci/python:3.6.8
-      - image: circleci/python:3.7.3
       - image: circleci/python:3.7.4
   test_install:
     docker:
@@ -102,4 +101,3 @@ workflows:
       - test_install:
           requires:
             - verify
-            - test
