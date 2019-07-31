@@ -6,7 +6,7 @@ select = E,F,W,C,I,B,S,T,Q
 ignore = S101,S608
 
 import-order-style=appnexus
-application-package-names=asyncpg_migrate
+application-package-names=axion
 
 format = pylint
 hang-closing = false
