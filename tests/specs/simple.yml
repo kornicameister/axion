@@ -1,0 +1,29 @@
+---
+openapi: 3.0.0
+servers:
+  - url: /
+info:
+  title: "Simple API for testing"
+  version: "1.0"
+paths:
+  "/hello/{name}":
+    post:
+      summary: Generate hello
+      description: Generates a hellomessage.
+      operationId: fakeapi.api.hello
+      responses:
+        "200":
+          description: hello response
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          description: unexpected error
+      parameters:
+        - name: name
+          in: path
+          description: Name of the person to say hello to.
+          required: true
+          schema:
+            type: string
