@@ -50,8 +50,8 @@ jobs:
       - save_cache:
           key: pyenv-v1-{{ arch }}
           paths:
-            - ./.pyenv/versions/3.6.8
-            - ./.pyenv/versions/3.7.4
+            - ~/.pyenv/versions/3.6.8
+            - ~/.pyenv/versions/3.7.4
       - run:
           name: Mighty test run
           command: |
