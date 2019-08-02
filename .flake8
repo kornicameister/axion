@@ -4,6 +4,9 @@ show-source = True
 
 select = E,F,W,C,I,B,S,T,Q
 ignore = S101,S608
+per-file-ignores =
+    tests/test_init_import.py:F401
+    tests/conftest.py:S311
 
 import-order-style=appnexus
 application-package-names=axion
