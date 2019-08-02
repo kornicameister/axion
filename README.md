@@ -1,5 +1,4 @@
-# axion
-An OpenAPI3 framework built on top of asyncio
+An OpenAPI3 framework built on top of asyncio with love and need.
 
 # Badges
 
