@@ -1,0 +1,248 @@
+---
+openapi: 3.0.0
+info:
+  version: 3.0.0
+  title: LargeAPI
+  description: Large API
+servers:
+  - url: 'http://lotr-service'
+    description: Frodo LOTR API
+paths:
+  /rings:
+    post:
+      operationId: frodo.lotr.rings.make_one
+      summary: Creates a ring for specified race
+      parameters:
+        - $ref: '#/components/parameters/RaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ring'
+      responses:
+        '201':
+          description: A created ring
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ring'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    get:
+      operationId: frodo.lotr.rings.get_all
+      summary: Lists all rings for specified reace
+      parameters:
+        - $ref: '#/components/parameters/RaceId'
+        - $ref: '#/components/parameters/RingName'
+      responses:
+        '200':
+          description: A list of rings
+          content:
+            application/json:
+              schema:
+                type: array
+                uniqueItems: true
+                items:
+                  $ref: '#/components/schemas/Ring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  /rings/{ring_id}:
+    put:
+      operationId: frodo.lotr.rings.put_one
+      summary: Modified a single ring
+      parameters:
+        - $ref: '#/components/parameters/RaceId'
+        - $ref: '#/components/parameters/RingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ring'
+      responses:
+        '201':
+          description: A modified ring
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ring'
+        '204':
+          description: A response indificating that no changes were made
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      operationId: frodo.lotr.rings.get_one
+      summary: Gets a single ring by id
+      parameters:
+        - $ref: '#/components/parameters/RaceId'
+        - $ref: '#/components/parameters/RingId'
+      responses:
+        '200':
+          description: Single public image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '408':
+          $ref: '#/components/responses/Timeout'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+components:
+  parameters:
+    RaceId:
+      name: raceId
+      in: query
+      description: ID of race
+      required: true
+      schema:
+        $ref: '#/components/schemas/RaceId'
+    RingId:
+      name: ring_id
+      in: path
+      description: ID of a ring
+      required: true
+      schema:
+        $ref: '#/components/schemas/RingId'
+    RingName:
+      name: name
+      in: query
+      description: Full/partial name of an image to look for
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    RaceId:
+      type: string
+      format: uuid
+      example: 75e0fc6a-1675-4e90-9d5e-3d004dc3e4ff
+    RingId:
+      type: string
+      example: 'elf:ring_1'
+      minLength: 1
+    Ring:
+      type: object
+      description: A ring that can be used to rule a race
+      required:
+        - id
+        - name
+        - power
+        - isUpgraded
+        - oneOf
+        - allOf
+        - anyOf
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/RingId'
+            - readOnly: true
+        name:
+          type: string
+          example: One ring
+          minLength: 1
+        power:
+          type: integer
+          example: 128
+          minimum: 1
+        isUpgraded:
+          type: boolean
+          example: false
+        allOf:
+          writeOnly: true
+          allOf:
+            - type: object
+              properties:
+                foo:
+                  type: string
+            - type: object
+              properties:
+                bar:
+                  type: string
+            - type: object
+              nullable: false
+        anyOf:
+          writeOnly: true
+          anyOf:
+            - type: string
+              nullable: true
+            - type: number
+              nullable: true
+            - type: boolean
+              nullable: true
+            - type: object
+              nullable: true
+              additionalProperties: true
+        oneOf:
+          writeOnly: true
+          oneOf:
+            - type: string
+            - type: number
+            - not:
+                type: boolean
+    Error:
+      type: object
+      description: An error response
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          readOnly: true
+  responses:
+    Timeout:
+      description: There was a timeout when processing the request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Object was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Resource is not in desired state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnprocessableEntity:
+      description: Server was able to read the request but the instructions are not correct
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: Service is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnexpectedError:
+      description: Service encountered an error it does not know how to handle
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

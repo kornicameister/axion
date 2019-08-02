@@ -8,55 +8,36 @@ import pytest_mock as ptm
 from axion import spec
 
 
-def test_spec_load_from_dict(
-        spec_dict: t.Dict[str, t.Any],
-        mocker: ptm.MockFixture,
-) -> None:
-    via_dict = mocker.spy(spec, '_via_dict')
-    via_path = mocker.spy(spec, '_via_path')
-
-    value = spec.load(spec_dict)
-
-    assert value is not None
-    via_dict.assert_called_once()
-    assert not via_path.called
-
-
-def test_spec_invalid_version() -> None:
-    with pytest.raises(spec.UnsupportedSpecVersion):
-        spec.load({
-            'openapi': '2.9.9',
-        })
-
-
-def test_spec_is_just_invalid() -> None:
+def test_spec_is_just_invalid(tmp_path: Path) -> None:
+    spec_path = tmp_path / 'openapi.yml'
+    with spec_path.open('w') as h:
+        h.write("""
+---
+openapi: '3.0.0'
+info: {}
+        """)
     with pytest.raises(osv.exceptions.OpenAPIValidationError):
-        spec.load({
-            'openapi': '3.0.0',
-            'info': {},
-        })
+        spec.load(spec_path)
 
 
 def test_spec_load_from_path(
         spec_path: Path,
         mocker: ptm.MockFixture,
 ) -> None:
-    via_dict = mocker.spy(spec, '_via_dict')
-    via_path = mocker.spy(spec, '_via_path')
-
-    value = spec.load(spec_path)
-
-    assert value is not None
-    via_dict.assert_called_once()
-    via_path.assert_called_once()
+    parse_spec = mocker.spy(spec, '_parse_spec')
+    assert spec.load(spec_path) is not None
+    parse_spec.assert_called_once()
 
 
 def test_spec_load_from_unsupported_type(mocker: ptm.MockFixture) -> None:
-    via_dict = mocker.spy(spec, '_via_dict')
-    via_path = mocker.spy(spec, '_via_path')
-
+    parse_spec = mocker.spy(spec, '_parse_spec')
     with pytest.raises(ValueError):
         spec.load(1)  # type: ignore
+    assert not parse_spec.called
 
-    assert not via_dict.called
-    assert not via_path.called
+
+def test_spec_render_complex_schema() -> None:
+    the_spec = spec.load(Path('tests/specs/complex.yml'))
+
+    assert the_spec.raw_spec
+    assert len(the_spec.operations) == 4
