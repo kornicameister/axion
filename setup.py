@@ -14,5 +14,6 @@ if sys.version_info < (3, 6):
 
 setuptools.setup(
     setup_requires='setupmeta',
+    python_requires='>=3.6',
     versioning='post',
 )
