@@ -14,10 +14,6 @@ JinjaArguments = t.Dict[str, t.Any]
 SpecLocation = Path
 
 
-class UnsupportedSpecVersion(Exception):
-    ...
-
-
 def load(
         spec: SpecLocation,
         arguments: t.Optional[JinjaArguments] = None,
