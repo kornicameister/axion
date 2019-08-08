@@ -129,8 +129,7 @@ class NullOmittingCache(t.Dict[str, t.Union[model.OASType, t.List[model.OASConte
 
 
 @cachetools.cached(
-    cache=NullOmittingCache(),
-    key=lambda *args, **kwargs: kwargs.get('ref')
+    cache=NullOmittingCache(), key=lambda *args, **kwargs: kwargs.get('ref')
 )
 def _resolve_schema(
         components: t.Dict[str, t.Dict[str, t.Any]],
