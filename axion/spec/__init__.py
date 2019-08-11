@@ -249,6 +249,7 @@ def _resolve_parameter(
         )
     else:
         # needed to determine proper content carried by the field
+        # either schema or content will bet set, otherwise OAS is invalid
         schema = param_def.get('schema', None)
         style = model.ParameterStyles[param_def.get(
             'style',
@@ -262,25 +263,20 @@ def _resolve_parameter(
         deprecated = bool(param_def.get('deprecated', False))
         example = param_def.get('example', None)
 
-        if (schema, content) == (None, None):
-            raise ValueError(
-                f'Parameter {param_name}:{param_in} must either set '
-                f'"schema" and "style" or just "content"',
-            )
+        final_schema: t.Union[t.Tuple[model.OASType,
+                                      model.OASParameterStyle,
+                                      ], model.OASContent]
+        if content is not None:
+            final_schema = _resolve_content(components, param_def)
         else:
-            final_schema: t.Union[t.Tuple[model.OASType, model.OASParameterStyle], model.
-                                  OASContent]
-            if content is not None:
-                final_schema = _resolve_content(components, param_def)
-            else:
-                if param_in not in style.locations:
-                    raise ValueError(
-                        f'Path param {param_name} has incompatible style {style.name}',
-                    )
-                final_schema = (
-                    _resolve_schema(components, schema),
-                    style,
+            if param_in not in style.locations:
+                raise ValueError(
+                    f'Path param {param_name} has incompatible style {style.name}',
                 )
+            final_schema = (
+                _resolve_schema(components, schema),
+                style,
+            )
 
         if issubclass(param_in, model.OASHeaderParameter):
             if param_name.lower() in ('content-type', 'accept', 'authorization'):

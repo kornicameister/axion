@@ -5,25 +5,30 @@ info:
   title: LargeAPI
   description: Large API
 servers:
-  - url: 'http://lotr-service'
+  - url: "http://lotr-service"
     description: Frodo LOTR API
 paths:
   /rings:
     parameters:
-        - $ref: '#/components/parameters/TraceId'
+      - $ref: "#/components/parameters/TraceId"
+      - name: csrf
+        in: cookie
+        required: true
+        schema:
+          type: string
     post:
       operationId: frodo.lotr.rings.make_one
       summary: Creates a ring for specified race
       parameters:
-        - $ref: '#/components/parameters/RaceId'
+        - $ref: "#/components/parameters/RaceId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Ring'
+              $ref: "#/components/schemas/Ring"
       responses:
-        '201':
+        "201":
           description: A created ring
           headers:
             X-Custom-A:
@@ -31,7 +36,7 @@ paths:
                 type: integer
                 default: 1
             X-Custom-B:
-              $ref: '#/components/headers/X-Custom-B'
+              $ref: "#/components/headers/X-Custom-B"
             X-Custom-C:
               content:
                 text/plain:
@@ -40,21 +45,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ring'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: "#/components/schemas/Ring"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         default:
-          $ref: '#/components/responses/UnexpectedError'
+          $ref: "#/components/responses/UnexpectedError"
     get:
       operationId: frodo.lotr.rings.get_all
       summary: Lists all rings for specified reace
       parameters:
-        - $ref: '#/components/parameters/RaceId'
-        - $ref: '#/components/parameters/RingName'
+        - $ref: "#/components/parameters/RaceId"
+        - $ref: "#/components/parameters/RingName"
       responses:
-        '200':
+        "200":
           description: A list of rings
           content:
             application/json:
@@ -62,62 +67,62 @@ paths:
                 type: array
                 uniqueItems: true
                 items:
-                  $ref: '#/components/schemas/Ring'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                  $ref: "#/components/schemas/Ring"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         default:
-          $ref: '#/components/responses/UnexpectedError'
+          $ref: "#/components/responses/UnexpectedError"
   /rings/{ring_id}:
     parameters:
-      - $ref: '#/components/parameters/TraceId'
+      - $ref: "#/components/parameters/TraceId"
     put:
       operationId: frodo.lotr.rings.put_one
       summary: Modified a single ring
       parameters:
-        - $ref: '#/components/parameters/RaceId'
-        - $ref: '#/components/parameters/RingId'
+        - $ref: "#/components/parameters/RaceId"
+        - $ref: "#/components/parameters/RingId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Ring'
+              $ref: "#/components/schemas/Ring"
       responses:
-        '201':
+        "201":
           description: A modified ring
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ring'
-        '204':
+                $ref: "#/components/schemas/Ring"
+        "204":
           description: A response indificating that no changes were made
-        '400':
-          $ref: '#/components/responses/BadRequest'
+        "400":
+          $ref: "#/components/responses/BadRequest"
     get:
       operationId: frodo.lotr.rings.get_one
       summary: Gets a single ring by id
       parameters:
-        - $ref: '#/components/parameters/RaceId'
-        - $ref: '#/components/parameters/RingId'
+        - $ref: "#/components/parameters/RaceId"
+        - $ref: "#/components/parameters/RingId"
       responses:
-        '200':
+        "200":
           description: Single public image
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ring'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '408':
-          $ref: '#/components/responses/Timeout'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
+                $ref: "#/components/schemas/Ring"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "408":
+          $ref: "#/components/responses/Timeout"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         default:
-          $ref: '#/components/responses/UnexpectedError'
+          $ref: "#/components/responses/UnexpectedError"
 components:
   parameters:
     TraceId:
@@ -134,14 +139,14 @@ components:
       description: ID of race
       required: true
       schema:
-        $ref: '#/components/schemas/RaceId'
+        $ref: "#/components/schemas/RaceId"
     RingId:
       name: ring_id
       in: path
       description: ID of a ring
       required: true
       schema:
-        $ref: '#/components/schemas/RingId'
+        $ref: "#/components/schemas/RingId"
     RingName:
       name: name
       in: query
@@ -157,7 +162,7 @@ components:
       example: 75e0fc6a-1675-4e90-9d5e-3d004dc3e4ff
     RingId:
       type: string
-      example: 'elf:ring_1'
+      example: "elf:ring_1"
       minLength: 1
     Ring:
       type: object
@@ -173,7 +178,7 @@ components:
       properties:
         id:
           allOf:
-            - $ref: '#/components/schemas/RingId'
+            - $ref: "#/components/schemas/RingId"
             - readOnly: true
         name:
           type: string
@@ -231,47 +236,47 @@ components:
     X-Custom-B:
       schema:
         type: string
-        default: 'Custom-B'
+        default: "Custom-B"
   responses:
     Timeout:
       description: There was a timeout when processing the request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Object was not found
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     Conflict:
       description: Resource is not in desired state
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     UnprocessableEntity:
       description: Server was able to read the request but the instructions are not correct
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     ServiceUnavailable:
       description: Service is unavailable
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     UnexpectedError:
       description: Service encountered an error it does not know how to handle
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
     BadRequest:
       description: Bad request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: "#/components/schemas/Error"
