@@ -336,7 +336,8 @@ def _resolve_parameter(
             )
         else:
             raise ValueError(
-                f'Cannot build parameter {param_name} definition from {type(param_in)}'
+                f'Cannot build parameter {param_name} '
+                f'definition from {type(param_in)}',
             )
 
 
