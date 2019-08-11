@@ -316,7 +316,8 @@ def _resolve_parameter(
                 param_def.get('allowReserved', False),
             )
 
-            return model.OASQueryParameter(
+            # TODO figure out why mypy disallows that definition
+            return model.OASQueryParameter(  # type: ignore
                 name=param_name,
                 example=example,
                 required=required,
