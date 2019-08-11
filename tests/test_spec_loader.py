@@ -1,5 +1,4 @@
 from pathlib import Path
-import typing as t
 
 import openapi_spec_validator as osv
 import pytest
@@ -37,7 +36,7 @@ def test_spec_load_from_unsupported_type(mocker: ptm.MockFixture) -> None:
 
 
 def test_spec_render_complex_schema() -> None:
-    the_spec = spec.load(Path('tests/specs/complex.yml'))
+    the_spec = spec.load(Path('tests/specifications/complex.yml'))
 
     assert the_spec.raw_spec
     assert len(the_spec.operations) == 4

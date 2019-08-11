@@ -9,6 +9,8 @@ servers:
     description: Frodo LOTR API
 paths:
   /rings:
+    parameters:
+        - $ref: '#/components/parameters/TraceId'
     post:
       operationId: frodo.lotr.rings.make_one
       summary: Creates a ring for specified race
@@ -23,6 +25,18 @@ paths:
       responses:
         '201':
           description: A created ring
+          headers:
+            X-Custom-A:
+              schema:
+                type: integer
+                default: 1
+            X-Custom-B:
+              $ref: '#/components/headers/X-Custom-B'
+            X-Custom-C:
+              content:
+                text/plain:
+                  schema:
+                    type: boolean
           content:
             application/json:
               schema:
@@ -54,6 +68,8 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
   /rings/{ring_id}:
+    parameters:
+      - $ref: '#/components/parameters/TraceId'
     put:
       operationId: frodo.lotr.rings.put_one
       summary: Modified a single ring
@@ -104,6 +120,14 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
 components:
   parameters:
+    TraceId:
+      name: X-Trace-Id
+      in: header
+      required: true
+      example: 8c515d52-9678-4dde-8db2-6db63f3b5498
+      schema:
+        type: string
+        format: uuid
     RaceId:
       name: raceId
       in: query
@@ -203,6 +227,11 @@ components:
         message:
           type: string
           readOnly: true
+  headers:
+    X-Custom-B:
+      schema:
+        type: string
+        default: 'Custom-B'
   responses:
     Timeout:
       description: There was a timeout when processing the request

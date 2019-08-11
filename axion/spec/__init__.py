@@ -1,8 +1,7 @@
 from pathlib import Path
-import typing as t
 import re
+import typing as t
 
-import cachetools
 import jinja2
 from loguru import logger
 import openapi_spec_validator as osv
@@ -31,7 +30,7 @@ def load(
             spec_dict = yaml.safe_load(openapi_string)
         return _parse_spec(spec_dict)
     else:
-        raise ValueError(f'Loading spec is possible either via {type(spec)}')
+        raise ValueError(f'Loading spec is not possible via {type(spec)}')
 
 
 def _parse_spec(spec: t.Dict[str, t.Any]) -> model.Spec:
@@ -53,7 +52,7 @@ def _parse_spec(spec: t.Dict[str, t.Any]) -> model.Spec:
 # extractors for specific parts
 def _build_operations(
         paths: t.Dict['str', t.Dict['str', t.Any]],
-        components: t.Dict['str', t.Dict['str', t.Any]]
+        components: t.Dict['str', t.Dict['str', t.Any]],
 ) -> model.Operations:
     logger.debug('Checking out {count} of paths', count=len(paths))
     operations = model.Operations()
@@ -64,7 +63,10 @@ def _build_operations(
             for ignore_path_key in ('summary', 'description', 'servers'):
                 op_path_definition.pop(ignore_path_key, None)
 
-        global_parameters = op_path_definition.pop('parameters', None)
+        g_parameters = _resolve_parameters(
+            components,
+            op_path_definition.pop('parameters', []),
+        )
         for op_http_method in op_path_definition:
             http_method = model.HTTPMethod(op_http_method)
             operation_key = model.OperationKey(
@@ -81,12 +83,23 @@ def _build_operations(
             if operation_key not in operations:
                 operations[operation_key] = []
 
+            l_parameters = _resolve_parameters(
+                components,
+                definition.pop('parameters', []),
+            )
+            for param_key, param_def in g_parameters.items():
+                if param_key not in l_parameters:
+                    # global parameter copied into local parameter
+                    l_parameters[param_key] = param_def
+
             operation = model.Operation(
                 operationId=definition['operationId'],
+                deprecated=bool(definition.get('deprecated', False)),
                 responses=_build_responses(
                     responses_dict=definition['responses'],
                     components=components,
                 ),
+                parameters=l_parameters,
             )
 
             logger.opt(lazy=True).debug(
@@ -100,56 +113,242 @@ def _build_operations(
 
 
 def _build_responses(
-        responses_dict: t.Dict[str, t.Dict[str, t.Any]],
-        components: t.Dict[str, t.Dict[str, t.Any]],
-) -> model.Responses:
-    responses = model.Responses()
+        responses_dict: t.Dict[str, t.Any],
+        components: t.Dict[str, t.Any],
+) -> model.OASResponses:
+    def _resolve_headers(
+            raw_headers: t.Dict[str, t.Any],
+    ) -> t.List[model.OASHeaderParameter]:
+        headers: t.List[model.OASHeaderParameter] = []
+        for header_name, header_def in raw_headers.items():
+            header = _resolve_parameter(
+                components,
+                header_name,
+                header_def,
+                model.OASHeaderParameter,
+            )
+            headers.append(header)
+        return headers
+
+    responses = {}
+
     for rp_code, rp_def in responses_dict.items():
-        response_code = _response_code(rp_code)
-        response_schema = _resolve_schema(
-            components=components,
-            work_item=rp_def,
+        responses[_response_code(rp_code)] = model.OASResponse(
+            headers=_resolve_headers(rp_def.get('headers', {})),
+            content=_resolve_content(
+                components,
+                rp_def,
+            ),
         )
-        responses[response_code] = model.Response(model=response_schema)
+
     return responses
 
 
-class NullOmittingCache(t.Dict[str, t.Union[model.OASType, t.List[model.OASContent]]]):
-    def __getitem__(self, k: str):
-        if not k:
-            raise KeyError('<none>')
-        else:
-            return super().__getitem__(k)
+def _resolve_content(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+) -> model.OASContent:
+    if '$ref' in work_item:
+        return _resolve_content(
+            components,
+            _follow_ref(components, work_item['$ref']),
+        )
+    elif 'content' in work_item:
+        work_item = work_item['content']
 
-    def __setitem__(
-            self, k: str, v: t.Union[model.OASType, t.List[model.OASContent]]
-    ) -> None:
-        if k:
-            super().__setitem__(k, v)
+        def _build_media_type(
+                mime_type: str,
+                media_type_def: t.Dict[str, t.Any],
+        ) -> model.OASMediaType:
+            schema = _resolve_schema(components, media_type_def['schema'])
+
+            # raw_example = media_type_def.get('example', None)
+            # raw_examples = media_type_def.get('examples', {})
+            # raw_encoding = media_type_def.get('encoding', None)
+
+            # if not (raw_example and raw_examples) and schema.example is not None:
+            #     raw_examples = [{mime_type: schema.example}]
+            # elif raw_examples is None and raw_example is not None:
+            #     raw_examples = [{mime_type: raw_example}]
+
+            return model.OASMediaType(schema=schema)
+
+        return {
+            model.MimeType(mime_type): _build_media_type(mime_type, work_item[mime_type])
+            for mime_type in work_item
+        }
+    else:
+        return {}
 
 
-@cachetools.cached(
-    cache=NullOmittingCache(), key=lambda *args, **kwargs: kwargs.get('ref')
+P = t.TypeVar(
+    'P',
+    model.OASCookieParameter,
+    model.OASQueryParameter,
+    model.OASPathParameter,
+    model.OASHeaderParameter,
 )
+
+
+def _resolve_parameters(
+        components: t.Dict[str, t.Any],
+        parameters: t.List[t.Dict[str, t.Any]],
+) -> model.OperationParameters:
+    logger.opt(lazy=True).debug(
+        'Resolving {count} of parameters',
+        count=lambda: len(parameters),
+    )
+    resolved_parameters: model.OperationParameters = {}
+    for param in parameters:
+        if '$ref' in param:
+            logger.debug(
+                'Parameter defined as $ref, following $ref={ref}',
+                ref=param['$ref'],
+            )
+            param_def = _follow_ref(components, param['$ref'])
+        else:
+            param_def = param
+
+        param_in = param_def['in']
+        param_name = param_def['name']
+
+        logger.debug(
+            'Resolving param={param_name} defined in={param_in}',
+            param_name=param_name,
+            param_in=param_in,
+        )
+
+        param_in_cls = model.ParameterLocations[param_in]
+        param_resolved = _resolve_parameter(
+            components,
+            param_name,
+            param_def,
+            param_in_cls,
+        )
+        parameter_key = model.OperationParameterKey(
+            location=param_in,
+            name=param_name,
+        )
+        resolved_parameters[parameter_key] = param_resolved
+
+    return resolved_parameters
+
+
+def _resolve_parameter(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        param_name: str,
+        param_def: t.Dict[str, t.Any],
+        param_in: t.Type[P],
+) -> P:
+    if '$ref' in param_def:
+        return _resolve_parameter(
+            components=components,
+            param_name=param_name,
+            param_def=_follow_ref(components, param_def['$ref']),
+            param_in=param_in,
+        )
+    else:
+        # needed to determine proper content carried by the field
+        schema = param_def.get('schema', None)
+        style = model.ParameterStyles[
+            param_def.get('style', model.ParameterStyleDefaults[param_in])]
+        content = param_def.get('content', None)
+
+        # post processing fields
+        explode = bool(param_def.get('explode', style.name == 'form'))
+        required = bool(param_def.get('required', False))
+        deprecated = bool(param_def.get('deprecated', False))
+        example = param_def.get('example', None)
+
+        if (schema, content) == (None, None):
+            raise ValueError(
+                f'Parameter {param_name}:{param_in} must either set '
+                f'"schema" and "style" or just "content"',
+            )
+        else:
+            final_schema: t.Union[t.Tuple[model.OASType, model.OASParameterStyle], model.
+                                  OASContent]
+            if content is not None:
+                final_schema = _resolve_content(components, param_def)
+            else:
+                if param_in not in style.locations:
+                    raise ValueError(
+                        f'Path param {param_name} has incompatible style {style.name}',
+                    )
+                final_schema = (
+                    _resolve_schema(components, schema),
+                    style,
+                )
+
+        if issubclass(param_in, model.OASHeaderParameter):
+            if param_name.lower() in ('content-type', 'accept', 'authorization'):
+                raise ValueError(
+                    f'Header parameter name {param_name} is reserved thus invalid',
+                )
+            return model.OASHeaderParameter(
+                name=param_name,
+                example=example,
+                required=required,
+                explode=explode,
+                deprecated=deprecated,
+                schema=final_schema,
+            )
+        elif issubclass(param_in, model.OASPathParameter):
+            if not required:
+                raise ValueError(
+                    f'Path parameter {param_name} must have required set to True',
+                )
+            return model.OASPathParameter(
+                name=param_name,
+                example=example,
+                required=required,
+                explode=explode,
+                deprecated=deprecated,
+                schema=final_schema,
+            )
+        elif issubclass(param_in, model.OASQueryParameter):
+            allow_empty_value: t.Optional[bool] = bool(
+                param_def.get('allowEmptyValue', False),
+            )
+            allow_reserved: t.Optional[bool] = bool(param_def.get('allowReserved', False))
+
+            if style is not None:
+                allow_empty_value = None
+
+            return model.OASQueryParameter(
+                name=param_name,
+                example=example,
+                required=required,
+                explode=explode,
+                deprecated=deprecated,
+                schema=final_schema,
+                allow_empty_value=allow_empty_value,
+                allow_reserved=allow_reserved,
+            )
+        elif issubclass(param_in, model.OASCookieParameter):
+            return model.OASCookieParameter(
+                name=param_name,
+                example=example,
+                required=required,
+                explode=explode,
+                deprecated=deprecated,
+                schema=final_schema,
+            )
+        else:
+            raise ValueError(
+                f'Cannot build parameter {param_name} definition from {type(param_in)}'
+            )
+
+
 def _resolve_schema(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-        ref: t.Optional[str] = None,
-) -> t.Union[model.OASType, t.List[model.OASContent]]:
+) -> model.OASType[t.Any]:
     if '$ref' in work_item:
         return _resolve_schema(
             components,
             _follow_ref(components, work_item['$ref']),
-            ref=work_item['$ref'],
         )
-    elif 'content' in work_item:
-        work_item = work_item['content']
-        return [
-            model.OASContent(
-                mime_type=model.MimeType(mime_type),
-                oas_type=_resolve_schema(components, work_item[mime_type]['schema']),
-            ) for mime_type in work_item
-        ]
     elif 'type' in work_item:
         oas_type = work_item['type']
         if oas_type in ('integer', 'number'):
@@ -174,13 +373,14 @@ def _resolve_schema(
                 nullable=work_item.get('nullable'),
                 read_only=work_item.get('readOnly'),
                 write_only=work_item.get('writeOnly'),
+                deprecated=work_item.get('deprecated'),
             )
         elif oas_type == 'object':
             if 'properties' in work_item:
                 properties = {
                     name: _resolve_schema(components, property_def)
                     for name, property_def in work_item['properties'].items()
-                }
+                }  # type: t.Optional[t.Dict[str, model.OASType]]
             else:
                 properties = None
 
@@ -189,7 +389,7 @@ def _resolve_schema(
                 discriminator = model.OASObjectDiscriminator(
                     property_name=raw_discriminator['propertyName'],
                     mapping=raw_discriminator.get('mapping'),
-                )
+                )  # type: t.Optional[model.OASObjectDiscriminator]
             else:
                 discriminator = None
 
@@ -205,13 +405,15 @@ def _resolve_schema(
                 additional_properties=work_item.get('additionalProperties'),
                 properties=properties,
                 discriminator=discriminator,
+                deprecated=work_item.get('deprecated'),
             )
         else:
             raise ValueError(f'Dunno how to resolve type {oas_type}')
     elif set(work_item.keys()).intersection(['anyOf', 'allOf', 'oneOf']):
 
-        def _handle_not(raw_mixed_schema_or_not: t.Dict[str, t.Any]
-                        ) -> t.Tuple[bool, model.OASType]:
+        def _handle_not(
+                raw_mixed_schema_or_not: t.Dict[str, t.Any],
+        ) -> t.Tuple[bool, model.OASType[t.Any]]:
             negated = raw_mixed_schema_or_not.get('not', None)
             if negated is not None:
                 return False, _resolve_schema(components, negated)
@@ -234,6 +436,7 @@ def _resolve_schema(
                     write_only=work_item.get('writeOnly'),
                     type=mix_type,
                     in_mix=in_mix,
+                    deprecated=work_item.get('deprecated'),
                 )
         else:
             raise ValueError('Failed to determine mix association')  # NOQA
@@ -244,9 +447,10 @@ def _resolve_schema(
             example=work_item.get('example'),
             read_only=work_item.get('readOnly'),
             write_only=work_item.get('writeOnly'),
+            deprecated=work_item.get('deprecated'),
         )
     else:
-        raise ValueError('Something good here')
+        raise ValueError(f'Cannot deduce how to handle {type(work_item)}: {work_item}')
 
 
 def _build_oas_string(
@@ -257,11 +461,12 @@ def _build_oas_string(
             nullable=work_item.get('nullable'),
             read_only=work_item.get('readOnly'),
             write_only=work_item.get('writeOnly'),
+            deprecated=work_item.get('deprecated'),
         )
     else:
         pattern_str = work_item.get('pattern')
         if pattern_str is not None:
-            pattern = re.compile(pattern_str)
+            pattern = re.compile(pattern_str)  # type: t.Optional[t.Pattern]
         else:
             pattern = None
 
@@ -275,6 +480,7 @@ def _build_oas_string(
             min_length=work_item.get('minLength'),
             max_length=work_item.get('maxLength'),
             pattern=pattern,
+            deprecated=work_item.get('deprecated'),
         )
 
 
@@ -291,6 +497,7 @@ def _build_oas_number(work_item: t.Dict[str, t.Any]) -> model.OASNumberType:
         exclusive_minimum=work_item.get('exclusiveMinimum'),
         exclusive_maximum=work_item.get('exclusiveMaximum'),
         multiple_of=work_item.get('multipleOf'),
+        deprecated=work_item.get('deprecated'),
     )
 
 
@@ -301,21 +508,26 @@ def _build_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
         example=work_item.get('example'),
         read_only=work_item.get('readOnly'),
         write_only=work_item.get('writeOnly'),
+        deprecated=work_item.get('deprecated'),
     )
 
 
-@cachetools.cached(cache={}, key=lambda _, ref: ref)
 def _follow_ref(
         components: t.Dict[str, t.Dict[str, t.Any]],
         ref: t.Optional[str] = None,
-) -> t.Dict[str, t.Dict[str, t.Any]]:
+) -> t.Dict[str, t.Any]:
     while ref is not None:
         _, component, name = ref.replace('#/', '').split('/')
         raw_schema = components[component][name]
         if '$ref' in raw_schema:
             ref = raw_schema['$ref']
-        else:
+        elif isinstance(raw_schema, dict):
             return raw_schema
+        else:
+            raise ValueError(
+                f'When following ref {type(raw_schema)} was '
+                f'encountered with value {raw_schema}',
+            )
     return {}
 
 
