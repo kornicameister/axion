@@ -21,7 +21,7 @@ class HTTPMethod(str, enum.Enum):
     DELETE = 'delete'
 
 
-@dataclass(repr=False)
+@dataclass
 class MimeType:
     type: str = field(init=False)
     subtype: str = field(init=False)
@@ -37,9 +37,6 @@ class MimeType:
 
     def __hash__(self) -> int:
         return hash(self.type + '/' + self.subtype)
-
-    def __repr__(self) -> str:
-        return f'{self.type}/{self.subtype}'
 
 
 OASContent = t.Dict[MimeType, 'OASMediaType']
@@ -57,22 +54,16 @@ class OASResponse:
 OASResponses = t.Dict[OASResponseCode, OASResponse]
 
 
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True)
 class OperationKey:
     path: str = field(hash=True)
     http_method: HTTPMethod = field(hash=True)
 
-    def __repr__(self) -> str:
-        return f'<{self.http_method.name} {self.path}>'
 
-
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True)
 class OperationParameterKey:
     location: str
     name: str
-
-    def __repr__(self) -> str:
-        return f'<{self.name} in {self.location}>'
 
 
 OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
