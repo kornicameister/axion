@@ -250,8 +250,10 @@ def _resolve_parameter(
     else:
         # needed to determine proper content carried by the field
         schema = param_def.get('schema', None)
-        style = model.ParameterStyles[
-            param_def.get('style', model.ParameterStyleDefaults[param_in])]
+        style = model.ParameterStyles[param_def.get(
+            'style',
+            model.ParameterStyleDefaults[param_in],
+        )]
         content = param_def.get('content', None)
 
         # post processing fields
@@ -307,13 +309,12 @@ def _resolve_parameter(
                 schema=final_schema,
             )
         elif issubclass(param_in, model.OASQueryParameter):
-            allow_empty_value: t.Optional[bool] = bool(
+            allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
                 param_def.get('allowEmptyValue', False),
             )
-            allow_reserved: t.Optional[bool] = bool(param_def.get('allowReserved', False))
-
-            if style is not None:
-                allow_empty_value = None
+            allow_reserved: t.Optional[bool] = bool(
+                param_def.get('allowReserved', False),
+            )
 
             return model.OASQueryParameter(
                 name=param_name,
