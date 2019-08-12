@@ -512,11 +512,16 @@ def _build_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
 
 
 def _follow_ref(
-        components: t.Dict[str, t.Dict[str, t.Any]],
+        components: t.Dict[str, t.Any],
         ref: t.Optional[str] = None,
 ) -> t.Dict[str, t.Any]:
     while ref is not None:
         _, component, name = ref.replace('#/', '').split('/')
+        logger.opt(lazy=True).debug(
+            'Following ref component="{component}" with name="{name}"',
+            component=lambda: component,
+            name=lambda: name,
+        )
         raw_schema = components[component][name]
         if '$ref' in raw_schema:
             ref = raw_schema['$ref']

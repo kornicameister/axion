@@ -1,4 +1,5 @@
 from pathlib import Path
+import typing as t
 
 import openapi_spec_validator as osv
 import pytest
@@ -33,6 +34,173 @@ def test_spec_load_from_unsupported_type(mocker: ptm.MockFixture) -> None:
     with pytest.raises(ValueError):
         spec.load(1)  # type: ignore
     assert not parse_spec.called
+
+
+@pytest.mark.parametrize(('ref', 'expected_def'), [
+    (
+        '#/components/schemas/Category',
+        {
+            'type': 'object',
+            'properties': {
+                'id': {
+                    'type': 'integer',
+                    'format': 'int64',
+                },
+                'name': {
+                    'type': 'string',
+                },
+            },
+        },
+    ),
+    (
+        '#/components/schemas/UltraCategory',
+        {
+            'type': 'object',
+            'properties': {
+                'id': {
+                    'type': 'integer',
+                    'format': 'int64',
+                },
+                'name': {
+                    'type': 'string',
+                },
+            },
+        },
+    ),
+    (
+        '#/components/securitySchemes/apiKey',
+        {
+            'type': 'apiKey',
+            'name': 'api_key',
+            'in': 'header',
+        },
+    ),
+    (
+        '#/components/responses/NotFound',
+        {
+            'description': 'Entity not found.',
+        },
+    ),
+    (
+        '#/components/parameters/limitParam',
+        {
+            'name': 'limit',
+            'in': 'query',
+            'description': 'max records to return',
+            'required': True,
+            'schema': {
+                'type': 'integer',
+                'format': 'int32',
+            },
+        },
+    ),
+    (
+        '#/components/headers/X-Rate-Limit',
+        {
+            'description': 'Rate limit for this API',
+            'required': True,
+            'schema': {
+                'type': 'integer',
+                'format': 'int32',
+            },
+        },
+    ),
+    (
+        '#/components/requestBodies/Example',
+        {
+            'description': 'category to add to the system',
+            'content': {
+                'application/json': {
+                    'schema': {
+                        '$ref': '#/components/schemas/Category',
+                    },
+                    'examples': {
+                        'user': {
+                            'summary': 'Category Example',
+                            'externalValue': 'http://category-example.json',
+                        },
+                    },
+                },
+            },
+        },
+    ),
+])
+def test_spec_load_follow_ref(
+        ref: str,
+        expected_def: t.Dict[str, t.Any],
+) -> None:
+    components = {
+        'requestBodies': {
+            'Example': {
+                'description': 'category to add to the system',
+                'content': {
+                    'application/json': {
+                        'schema': {
+                            '$ref': '#/components/schemas/Category',
+                        },
+                        'examples': {
+                            'user': {
+                                'summary': 'Category Example',
+                                'externalValue': 'http://category-example.json',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        'schemas': {
+            'Category': {
+                'type': 'object',
+                'properties': {
+                    'id': {
+                        'type': 'integer',
+                        'format': 'int64',
+                    },
+                    'name': {
+                        'type': 'string',
+                    },
+                },
+            },
+            'UltraCategory': {
+                '$ref': '#/components/schemas/Category',
+            },
+        },
+        'headers': {
+            'X-Rate-Limit': {
+                'description': 'Rate limit for this API',
+                'required': True,
+                'schema': {
+                    'type': 'integer',
+                    'format': 'int32',
+                },
+            },
+        },
+        'parameters': {
+            'limitParam': {
+                'name': 'limit',
+                'in': 'query',
+                'description': 'max records to return',
+                'required': True,
+                'schema': {
+                    'type': 'integer',
+                    'format': 'int32',
+                },
+            },
+        },
+        'responses': {
+            'NotFound': {
+                'description': 'Entity not found.',
+            },
+        },
+        'securitySchemes': {
+            'apiKey': {
+                'type': 'apiKey',
+                'name': 'api_key',
+                'in': 'header',
+            },
+        },
+    }
+    assert expected_def == spec._follow_ref(components, ref)
 
 
 def test_spec_render_complex_schema() -> None:
