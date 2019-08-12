@@ -1,5 +1,5 @@
 ---
-openapi: 3.0.0
+openapi: "3.0.0"
 info:
   version: 3.0.0
   title: LargeAPI
@@ -11,11 +11,6 @@ paths:
   /rings:
     parameters:
       - $ref: "#/components/parameters/TraceId"
-      - name: csrf
-        in: cookie
-        required: true
-        schema:
-          type: string
     post:
       operationId: frodo.lotr.rings.make_one
       summary: Creates a ring for specified race
@@ -77,16 +72,18 @@ paths:
       - $ref: "#/components/parameters/TraceId"
     put:
       operationId: frodo.lotr.rings.put_one
+      deprecated: true
       summary: Modified a single ring
       parameters:
-        - $ref: "#/components/parameters/RaceId"
         - $ref: "#/components/parameters/RingId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Ring"
+              oneOf:
+                - $ref: "#/components/schemas/Ring"
+                - $ref: "#/components/schemas/OneRing"
       responses:
         "201":
           description: A modified ring
@@ -133,6 +130,22 @@ components:
       schema:
         type: string
         format: uuid
+    RaceName:
+      name: raceName
+      in: query
+      description: A name of the race
+      required: false
+      schema:
+        $ref: "#/components/schemas/RaceName"
+    RaceNames:
+      name: raceNames
+      in: query
+      description: A names of the race
+      required: false
+      schema:
+        $ref: "#/components/schemas/RaceNames"
+      style: spaceDelimited
+      explode: true
     RaceId:
       name: raceId
       in: query
@@ -160,10 +173,25 @@ components:
       type: string
       format: uuid
       example: 75e0fc6a-1675-4e90-9d5e-3d004dc3e4ff
+    RaceName:
+      type: string
+      format: foobar
+      enum:
+        - elf
+        - dwarf
+        - man
+        - wizard
+    RaceNames:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/RaceName"
     RingId:
       type: string
       example: "elf:ring_1"
       minLength: 1
+    OneRing:
+      $ref: "#/components/schemas/Ring"
     Ring:
       type: object
       description: A ring that can be used to rule a race
@@ -181,9 +209,11 @@ components:
             - $ref: "#/components/schemas/RingId"
             - readOnly: true
         name:
-          type: string
+          type: integer
           example: One ring
           minLength: 1
+          maxLength: 10
+          default: true
         power:
           type: integer
           example: 128
@@ -257,7 +287,8 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     UnprocessableEntity:
-      description: Server was able to read the request but the instructions are not correct
+      description: |
+        Server was able to read the request but the instructions are not correct
       content:
         application/json:
           schema:

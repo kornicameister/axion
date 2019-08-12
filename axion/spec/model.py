@@ -5,7 +5,6 @@ import typing as t
 import typing_extensions as te
 import yarl
 
-V = t.TypeVar('V')
 HTTPCode = t.NewType('HTTPCode', int)
 OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
 
@@ -71,13 +70,13 @@ OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
 
 @dataclass(frozen=True, repr=False)
 class Operation:
-    operationId: str
+    operation_id: str
     deprecated: bool
     responses: OASResponses
     parameters: OperationParameters
 
     def __repr__(self) -> str:
-        return f'<{self.operationId} responses_count={len(self.responses)}>'
+        return f'<{self.operation_id} responses_count={len(self.responses)}>'
 
 
 class Operations(t.Dict[OperationKey, t.List[Operation]]):
@@ -92,7 +91,7 @@ class Spec:
 
 @dataclass(frozen=True)
 class OASMediaType:
-    schema: 'OASType[t.Any]'
+    schema: 'OASType'
     # TODO fix up examples and encoding later on
     # examples: t.Optional[t.Dict[MimeType, 'OASMediaTypeExample']]
     # encoding: t.Optional[t.Dict[str, 'OASMediaTypeEncoding']]
@@ -116,22 +115,22 @@ class OASMediaTypeEncoding:
 
 
 @dataclass(frozen=True)
-class OASType(t.Generic[V]):
+class OASType:
+    default: t.Optional[t.Any]
+    example: t.Optional[t.Any]
     nullable: t.Optional[bool]
-    default: t.Optional[V]
-    example: t.Optional[V]
     deprecated: t.Optional[bool]  # so we can put a warning
     read_only: t.Optional[bool]  # only in responses
     write_only: t.Optional[bool]  # only in requests
 
 
 @dataclass(frozen=True)
-class OASAnyType(OASType[t.Any]):
+class OASAnyType(OASType):
     ...
 
 
 @dataclass(frozen=True)
-class OASMixedType(OASType[t.Any]):
+class OASMixedType(OASType):
     @enum.unique
     class Type(str, enum.Enum):
         UNION = 'allOf'
@@ -139,34 +138,42 @@ class OASMixedType(OASType[t.Any]):
         ANY = 'anyOf'
 
     type: Type
-    in_mix: t.List[t.Tuple[bool, OASType[t.Any]]]
+    in_mix: t.List[t.Tuple[bool, OASType]]
 
 
 @dataclass(frozen=True)
-class OASBooleanType(OASType[bool]):
-    ...
+class OASBooleanType(OASType):
+    default: t.Optional[bool]
+    example: t.Optional[bool]
+
+
+N = t.TypeVar('N', float, int)
 
 
 @dataclass(frozen=True)
-class OASNumberType(OASType[t.Union[float, int]]):
+class OASNumberType(OASType, t.Generic[N]):
+    default: t.Optional[N]
+    example: t.Optional[N]
     format: t.Optional[str]
-    minimum: t.Optional[t.Union[int, float]]
-    maximum: t.Optional[t.Union[int, float]]
-    multiple_of: t.Optional[t.Union[int, float]]
+    minimum: t.Optional[N]
+    maximum: t.Optional[N]
+    multiple_of: t.Optional[t.Union[N]]
     exclusive_minimum: t.Optional[bool]
     exclusive_maximum: t.Optional[bool]
 
 
 @dataclass(frozen=True)
-class OASStringType(OASType[str]):
+class OASStringType(OASType):
+    default: t.Optional[str]
+    example: t.Optional[str]
     min_length: t.Optional[int]
     max_length: t.Optional[int]
-    pattern: t.Optional[t.Pattern]
+    pattern: t.Optional[t.Pattern[str]]
     format: t.Optional[str]
 
 
 @dataclass(frozen=True)
-class OASFileType(OASType[None]):
+class OASFileType(OASType):
     example: t.Optional[None] = field(init=False, default=None)
     default: t.Optional[None] = field(init=False, default=None)
 
@@ -178,12 +185,12 @@ class OASObjectDiscriminator:
 
 
 @dataclass(frozen=True)
-class OASObjectType(OASType[t.Dict[str, t.Any]]):
+class OASObjectType(OASType):
     properties: t.Optional[t.Dict[str, OASType]]
-    required: t.Optional[t.Set]
+    required: t.Optional[t.Set[str]]
     min_properties: t.Optional[int]
     max_properties: t.Optional[int]
-    additional_properties: t.Optional[t.Union[bool, t.Dict]] = None
+    additional_properties: t.Optional[t.Union[bool, t.Dict[str, str]]] = None
     discriminator: t.Optional[OASObjectDiscriminator] = None
 
     @property
@@ -198,14 +205,11 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
 
 
 @dataclass(frozen=True)
-class OASArrayType(OASType[t.Union[t.Set[t.Any], t.List[t.Any]]]):
-    items_type: t.Union[OASType, OASAnyType, OASMixedType]
+class OASArrayType(OASType):
+    items_type: t.Union[OASType, OASMixedType]
     min_length: t.Optional[int]
     max_length: t.Optional[int]
     unique_items: t.Optional[bool]
-
-
-OASPrimitiveType = t.Union[OASNumberType, OASStringType, OASBooleanType]
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,7 @@ from loguru import logger
 import openapi_spec_validator as osv
 import yaml
 
+from axion.spec import exceptions
 from axion.spec import model
 
 JinjaArguments = t.Dict[str, t.Any]
@@ -54,7 +55,7 @@ def _build_operations(
         paths: t.Dict['str', t.Dict['str', t.Any]],
         components: t.Dict['str', t.Dict['str', t.Any]],
 ) -> model.Operations:
-    logger.debug('Checking out {count} of paths', count=len(paths))
+    logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = model.Operations()
     for op_path, op_path_definition in paths.items():
         if '$ref' in op_path_definition:
@@ -74,7 +75,7 @@ def _build_operations(
                 http_method=http_method,
             )
 
-            logger.opt(lazy=True).debug(
+            logger.opt(lazy=True).trace(
                 'Resolving operation for {key}',
                 key=lambda: operation_key,
             )
@@ -93,7 +94,7 @@ def _build_operations(
                     l_parameters[param_key] = param_def
 
             operation = model.Operation(
-                operationId=definition['operationId'],
+                operation_id=definition['operationId'],
                 deprecated=bool(definition.get('deprecated', False)),
                 responses=_build_responses(
                     responses_dict=definition['responses'],
@@ -102,7 +103,7 @@ def _build_operations(
                 parameters=l_parameters,
             )
 
-            logger.opt(lazy=True).debug(
+            logger.opt(lazy=True).trace(
                 '{key} resolved to operation={op}',
                 key=lambda: operation_key,
                 op=lambda: operation,
@@ -194,14 +195,14 @@ def _resolve_parameters(
         components: t.Dict[str, t.Any],
         parameters: t.List[t.Dict[str, t.Any]],
 ) -> model.OperationParameters:
-    logger.opt(lazy=True).debug(
+    logger.opt(lazy=True).trace(
         'Resolving {count} of parameters',
         count=lambda: len(parameters),
     )
     resolved_parameters: model.OperationParameters = {}
     for param in parameters:
         if '$ref' in param:
-            logger.debug(
+            logger.trace(
                 'Parameter defined as $ref, following $ref={ref}',
                 ref=param['$ref'],
             )
@@ -212,10 +213,10 @@ def _resolve_parameters(
         param_in = param_def['in']
         param_name = param_def['name']
 
-        logger.debug(
+        logger.opt(lazy=True).trace(
             'Resolving param={param_name} defined in={param_in}',
-            param_name=param_name,
-            param_in=param_in,
+            param_name=lambda: param_name,
+            param_in=lambda: param_in,
         )
 
         param_in_cls = model.ParameterLocations[param_in]
@@ -263,9 +264,9 @@ def _resolve_parameter(
         deprecated = bool(param_def.get('deprecated', False))
         example = param_def.get('example', None)
 
-        final_schema: t.Union[t.Tuple[model.OASType,
-                                      model.OASParameterStyle,
-                                      ], model.OASContent]
+        final_schema: t.Union[t.Tuple[model.OASType, model.OASParameterStyle],
+                              model.OASContent,
+                              ]
         if content is not None:
             final_schema = _resolve_content(components, param_def)
         else:
@@ -342,7 +343,7 @@ def _resolve_parameter(
 def _resolve_schema(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-) -> model.OASType[t.Any]:
+) -> model.OASType:
     if '$ref' in work_item:
         return _resolve_schema(
             components,
@@ -412,7 +413,7 @@ def _resolve_schema(
 
         def _handle_not(
                 raw_mixed_schema_or_not: t.Dict[str, t.Any],
-        ) -> t.Tuple[bool, model.OASType[t.Any]]:
+        ) -> t.Tuple[bool, model.OASType]:
             negated = raw_mixed_schema_or_not.get('not', None)
             if negated is not None:
                 return False, _resolve_schema(components, negated)
@@ -463,27 +464,57 @@ def _build_oas_string(
             deprecated=work_item.get('deprecated'),
         )
     else:
+        # create pattern if possible
         pattern_str = work_item.get('pattern')
         if pattern_str is not None:
-            pattern = re.compile(pattern_str)  # type: t.Optional[t.Pattern]
+            pattern_value = re.compile(pattern_str)  # type: t.Optional[t.Pattern[str]]
         else:
-            pattern = None
+            pattern_value = None
+
+        # ensure that example and default values
+        # if set, have the correct type
+        default_value: t.Optional[str] = None
+        example_value: t.Optional[str] = None
+        for key in ('default', 'example'):
+            key_value = work_item.get(key)
+            if key_value is not None and not isinstance(key_value, str):
+                raise exceptions.OASInvalidTypeValue(
+                    f'type=string default value has incorrect '
+                    f'type={type(key_value)}.'
+                    f'Only defualt value that are strings are permitted',
+                )
+            else:
+                if key == 'default':
+                    default_value = key_value
+                else:
+                    example_value = key_value
+
+        # check that minLength < maxLength
+        min_length = work_item.get('minLength')
+        max_length = work_item.get('maxLength')
+        if min_length is not None and max_length is not None:
+            if min_length > max_length:
+                raise exceptions.OASInvalidConstraints(
+                    f'type=string cannot have max_length < min_length. ',
+                    f'min_length={min_length} '
+                    f'max_length={max_length}.',
+                )
 
         return model.OASStringType(
-            nullable=work_item.get('nullable'),
-            default=work_item.get('default'),
-            example=work_item.get('example'),
-            read_only=work_item.get('readOnly'),
-            write_only=work_item.get('writeOnly'),
+            default=default_value,
+            example=example_value,
+            pattern=pattern_value,
+            min_length=min_length,
+            max_length=max_length,
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
             format=work_item.get('format'),
-            min_length=work_item.get('minLength'),
-            max_length=work_item.get('maxLength'),
-            pattern=pattern,
-            deprecated=work_item.get('deprecated'),
         )
 
 
-def _build_oas_number(work_item: t.Dict[str, t.Any]) -> model.OASNumberType:
+def _build_oas_number(work_item: t.Dict[str, t.Any]) -> model.OASNumberType[model.N]:
     return model.OASNumberType(
         nullable=work_item.get('nullable'),
         default=work_item.get('default'),
@@ -517,7 +548,7 @@ def _follow_ref(
 ) -> t.Dict[str, t.Any]:
     while ref is not None:
         _, component, name = ref.replace('#/', '').split('/')
-        logger.opt(lazy=True).debug(
+        logger.opt(lazy=True).trace(
             'Following ref component="{component}" with name="{name}"',
             component=lambda: component,
             name=lambda: name,

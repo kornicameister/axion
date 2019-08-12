@@ -6,6 +6,8 @@ import pytest
 import pytest_mock as ptm
 
 from axion import spec
+from axion.spec import exceptions
+from axion.spec import model
 
 
 def test_spec_is_just_invalid(tmp_path: Path) -> None:
@@ -203,8 +205,82 @@ def test_spec_load_follow_ref(
     assert expected_def == spec._follow_ref(components, ref)
 
 
+@pytest.mark.parametrize('default', [1, bool, {}, []])
+def test_spec_build_oas_string_default_wrong_type(default: t.Any) -> None:
+    with pytest.raises(exceptions.OASInvalidTypeValue):
+        spec._build_oas_string({'default': default})
+
+
+@pytest.mark.parametrize('example', [1, bool, {}, []])
+def test_spec_build_oas_string_example_wrong_type(example: t.Any) -> None:
+    with pytest.raises(exceptions.OASInvalidTypeValue):
+        spec._build_oas_string({'example': example})
+
+
+@pytest.mark.parametrize(('min_length', 'max_length'), [(2, 1), (10, 1)])
+def test_spec_build_oas_string_invalid_min_max_length(
+        min_length: int,
+        max_length: int,
+) -> None:
+    with pytest.raises(exceptions.OASInvalidConstraints):
+        spec._build_oas_string({
+            'minLength': min_length,
+            'maxLength': max_length,
+        })
+
+
 def test_spec_render_complex_schema() -> None:
     the_spec = spec.load(Path('tests/specifications/complex.yml'))
 
+    # keys of expected operations
+    rings_get_key = model.OperationKey(
+        path='/rings',
+        http_method=model.HTTPMethod.GET,
+    )
+    rings_post_key = model.OperationKey(
+        path='/rings',
+        http_method=model.HTTPMethod.POST,
+    )
+    ring_one_get_key = model.OperationKey(
+        path='/rings/{ring_id}',
+        http_method=model.HTTPMethod.GET,
+    )
+    ring_one_put_key = model.OperationKey(
+        path='/rings/{ring_id}',
+        http_method=model.HTTPMethod.PUT,
+    )
+
+    # asserting
     assert the_spec.raw_spec
     assert len(the_spec.operations) == 4
+    for op_key in (
+            rings_get_key,
+            rings_post_key,
+            ring_one_get_key,
+            ring_one_put_key,
+    ):
+        assert op_key in the_spec.operations, f'{op_key} not resolved in spec'
+        operations = the_spec.operations[op_key]
+        # validate per operation
+        if op_key == rings_get_key:
+            assert len(operations) == 1
+            assert not operations[0].deprecated
+            assert len(operations[0].responses) == 3
+            assert len(operations[0].parameters) == 3
+        elif op_key == rings_post_key:
+            assert len(operations) == 1
+            assert not operations[0].deprecated
+            assert len(operations[0].responses) == 4
+            assert len(operations[0].parameters) == 2
+        elif op_key == ring_one_get_key:
+            assert len(operations) == 1
+            assert not operations[0].deprecated
+            assert len(operations[0].responses) == 7
+            assert len(operations[0].parameters) == 3
+        elif op_key == ring_one_put_key:
+            assert len(operations) == 1
+            assert operations[0].deprecated
+            assert len(operations[0].responses) == 3
+            assert len(operations[0].parameters) == 2
+        else:
+            raise AssertionError('This should not happen')
