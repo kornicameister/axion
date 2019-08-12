@@ -558,12 +558,7 @@ def _follow_ref(
             ref = raw_schema['$ref']
         elif isinstance(raw_schema, dict):
             return raw_schema
-        else:
-            raise ValueError(
-                f'When following ref {type(raw_schema)} was '
-                f'encountered with value {raw_schema}',
-            )
-    raise KeyError(f'No such component {ref} exist')
+    raise KeyError(f'No such ref={ref} exist')
 
 
 def _response_code(val: str) -> model.OASResponseCode:

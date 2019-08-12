@@ -205,6 +205,11 @@ def test_spec_load_follow_ref(
     assert expected_def == spec._follow_ref(components, ref)
 
 
+def test_spec_load_follow_ref_no_such_ref() -> None:
+    with pytest.raises(KeyError):
+        spec._follow_ref({}, '#/components/schemas/Dummy')
+
+
 @pytest.mark.parametrize('default', [1, bool, {}, []])
 def test_spec_build_oas_string_default_wrong_type(default: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):

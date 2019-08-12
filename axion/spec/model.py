@@ -68,15 +68,12 @@ class OperationParameterKey:
 OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
 
 
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True)
 class Operation:
     operation_id: str
     deprecated: bool
     responses: OASResponses
     parameters: OperationParameters
-
-    def __repr__(self) -> str:
-        return f'<{self.operation_id} responses_count={len(self.responses)}>'
 
 
 class Operations(t.Dict[OperationKey, t.List[Operation]]):
