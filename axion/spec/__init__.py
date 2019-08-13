@@ -436,8 +436,6 @@ def _resolve_schema(
                     type=mix_type,
                     in_mix=in_mix,
                 )
-        else:
-            raise ValueError('Failed to determine mix association')  # NOQA
     elif 'type' not in work_item:
         return model.OASAnyType(
             nullable=bool(work_item.get('nullable', False)),
