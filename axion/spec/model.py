@@ -46,9 +46,6 @@ class OASResponse:
     headers: t.List['OASHeaderParameter'] = field(default_factory=lambda: [])
     content: 'OASContent' = field(default_factory=lambda: {})
 
-    def is_empty(self) -> bool:
-        return not self.content
-
 
 OASResponses = t.Dict[OASResponseCode, OASResponse]
 

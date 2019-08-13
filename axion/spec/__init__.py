@@ -58,11 +58,8 @@ def _build_operations(
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = model.Operations()
     for op_path, op_path_definition in paths.items():
-        if '$ref' in op_path_definition:
-            op_path_definition = _follow_ref(components, op_path_definition.pop('$ref'))
-        else:
-            for ignore_path_key in ('summary', 'description', 'servers'):
-                op_path_definition.pop(ignore_path_key, None)
+        for ignore_path_key in ('summary', 'description', 'servers'):
+            op_path_definition.pop(ignore_path_key, None)
 
         g_parameters = _resolve_parameters(
             components,
@@ -219,18 +216,15 @@ def _resolve_parameters(
             param_in=lambda: param_in,
         )
 
-        param_in_cls = model.ParameterLocations[param_in]
-        param_resolved = _resolve_parameter(
+        resolved_parameters[model.OperationParameterKey(
+            location=param_in,
+            name=param_name,
+        )] = _resolve_parameter(
             components,
             param_name,
             param_def,
-            param_in_cls,
+            model.ParameterLocations[param_in],
         )
-        parameter_key = model.OperationParameterKey(
-            location=param_in,
-            name=param_name,
-        )
-        resolved_parameters[parameter_key] = param_resolved
 
     return resolved_parameters
 
@@ -351,6 +345,10 @@ def _resolve_schema(
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
+        logger.opt(lazy=True).debug(
+            'Resolving schema of type={type}',
+            type=lambda: oas_type,
+        )
         if oas_type in ('integer', 'number'):
             return _build_oas_number(work_item)
         elif oas_type == 'boolean':
@@ -394,18 +392,18 @@ def _resolve_schema(
                 discriminator = None
 
             return model.OASObjectType(
-                nullable=work_item.get('nullable'),
+                nullable=bool(work_item.get('nullable', False)),
+                read_only=bool(work_item.get('readOnly', False)),
+                write_only=bool(work_item.get('writeOnly', False)),
+                deprecated=bool(work_item.get('deprecated', False)),
                 default=work_item.get('default'),
                 example=work_item.get('example'),
-                read_only=work_item.get('readOnly'),
-                write_only=work_item.get('writeOnly'),
                 required=work_item.get('required'),
                 min_properties=work_item.get('minProperties'),
                 max_properties=work_item.get('maxProperties'),
                 additional_properties=work_item.get('additionalProperties'),
                 properties=properties,
                 discriminator=discriminator,
-                deprecated=work_item.get('deprecated'),
             )
         else:
             raise ValueError(f'Dunno how to resolve type {oas_type}')
@@ -429,25 +427,25 @@ def _resolve_schema(
                     for mixed_type_schema in maybe_mix_definition
                 ]
                 return model.OASMixedType(
-                    nullable=work_item.get('nullable'),
+                    nullable=bool(work_item.get('nullable', False)),
+                    read_only=bool(work_item.get('readOnly', False)),
+                    write_only=bool(work_item.get('writeOnly', False)),
+                    deprecated=bool(work_item.get('deprecated', False)),
                     default=work_item.get('default'),
                     example=work_item.get('example'),
-                    read_only=work_item.get('readOnly'),
-                    write_only=work_item.get('writeOnly'),
                     type=mix_type,
                     in_mix=in_mix,
-                    deprecated=work_item.get('deprecated'),
                 )
         else:
             raise ValueError('Failed to determine mix association')  # NOQA
     elif 'type' not in work_item:
         return model.OASAnyType(
-            nullable=work_item.get('nullable'),
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
             default=work_item.get('default'),
             example=work_item.get('example'),
-            read_only=work_item.get('readOnly'),
-            write_only=work_item.get('writeOnly'),
-            deprecated=work_item.get('deprecated'),
         )
     else:
         raise ValueError(f'Cannot deduce how to handle {type(work_item)}: {work_item}')
@@ -514,31 +512,84 @@ def _build_oas_string(
         )
 
 
-def _build_oas_number(work_item: t.Dict[str, t.Any]) -> model.OASNumberType[model.N]:
+def _build_oas_number(
+        work_item: t.Dict[str, t.Any],
+) -> model.OASNumberType[t.Union[int, float]]:
+    detected_types = set()
+
+    default_value: t.Optional[t.Union[int, float]] = None
+    example_value: t.Optional[t.Union[int, float]] = None
+    minimum: t.Optional[t.Union[int, float]] = None
+    maximum: t.Optional[t.Union[int, float]] = None
+
+    keys = ('default', 'example', 'minimum', 'maximum')
+    for key in keys:
+        key_value = work_item.get(key)
+        if key_value is not None:
+            detected_types.add(type(key_value))
+            if not isinstance(key_value, (int, float)):
+                raise exceptions.OASInvalidTypeValue(
+                    f'type=number {key} value has incorrect '
+                    f'type={type(key_value)}.'
+                    f'Only allowed types for {key} that are either '
+                    f'{[int, float]} are permitted',
+                )
+            elif key == 'default':
+                default_value = key_value
+            elif key == 'example':
+                example_value = key_value
+            elif key == 'minimum':
+                example_value = key_value
+            elif key == 'maximum':
+                example_value = key_value
+
+    if len(detected_types) == 2:
+        raise exceptions.OASInvalidTypeValue(
+            f'type=number {", ".join(keys)} value must have the same type. '
+            f'Currently {len(keys)} distinct types were picked up',
+        )
+
     return model.OASNumberType(
-        nullable=work_item.get('nullable'),
-        default=work_item.get('default'),
-        example=work_item.get('example'),
-        read_only=work_item.get('readOnly'),
-        write_only=work_item.get('writeOnly'),
+        default=default_value,
+        example=example_value,
+        minimum=minimum,
+        maximum=maximum,
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
         format=work_item.get('format'),
-        minimum=work_item.get('minimum'),
-        maximum=work_item.get('maximum'),
         exclusive_minimum=work_item.get('exclusiveMinimum'),
         exclusive_maximum=work_item.get('exclusiveMaximum'),
         multiple_of=work_item.get('multipleOf'),
-        deprecated=work_item.get('deprecated'),
     )
 
 
 def _build_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
+    default_value: t.Optional[bool] = None
+    example_value: t.Optional[bool] = None
+    keys = ('default', 'example')
+    for key in keys:
+        key_value = work_item.get(key)
+        if key_value is not None:
+            if not isinstance(key_value, bool):
+                raise exceptions.OASInvalidTypeValue(
+                    f'type=boolean {key} value has incorrect '
+                    f'type={type(key_value)}. '
+                    f'Only allowed types for {key} is {bool}.',
+                )
+            elif key == 'default':
+                default_value = key_value
+            elif key == 'example':
+                example_value = key_value
+
     return model.OASBooleanType(
-        nullable=work_item.get('nullable'),
-        default=work_item.get('default'),
-        example=work_item.get('example'),
-        read_only=work_item.get('readOnly'),
-        write_only=work_item.get('writeOnly'),
-        deprecated=work_item.get('deprecated'),
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=default_value,
+        example=example_value,
     )
 
 

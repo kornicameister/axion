@@ -101,6 +101,11 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RaceId"
         - $ref: "#/components/parameters/RingId"
+        - name: debug
+          in: cookie
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: Single public image
@@ -210,10 +215,10 @@ components:
             - readOnly: true
         name:
           type: integer
-          example: One ring
+          example: 2
           minLength: 1
           maxLength: 10
-          default: true
+          default: 2
         power:
           type: integer
           example: 128

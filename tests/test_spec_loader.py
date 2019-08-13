@@ -256,7 +256,7 @@ def test_spec_render_complex_schema() -> None:
             assert len(operations) == 1
             assert not operations[0].deprecated
             assert len(operations[0].responses) == 7
-            assert len(operations[0].parameters) == 3
+            assert len(operations[0].parameters) == 4
         elif op_key == ring_one_put_key:
             assert len(operations) == 1
             assert operations[0].deprecated
