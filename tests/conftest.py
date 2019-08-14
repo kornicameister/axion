@@ -1,16 +1,16 @@
 from pathlib import Path
-import random
+import secrets
 import typing as t
 
 import pytest
 import yaml
 
-SPECS = list((Path.cwd() / 'tests' / 'specs').glob('*yml'))
+SPECS = list((Path.cwd() / 'tests' / 'specifications').glob('*yml'))
 
 
 @pytest.fixture
 def random_spec() -> Path:
-    return random.choice(SPECS)
+    return secrets.SystemRandom().choice(SPECS)
 
 
 @pytest.fixture
