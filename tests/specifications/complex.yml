@@ -174,6 +174,17 @@ components:
         type: string
         minLength: 1
   schemas:
+    Messages:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Message'
+    Message:
+      type: object
+      properties:
+        code:
+          type: integer
+        text:
+          type: string
     RaceId:
       type: string
       format: uuid
@@ -262,11 +273,10 @@ components:
       type: object
       description: An error response
       required:
-        - message
+        - messages
       properties:
-        message:
-          type: string
-          readOnly: true
+        messages:
+          $ref: '#/components/schemas/Messages'
   headers:
     X-Custom-B:
       schema:
