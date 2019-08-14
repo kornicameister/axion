@@ -18,7 +18,7 @@ SpecLocation = Path
 def load(
         spec: SpecLocation,
         arguments: t.Optional[JinjaArguments] = None,
-) -> model.Spec:
+) -> t.Tuple[model.OASSpecification, t.Dict[str, t.Any]]:
     if isinstance(spec, Path):
         with spec.open('rb') as handler:
             spec_content = handler.read()
@@ -30,20 +30,20 @@ def load(
             render_arguments = arguments or {}
             openapi_string = jinja2.Template(openapi_template).render(**render_arguments)
             spec_dict = yaml.safe_load(openapi_string)
-        return _parse_spec(spec_dict)
+        return _parse_spec(spec_dict), spec_dict
     else:
         raise ValueError(f'Loading spec is not possible via {type(spec)}')
 
 
-def _parse_spec(spec: t.Dict[str, t.Any]) -> model.Spec:
+def _parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
     try:
         osv.validate_v3_spec(spec)
     except osv.exceptions.OpenAPIValidationError:
         logger.exception('Provided spec does not seem to be valid')
         raise
     else:
-        return model.Spec(
-            raw_spec=spec,
+        return model.OASSpecification(
+            version=spec['openapi'],
             operations=_build_operations(
                 paths=spec.get('paths', {}),
                 components=spec.get('components', {}),

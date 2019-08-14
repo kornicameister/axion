@@ -78,9 +78,9 @@ class Operations(t.Dict[OperationKey, t.List[Operation]]):
 
 
 @dataclass(frozen=True)
-class Spec:
+class OASSpecification:
+    version: str
     operations: Operations
-    raw_spec: t.Dict[str, t.Any]
 
 
 @dataclass(frozen=True)
