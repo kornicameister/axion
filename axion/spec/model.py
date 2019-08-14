@@ -180,22 +180,19 @@ class OASObjectDiscriminator:
 
 @dataclass(frozen=True)
 class OASObjectType(OASType):
-    properties: t.Optional[t.Dict[str, OASType]]
-    required: t.Optional[t.Set[str]]
-    min_properties: t.Optional[int]
-    max_properties: t.Optional[int]
-    additional_properties: t.Optional[t.Union[bool, t.Dict[str, str]]] = None
+    min_properties: t.Optional[int] = None
+    max_properties: t.Optional[int] = None
+    properties: t.Dict[str, OASType] = field(default_factory=lambda: {})
+    required: t.Set[str] = field(default_factory=lambda: set())
+    additional_properties: t.Union[bool, OASType] = True
     discriminator: t.Optional[OASObjectDiscriminator] = None
 
     @property
     def is_free_form(self) -> bool:
-        if self.additional_properties is not None:
-            return isinstance(
-                self.additional_properties,
-                dict,
-            ) or self.additional_properties is True
+        if self.properties:
+            return False
         else:
-            return self.properties is None
+            return self.additional_properties is True
 
 
 @dataclass(frozen=True)
