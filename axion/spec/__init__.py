@@ -18,7 +18,7 @@ SpecLocation = Path
 def load(
         spec: SpecLocation,
         arguments: t.Optional[JinjaArguments] = None,
-) -> t.Tuple[model.OASSpecification, t.Dict[str, t.Any]]:
+) -> model.OASSpecification:
     if isinstance(spec, Path):
         with spec.open('rb') as handler:
             spec_content = handler.read()
@@ -30,7 +30,7 @@ def load(
             render_arguments = arguments or {}
             openapi_string = jinja2.Template(openapi_template).render(**render_arguments)
             spec_dict = yaml.safe_load(openapi_string)
-        return _parse_spec(spec_dict), spec_dict
+        return _parse_spec(spec_dict)
     else:
         raise ValueError(f'Loading spec is not possible via {type(spec)}')
 

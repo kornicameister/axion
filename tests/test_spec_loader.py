@@ -210,7 +210,8 @@ def test_spec_load_follow_ref_no_such_ref() -> None:
 
 
 def test_spec_render_complex_schema() -> None:
-    the_spec, raw_spec = spec.load(Path('tests/specifications/complex.yml'))
+    spec_location = Path('tests/specifications/complex.yml')
+    the_spec = spec.load(spec_location)
 
     # keys of expected operations
     rings_get_key = model.OperationKey(
@@ -231,7 +232,6 @@ def test_spec_render_complex_schema() -> None:
     )
 
     # asserting
-    assert raw_spec
     assert the_spec.version
     assert len(the_spec.operations) == 4
     for op_key in (
