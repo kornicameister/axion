@@ -75,6 +75,12 @@ jobs:
       - checkout
       - <<: *install_prepare
       - run:
+          name: setup.py explain
+          command: python setup.py explain
+      - run:
+          name: setup.py version
+          command: python setup.py version
+      - run:
           name: setup.py install
           command: python setup.py install
 
