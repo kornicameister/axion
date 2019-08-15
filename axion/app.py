@@ -12,6 +12,7 @@ class Application:
         'spec_location',
     )
 
+    @classmethod
     def __init_subclass__(cls: t.Type['Application']) -> None:
         raise TypeError(
             f'Inheritance class {cls.__name__} from axion.app.Application '
