@@ -83,7 +83,7 @@ def _apply_specification(
         for_app: web.Application,
         specification: model.OASSpecification,
 ) -> None:
-    ...
+    ...  # pragma: no cover
 
 
 def _get_target_app(
