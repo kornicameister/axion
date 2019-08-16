@@ -73,13 +73,23 @@ class Operation:
     parameters: OperationParameters
 
 
-class Operations(t.Dict[OperationKey, t.List[Operation]]):
+class Operations(t.Dict[OperationKey, Operation]):
     ...
+
+
+@dataclass(frozen=True)
+class OASServer:
+    url: str
+    # does not deal with all possible values
+    # just holds the name of the variable
+    # and its default value (which is required by OAS)
+    variables: t.Dict[str, str]
 
 
 @dataclass(frozen=True)
 class OASSpecification:
     version: str
+    servers: t.List[OASServer]
     operations: Operations
 
 

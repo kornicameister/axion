@@ -44,6 +44,15 @@ def _parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
     else:
         return model.OASSpecification(
             version=spec['openapi'],
+            servers=[
+                model.OASServer(
+                    url=s['url'],
+                    variables={
+                        k: v['default']
+                        for k, v in s.get('variables', {}).items()
+                    },
+                ) for s in spec['servers']
+            ],
             operations=_build_operations(
                 paths=spec.get('paths', {}),
                 components=spec.get('components', {}),
@@ -79,9 +88,6 @@ def _build_operations(
             )
 
             definition = op_path_definition[op_http_method]
-            if operation_key not in operations:
-                operations[operation_key] = []
-
             l_parameters = _resolve_parameters(
                 components,
                 definition.pop('parameters', []),
@@ -91,7 +97,7 @@ def _build_operations(
                     # global parameter copied into local parameter
                     l_parameters[param_key] = param_def
 
-            operation = model.Operation(
+            operations[operation_key] = model.Operation(
                 operation_id=definition['operationId'],
                 deprecated=bool(definition.get('deprecated', False)),
                 responses=_build_responses(
@@ -102,12 +108,10 @@ def _build_operations(
             )
 
             logger.opt(lazy=True).trace(
-                '{key} resolved to operation={op}',
+                'Resolved operation {key}',
                 key=lambda: operation_key,
-                op=lambda: operation,
             )
 
-            operations[operation_key].append(operation)
     return operations
 
 

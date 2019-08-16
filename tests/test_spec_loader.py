@@ -213,7 +213,7 @@ def test_spec_render_complex_schema() -> None:
     spec_location = Path('tests/specifications/complex.yml')
     the_spec = spec.load(spec_location)
 
-    # keys of expected operations
+    # keys of expected operation
     rings_get_key = model.OperationKey(
         path='/rings',
         http_method=model.HTTPMethod.GET,
@@ -233,6 +233,13 @@ def test_spec_render_complex_schema() -> None:
 
     # asserting
     assert the_spec.version
+
+    # assert servers
+    assert len(the_spec.servers) == 1
+    assert the_spec.servers[0].url == 'http://lotr-service'
+    assert not the_spec.servers[0].variables
+
+    # assert operations
     assert len(the_spec.operations) == 4
     for op_key in (
             rings_get_key,
@@ -241,27 +248,23 @@ def test_spec_render_complex_schema() -> None:
             ring_one_put_key,
     ):
         assert op_key in the_spec.operations, f'{op_key} not resolved in spec'
-        operations = the_spec.operations[op_key]
+        operation = the_spec.operations[op_key]
         # validate per operation
         if op_key == rings_get_key:
-            assert len(operations) == 1
-            assert not operations[0].deprecated
-            assert len(operations[0].responses) == 3
-            assert len(operations[0].parameters) == 3
+            assert not operation.deprecated
+            assert len(operation.responses) == 3
+            assert len(operation.parameters) == 3
         elif op_key == rings_post_key:
-            assert len(operations) == 1
-            assert not operations[0].deprecated
-            assert len(operations[0].responses) == 4
-            assert len(operations[0].parameters) == 2
+            assert not operation.deprecated
+            assert len(operation.responses) == 4
+            assert len(operation.parameters) == 2
         elif op_key == ring_one_get_key:
-            assert len(operations) == 1
-            assert not operations[0].deprecated
-            assert len(operations[0].responses) == 7
-            assert len(operations[0].parameters) == 4
+            assert not operation.deprecated
+            assert len(operation.responses) == 7
+            assert len(operation.parameters) == 4
         elif op_key == ring_one_put_key:
-            assert len(operations) == 1
-            assert operations[0].deprecated
-            assert len(operations[0].responses) == 3
-            assert len(operations[0].parameters) == 2
+            assert operation.deprecated
+            assert len(operation.responses) == 3
+            assert len(operation.parameters) == 2
         else:
             raise AssertionError('This should not happen')
