@@ -58,7 +58,7 @@ def test_app_multiple_add_apis(
     spec_two.servers = [model.OASServer(url=server_url, variables={})]
     spec_two_path = tmp_path / 'openapi_2.yml'
 
-    def spec_load_side_effect(path: Path) -> ptm.Mock:
+    def spec_load_side_effect(path: Path) -> t.Any:
         return spec_one if path == spec_one_path else spec_two
 
     spec_load = mocker.patch(
