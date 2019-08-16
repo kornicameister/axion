@@ -9,7 +9,7 @@ from axion import app
 from axion.spec import model
 
 
-def test_app_init(
+def test_app_add_api_single_server(
         mocker: ptm.MockFixture,
         tmp_path: Path,
 ) -> None:
@@ -38,8 +38,29 @@ def test_app_init(
     )
 
     assert the_app.root_dir == Path.cwd()
-    assert len(the_app.root_app._subapps) == 0
     assert len(the_app.api_base_paths) == 1
+
+
+def test_app_add_more_than_single_server_gives_warning(
+        mocker: ptm.MockFixture,
+        tmp_path: Path,
+) -> None:
+    loaded_spec = mocker.stub()
+
+    loaded_spec.servers = [
+        model.OASServer(url='/', variables={}),
+        model.OASServer(url='/v2', variables={}),
+    ]
+
+    mocker.patch('axion.spec.load', return_value=loaded_spec)
+    mocker.patch('axion.app._apply_specification')
+    loguru_warning = mocker.patch('loguru.logger.warning')
+
+    the_app = app.Application(root_dir=Path.cwd())
+    the_app.add_api(tmp_path / 'openapi.yaml')
+
+    assert len(the_app.api_base_paths) == 1
+    loguru_warning.assert_called_once()
 
 
 @pytest.mark.parametrize(
