@@ -126,6 +126,57 @@ def test_app_add_api_overlapping_base_paths(
     )
 
 
+def test_app_add_with_custom_base_path(
+        mocker: ptm.MockFixture,
+        tmp_path: Path,
+) -> None:
+    spec_one = mocker.Mock()
+    spec_one.servers = [model.OASServer(url='/api/v1', variables={})]
+    spec_one_path = tmp_path / 'openapi_1.yml'
+
+    spec_load = mocker.patch(
+        'axion.spec.load',
+        return_value=spec_one,
+    )
+    apply_spec = mocker.patch('axion.app._apply_specification')
+
+    the_app = app.Application(root_dir=Path.cwd())
+    the_app.add_api(spec_one_path, base_path='/')
+    spec_load.assert_called_once_with(spec_one_path)
+
+    router_resources = [r for r in the_app.root_app.router.resources()]
+
+    assert len(router_resources) == 0
+    apply_spec.assert_any_call(
+        for_app=the_app.root_app,
+        specification=spec_one,
+    )
+
+
+def test_app_add_with_relative_base_path(mocker: ptm.MockFixture) -> None:
+    spec_one = mocker.Mock()
+    spec_one.servers = [model.OASServer(url='/api/v1', variables={})]
+    spec_one_path = Path('../tests/specifications/simple.yml')
+
+    spec_load = mocker.patch(
+        'axion.spec.load',
+        return_value=spec_one,
+    )
+    apply_spec = mocker.patch('axion.app._apply_specification')
+
+    the_app = app.Application(root_dir=Path.cwd())
+    the_app.add_api(spec_one_path, base_path='/')
+    spec_load.assert_called_once_with((Path.cwd() / spec_one_path).resolve())
+
+    router_resources = [r for r in the_app.root_app.router.resources()]
+
+    assert len(router_resources) == 0
+    apply_spec.assert_any_call(
+        for_app=the_app.root_app,
+        specification=spec_one,
+    )
+
+
 def test_app_add_api_different_base_path(
         mocker: ptm.MockFixture,
         tmp_path: Path,

@@ -83,13 +83,7 @@ def _apply_specification(
         for_app: web.Application,
         specification: model.OASSpecification,
 ) -> None:
-    for op_key, op_operation in specification.operations.items():
-        for_app.router.add_route(
-            path=op_key.path,
-            method=op_key.http_method.value,
-            name=op_operation.operation_id,
-            handler=get_handler(op_operation),
-        )
+    ...
 
 
 def _get_target_app(
@@ -180,7 +174,3 @@ def _get_base_path(
     )
 
     return the_base_path
-
-
-def get_handler(operation: model.Operation) -> web_app._Handler:
-    ...
