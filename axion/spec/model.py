@@ -83,7 +83,7 @@ class OASServer:
     # does not deal with all possible values
     # just holds the name of the variable
     # and its default value (which is required by OAS)
-    variables: t.Dict[str, str]
+    variables: t.Dict[str, str] = field(default_factory=lambda: {})
 
 
 @dataclass(frozen=True)
