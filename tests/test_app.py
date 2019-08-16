@@ -1,6 +1,7 @@
 from pathlib import Path
 import typing as t
 
+from aiohttp import web_urldispatcher
 import pytest
 import pytest_mock as ptm
 
@@ -45,7 +46,7 @@ def test_app_init(
     'server_url',
     ('/', '/v1', '/api'),
 )
-def test_app_multiple_add_apis(
+def test_app_add_api_duplicated_base_path(
         server_url: str,
         mocker: ptm.MockFixture,
         tmp_path: Path,
@@ -90,7 +91,7 @@ def test_app_multiple_add_apis(
         )
 
 
-def test_app_overlapping_base_paths(
+def test_app_add_api_overlapping_base_paths(
         mocker: ptm.MockFixture,
         tmp_path: Path,
 ) -> None:
@@ -125,10 +126,64 @@ def test_app_overlapping_base_paths(
     )
 
 
-def _test_app_build_routes() -> None:
-    spec_location = Path('tests/specifications/complex.yml')
+def test_app_add_api_different_base_path(
+        mocker: ptm.MockFixture,
+        tmp_path: Path,
+) -> None:
+    spec_one = mocker.Mock()
+    spec_one.servers = [model.OASServer(url='/v1', variables={})]
+    spec_one_path = tmp_path / 'openapi_1.yml'
+
+    spec_two = mocker.Mock()
+    spec_two.servers = [model.OASServer(url='/v2', variables={})]
+    spec_two_path = tmp_path / 'openapi_2.yml'
+
+    spec_admin = mocker.Mock()
+    spec_admin.servers = [model.OASServer(url='/admin', variables={})]
+    spec_admin_path = tmp_path / 'openapi_admin.yml'
+
+    def spec_load_side_effect(path: Path) -> t.Any:
+        if path == spec_one_path:
+            return spec_one
+        elif path == spec_two_path:
+            return spec_two
+        else:
+            return spec_admin
+
+    spec_load = mocker.patch(
+        'axion.spec.load',
+        side_effect=spec_load_side_effect,
+    )
+    apply_spec = mocker.patch('axion.app._apply_specification')
+
     the_app = app.Application(root_dir=Path.cwd())
-    the_app.add_api(spec_location)
+    the_app.add_api(spec_one_path)
+    the_app.add_api(spec_two_path)
+    the_app.add_api(spec_admin_path)
+
+    spec_load.assert_any_call(spec_one_path)
+    spec_load.assert_any_call(spec_two_path)
+    spec_load.assert_any_call(spec_two_path)
+
+    router_resources = [r for r in the_app.root_app.router.resources()]
+
+    assert len(router_resources) == 3
+
+    for prefix, the_spec in (
+        ('/v1', spec_one),
+        ('/v2', spec_two),
+        ('/admin', spec_admin),
+    ):
+        sub_app = next((r for r in router_resources if r.canonical == prefix), None)
+        assert sub_app is not None
+        assert isinstance(
+            sub_app,
+            web_urldispatcher.PrefixedSubAppResource,
+        )
+        apply_spec.assert_any_call(
+            for_app=sub_app._app,
+            specification=the_spec,
+        )
 
 
 @pytest.mark.parametrize(('url', 'variables', 'expected_base_path'), (
