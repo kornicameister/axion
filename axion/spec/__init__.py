@@ -7,6 +7,7 @@ import jinja2
 from loguru import logger
 import openapi_spec_validator as osv
 import yaml
+import yarl
 
 from axion.spec import exceptions
 from axion.spec import model
@@ -66,53 +67,51 @@ def _build_operations(
         components: t.Dict['str', t.Dict['str', t.Any]],
 ) -> model.Operations:
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
-    operations = model.Operations()
+    operations = set()
     for op_path, op_path_definition in paths.items():
         for ignore_path_key in ('summary', 'description', 'servers'):
             op_path_definition.pop(ignore_path_key, None)
 
-        g_parameters = _resolve_parameters(
+        global_parameters = _resolve_parameters(
             components,
             op_path_definition.pop('parameters', []),
         )
+
+        logger.opt(lazy=True).debug(
+            'Resolved {count} global parameters',
+            count=lambda: len(global_parameters),
+        )
+
         for op_http_method in op_path_definition:
-            http_method = model.HTTPMethod(op_http_method)
-            operation_key = model.OperationKey(
-                path=op_path,
-                http_method=http_method,
-            )
-
-            logger.opt(lazy=True).trace(
-                'Resolving operation for {key}',
-                key=lambda: operation_key,
-            )
-
             definition = op_path_definition[op_http_method]
-            l_parameters = _resolve_parameters(
+            operation_parameters = _resolve_parameters(
                 components,
                 definition.pop('parameters', []),
             )
-            for param_key, param_def in g_parameters.items():
-                if param_key not in l_parameters:
+            for param_key, param_def in global_parameters.items():
+                if param_key not in operation_parameters:
                     # global parameter copied into local parameter
-                    l_parameters[param_key] = param_def
+                    operation_parameters[param_key] = param_def
 
-            operations[operation_key] = model.Operation(
-                operation_id=definition['operationId'],
+            operation = model.Operation(
+                operation_id=model.OperationId(definition['operationId']),
+                path=yarl.URL(op_path),
+                http_method=model.HTTPMethod(op_http_method),
                 deprecated=bool(definition.get('deprecated', False)),
                 responses=_build_responses(
                     responses_dict=definition['responses'],
                     components=components,
                 ),
-                parameters=l_parameters,
+                parameters=operation_parameters,
             )
+            operations.add(operation)
 
             logger.opt(lazy=True).trace(
-                'Resolved operation {key}',
-                key=lambda: operation_key,
+                'Resolved operation {operation}',
+                operation=lambda: operation,
             )
 
-    return operations
+    return model.Operations(frozenset(operations))
 
 
 def _build_responses(
