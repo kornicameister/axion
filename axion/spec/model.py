@@ -51,29 +51,50 @@ OASResponses = t.Dict[OASResponseCode, OASResponse]
 
 
 @dataclass(frozen=True)
-class OperationKey:
-    path: str = field(hash=True)
-    http_method: HTTPMethod = field(hash=True)
-
-
-@dataclass(frozen=True)
 class OperationParameterKey:
     location: str
     name: str
 
 
+OperationId = t.NewType('OperationId', str)
 OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Operation:
-    operation_id: str
-    deprecated: bool
-    responses: OASResponses
-    parameters: OperationParameters
+    operation_id: OperationId = field(
+        hash=True,
+        compare=True,
+        metadata={'key': True},
+    )
+    path: yarl.URL = field(
+        hash=True,
+        compare=True,
+        metadata={'key': True},
+    )
+    http_method: HTTPMethod = field(
+        hash=True,
+        compare=True,
+        metadata={'key': True},
+    )
+    deprecated: bool = field(
+        hash=False,
+        compare=False,
+    )
+    responses: OASResponses = field(
+        hash=False,
+        compare=False,
+    )
+    parameters: OperationParameters = field(
+        hash=False,
+        compare=False,
+    )
+
+    def __repr__(self) -> str:
+        return f'[{self.http_method.name} -> {self.path}] {self.operation_id}'
 
 
-class Operations(t.Dict[OperationKey, Operation]):
+class Operations(t.FrozenSet[Operation]):
     ...
 
 

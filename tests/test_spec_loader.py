@@ -4,6 +4,7 @@ import typing as t
 import openapi_spec_validator as osv
 import pytest
 import pytest_mock as ptm
+import yarl
 
 from axion import spec
 from axion.spec import model
@@ -211,60 +212,89 @@ def test_spec_load_follow_ref_no_such_ref() -> None:
 
 def test_spec_render_complex_schema() -> None:
     spec_location = Path('tests/specifications/complex.yml')
-    the_spec = spec.load(spec_location)
-
-    # keys of expected operation
-    rings_get_key = model.OperationKey(
-        path='/rings',
-        http_method=model.HTTPMethod.GET,
-    )
-    rings_post_key = model.OperationKey(
-        path='/rings',
-        http_method=model.HTTPMethod.POST,
-    )
-    ring_one_get_key = model.OperationKey(
-        path='/rings/{ring_id}',
-        http_method=model.HTTPMethod.GET,
-    )
-    ring_one_put_key = model.OperationKey(
-        path='/rings/{ring_id}',
-        http_method=model.HTTPMethod.PUT,
-    )
+    loaded_spec = spec.load(spec_location)
 
     # asserting
-    assert the_spec.version
+    assert loaded_spec.version
 
     # assert servers
-    assert len(the_spec.servers) == 1
-    assert the_spec.servers[0].url == 'http://lotr-service'
-    assert not the_spec.servers[0].variables
+    assert len(loaded_spec.servers) == 1
+    assert loaded_spec.servers[0].url == 'http://lotr-service'
+    assert not loaded_spec.servers[0].variables
 
-    # assert operations
-    assert len(the_spec.operations) == 4
-    for op_key in (
-            rings_get_key,
-            rings_post_key,
-            ring_one_get_key,
-            ring_one_put_key,
-    ):
-        assert op_key in the_spec.operations, f'{op_key} not resolved in spec'
-        operation = the_spec.operations[op_key]
-        # validate per operation
-        if op_key == rings_get_key:
-            assert not operation.deprecated
-            assert len(operation.responses) == 3
-            assert len(operation.parameters) == 3
-        elif op_key == rings_post_key:
-            assert not operation.deprecated
-            assert len(operation.responses) == 4
-            assert len(operation.parameters) == 2
-        elif op_key == ring_one_get_key:
-            assert not operation.deprecated
-            assert len(operation.responses) == 7
-            assert len(operation.parameters) == 4
-        elif op_key == ring_one_put_key:
-            assert operation.deprecated
-            assert len(operation.responses) == 3
-            assert len(operation.parameters) == 2
-        else:
-            raise AssertionError('This should not happen')
+    # assert that 4 operations were loaded
+    assert len(loaded_spec.operations) == 4
+
+    rings_get_all_op = next(
+        filter(
+            lambda op: op and op.operation_id == 'frodo.lotr.rings.get_all',
+            loaded_spec.operations,
+        ),
+        None,
+    )  # type: t.Optional[model.Operation]
+    rings_make_one_op = next(
+        filter(
+            lambda op: op and op.operation_id == 'frodo.lotr.rings.make_one',
+            loaded_spec.operations,
+        ),
+        None,
+    )  # type: t.Optional[model.Operation]
+    rings_put_one_op = next(
+        filter(
+            lambda op: op and op.operation_id == 'frodo.lotr.rings.put_one',
+            loaded_spec.operations,
+        ),
+        None,
+    )  # type: t.Optional[model.Operation]
+    rings_get_one_op = next(
+        filter(
+            lambda op: op and op.operation_id == 'frodo.lotr.rings.get_one',
+            loaded_spec.operations,
+        ),
+        None,
+    )  # type: t.Optional[model.Operation]
+
+    assert rings_get_all_op
+    assert rings_get_all_op.path == yarl.URL('/rings')
+    assert rings_get_all_op.http_method == model.HTTPMethod.GET
+    assert not rings_get_all_op.deprecated
+    assert len(rings_get_all_op.responses) == 3
+    assert 200 in rings_get_all_op.responses
+    assert 400 in rings_get_all_op.responses
+    assert 'default' in rings_get_all_op.responses
+    assert len(rings_get_all_op.parameters) == 3
+
+    assert rings_make_one_op
+    assert rings_make_one_op.path == yarl.URL('/rings')
+    assert rings_make_one_op.http_method == model.HTTPMethod.POST
+    assert not rings_make_one_op.deprecated
+    assert len(rings_make_one_op.responses) == 4
+    assert 201 in rings_make_one_op.responses
+    assert 404 in rings_make_one_op.responses
+    assert 409 in rings_make_one_op.responses
+    assert 'default' in rings_make_one_op.responses
+    assert len(rings_make_one_op.parameters) == 2
+
+    assert rings_put_one_op
+    assert rings_put_one_op.path == yarl.URL('/rings/{ring_id}')
+    assert rings_put_one_op.http_method == model.HTTPMethod.PUT
+    assert rings_put_one_op.deprecated
+    assert len(rings_put_one_op.responses) == 3
+    assert 201 in rings_put_one_op.responses
+    assert 204 in rings_put_one_op.responses
+    assert 400 in rings_put_one_op.responses
+    assert len(rings_put_one_op.parameters) == 2
+
+    assert rings_get_one_op
+    assert rings_get_one_op.path == yarl.URL('/rings/{ring_id}')
+    assert rings_get_one_op.http_method == model.HTTPMethod.GET
+    assert not rings_get_one_op.deprecated
+    assert len(rings_get_one_op.responses) == 7
+    assert 200 in rings_get_one_op.responses
+    assert 400 in rings_get_one_op.responses
+    assert 404 in rings_get_one_op.responses
+    assert 408 in rings_get_one_op.responses
+    assert 422 in rings_get_one_op.responses
+    assert 503 in rings_get_one_op.responses
+    assert 'default' in rings_get_one_op.responses
+    assert len(rings_get_one_op.parameters) == 4
