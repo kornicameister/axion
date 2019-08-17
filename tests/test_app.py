@@ -6,6 +6,7 @@ import pytest
 import pytest_mock as ptm
 
 from axion import app
+from axion import spec
 from axion.spec import model
 
 
@@ -256,6 +257,48 @@ def test_app_add_api_different_base_path(
             for_app=sub_app._app,
             specification=the_spec,
         )
+
+
+def test_apply_specification_no_subapp(
+        spec_path: Path,
+        mocker: ptm.MockFixture,
+) -> None:
+
+    the_spec = spec.load(spec_path)
+    the_app = app.Application(root_dir=Path.cwd())
+
+    add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
+
+    the_app.add_api(
+        spec_location=spec_path,
+        base_path='/',
+    )
+
+    assert add_route_spy.call_count == len(the_spec.operations)
+    assert len(the_app.root_app.router.resources()) == len(the_spec.operations)
+
+
+def test_apply_specification_subapp(
+        spec_path: Path,
+        mocker: ptm.MockFixture,
+) -> None:
+    the_spec = spec.load(spec_path)
+    the_app = app.Application(root_dir=Path.cwd())
+
+    add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
+    add_subapp_spy = mocker.spy(the_app.root_app, 'add_subapp')
+
+    the_app.add_api(
+        spec_location=spec_path,
+        base_path='/api',
+    )
+
+    assert add_route_spy.call_count == 0
+    assert add_subapp_spy.call_count == 1
+    assert len(the_app.root_app.router.resources()) == 1
+
+    subapp = the_app.root_app._subapps[0]
+    assert len(subapp.router.resources()) == len(the_spec.operations)
 
 
 @pytest.mark.parametrize(('url', 'variables', 'expected_base_path'), (
