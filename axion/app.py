@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import typing as t
 
@@ -77,13 +78,43 @@ class Application:
             for_app=target_app,
             specification=loaded_spec,
         )
+        if target_app != self.root_app:
+            logger.info(
+                'Registering application for base_path={base_path} '
+                'as a sub application',
+                base_path=target_base_path,
+            )
+            self.root_app.add_subapp(
+                prefix=target_base_path,
+                subapp=target_app,
+            )
 
 
 def _apply_specification(
         for_app: web.Application,
         specification: model.OASSpecification,
 ) -> None:
-    ...  # pragma: no cover
+
+    for op in specification.operations:
+        the_route = for_app.router.add_route(
+            method=op.http_method.value,
+            path=op.path.human_repr(),
+            name=op.operation_id,
+            handler=_make_handler(op),
+        )
+        logger.opt(lazy=True).debug(
+            'Registered route={route} for {op_id}',
+            route=lambda: the_route,
+            op_id=lambda: op.operation_id,
+        )
+
+
+def _make_handler(operation: model.Operation) -> web_app._Handler:
+    @asyncio.coroutine
+    def handler(request: web.Request) -> web.StreamResponse:
+        ...
+
+    return handler
 
 
 def _get_target_app(
@@ -131,10 +162,6 @@ def _get_target_app(
             base_path=lambda: the_base_path,
         )
         nested_app = web.Application(middlewares=middlewares or ())
-        root_app.add_subapp(
-            prefix=the_base_path,
-            subapp=nested_app,
-        )
         return nested_app, the_base_path
 
 
