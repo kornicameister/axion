@@ -112,7 +112,7 @@ def _apply_specification(
 def _make_handler(operation: model.Operation) -> web_app._Handler:
     @asyncio.coroutine
     def handler(request: web.Request) -> web.StreamResponse:
-        ...
+        ...  # pragma: no cover
 
     return handler
 
