@@ -1,4 +1,6 @@
 import asyncio
+import importlib
+import inspect
 from pathlib import Path
 import typing as t
 
@@ -19,6 +21,10 @@ class DuplicateBasePath(ValueError):
 
 
 class OverlappingBasePath(ValueError):
+    ...
+
+
+class UserHandlerError(Exception):
     ...
 
 
@@ -110,11 +116,46 @@ def _apply_specification(
 
 
 def _make_handler(operation: model.Operation) -> web_app._Handler:
-    @asyncio.coroutine
-    def handler(request: web.Request) -> web.StreamResponse:
-        ...  # pragma: no cover
+    user_handler = _resolve_handler(operation.operation_id)
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = await user_handler()
+        return resp
 
     return handler
+
+
+def _resolve_handler(operation_id: str) -> t.Callable[..., web.StreamResponse]:
+    logger.opt(lazy=True).debug(
+        'Resolving user handler via operation_id={operation_id}',
+        operation_id=lambda: operation_id,
+    )
+
+    module_name, function_name = operation_id.rsplit('.', 1)
+
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError as import_error:
+        raise UserHandlerError(f'Failed to import module={module}') from import_error
+
+    try:
+        function = getattr(module, function_name)
+    except AttributeError:
+        raise UserHandlerError(
+            f'Failed to locate function={function_name} in module={module_name}',
+        )
+
+    if not asyncio.iscoroutinefunction(function):
+        raise UserHandlerError(f'{operation_id} did not resolve to coroutine')
+    else:
+        # analyze return value
+        return_type: t.Type[t.Any] = inspect.getmember(function)[0][1]['return']
+        if not issubclass(return_type, web.StreamResponse):
+            raise UserHandlerError(
+                f'User handler must return {type(web.StreamResponse)}',
+            )
+
+    return t.cast(t.Callable[..., web.StreamResponse], function)
 
 
 def _get_target_app(
