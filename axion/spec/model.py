@@ -91,7 +91,7 @@ class Operation:
     )
 
     def __repr__(self) -> str:
-        return f'[{self.operation_id}] {self.http_method.name} -> {self.path.human_repr()}'
+        return f'[{self.operation_id}] {self.http_method.name} -> {self.path.human_repr()}'  # pragma: no cover
 
 
 class Operations(t.FrozenSet[Operation]):
