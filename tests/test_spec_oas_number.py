@@ -2,15 +2,15 @@ import typing as t
 
 import pytest
 
-from axion import spec
-from axion.spec import exceptions
+from axion.specification import exceptions
+from axion.specification import parser
 
 
 @pytest.mark.parametrize('key', ('default', 'example', 'minimum', 'maximum'))
 @pytest.mark.parametrize('value', ['1', bool, {}, []])
 def test_spec_build_oas_number_wrong_value_type(key: str, value: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        spec._build_oas_number({key: value})
+        parser._build_oas_number({key: value})
 
 
 @pytest.mark.parametrize(
@@ -25,7 +25,7 @@ def test_spec_build_oas_number_mismatch_example_default(
         default: t.Any,
 ) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        spec._build_oas_number({
+        parser._build_oas_number({
             'example': example,
             'default': default,
         })

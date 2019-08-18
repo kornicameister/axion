@@ -2,8 +2,8 @@ import typing as t
 
 import pytest
 
-from axion import spec
-from axion.spec import model
+from axion.specification import model
+from axion.specification import parser
 
 
 @pytest.mark.parametrize(
@@ -34,7 +34,7 @@ def test_spec_oas_object_free_form(
         additional_properties: t.Union[bool, model.OASType],
         expected_result: bool,
 ) -> None:
-    assert spec._build_oas_object({}, {
+    assert parser._build_oas_object({}, {
         'additionalProperties': additional_properties,
         'properties': properties,
     }).is_free_form is expected_result

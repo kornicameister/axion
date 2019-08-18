@@ -1,46 +1,20 @@
 import functools
-from pathlib import Path
 import re
 import typing as t
 
-import jinja2
 from loguru import logger
 import openapi_spec_validator as osv
-import yaml
 import yarl
 
-from axion.spec import exceptions
-from axion.spec import model
-
-JinjaArguments = t.Dict[str, t.Any]
-SpecLocation = Path
+from axion.specification import exceptions
+from axion.specification import model
 
 
-def load(
-        spec: SpecLocation,
-        arguments: t.Optional[JinjaArguments] = None,
-) -> model.OASSpecification:
-    if isinstance(spec, Path):
-        with spec.open('rb') as handler:
-            spec_content = handler.read()
-            try:
-                openapi_template = spec_content.decode()
-            except UnicodeDecodeError:
-                openapi_template = spec_content.decode('utf-8', 'replace')
-
-            render_arguments = arguments or {}
-            openapi_string = jinja2.Template(openapi_template).render(**render_arguments)
-            spec_dict = yaml.safe_load(openapi_string)
-        return _parse_spec(spec_dict)
-    else:
-        raise ValueError(f'Loading spec is not possible via {type(spec)}')
-
-
-def _parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
+def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
     try:
         osv.validate_v3_spec(spec)
     except osv.exceptions.OpenAPIValidationError:
-        logger.exception('Provided spec does not seem to be valid')
+        logger.exception('Provided specification does not seem to be valid')
         raise
     else:
         return model.OASSpecification(
@@ -54,7 +28,7 @@ def _parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
                     },
                 ) for s in spec['servers']
             ],
-            operations=_build_operations(
+            operations=_resolve_operations(
                 paths=spec.get('paths', {}),
                 components=spec.get('components', {}),
             ),
@@ -62,9 +36,9 @@ def _parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
 
 
 # extractors for specific parts
-def _build_operations(
-        paths: t.Dict['str', t.Dict['str', t.Any]],
-        components: t.Dict['str', t.Dict['str', t.Any]],
+def _resolve_operations(
+        paths: t.Dict['str', t.Dict[str, t.Any]],
+        components: t.Dict['str', t.Dict[str, t.Any]],
 ) -> model.Operations:
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = set()
@@ -93,12 +67,12 @@ def _build_operations(
                     # global parameter copied into local parameter
                     operation_parameters[param_key] = param_def
 
-            operation = model.Operation(
+            operation = model.OASOperation(
                 operation_id=model.OperationId(definition['operationId']),
                 path=yarl.URL(op_path),
                 http_method=model.HTTPMethod(op_http_method),
                 deprecated=bool(definition.get('deprecated', False)),
-                responses=_build_responses(
+                responses=_resolve_responses(
                     responses_dict=definition['responses'],
                     components=components,
                 ),
@@ -114,7 +88,7 @@ def _build_operations(
     return model.Operations(frozenset(operations))
 
 
-def _build_responses(
+def _resolve_responses(
         responses_dict: t.Dict[str, t.Any],
         components: t.Dict[str, t.Any],
 ) -> model.OASResponses:

@@ -61,7 +61,7 @@ OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
 
 
 @dataclass(frozen=True, repr=False)
-class Operation:
+class OASOperation:
     operation_id: OperationId = field(
         hash=True,
         compare=True,
@@ -96,7 +96,7 @@ class Operation:
         )  # pragma: no cover
 
 
-class Operations(t.FrozenSet[Operation]):
+class Operations(t.FrozenSet[OASOperation]):
     ...
 
 
