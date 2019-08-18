@@ -268,7 +268,7 @@ def test_apply_specification_no_subapp(
     the_app = app.Application(root_dir=Path.cwd())
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
-    resolve_handler = mocker.patch('axion.app._resolve_handler')
+    resolve_handler = mocker.patch('axion.application.resolve_handler')
 
     the_app.add_api(
         spec_location=spec_path,
@@ -290,7 +290,7 @@ def test_apply_specification_subapp(
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
     add_subapp_spy = mocker.spy(the_app.root_app, 'add_subapp')
-    resolve_handler = mocker.patch('axion.app._resolve_handler')
+    resolve_handler = mocker.patch('axion.application.resolve_handler')
 
     the_app.add_api(
         spec_location=spec_path,

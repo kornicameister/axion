@@ -1,5 +1,3 @@
-import asyncio
-import importlib
 from pathlib import Path
 import typing as t
 
@@ -9,6 +7,7 @@ from loguru import logger
 import typing_extensions as te
 import yarl
 
+from axion import application
 from axion import specification
 
 APIs = t.Dict[str, web.Application]
@@ -19,10 +18,6 @@ class DuplicateBasePath(ValueError):
 
 
 class OverlappingBasePath(ValueError):
-    ...
-
-
-class UserHandlerError(Exception):
     ...
 
 
@@ -114,36 +109,13 @@ def _apply_specification(
 
 
 def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
-    user_handler = _resolve_handler(operation.operation_id)
+    user_handler = application.resolve_handler(operation.operation_id)
 
     async def handler(request: web.Request) -> web.StreamResponse:
         await user_handler()  # pragma: no cover
         return web.Response()  # pragma: no cover
 
     return handler
-
-
-def _resolve_handler(operation_id: str) -> t.Callable[..., t.Awaitable[t.Any]]:
-    logger.opt(lazy=True).debug(
-        'Resolving user handler via operation_id={operation_id}',
-        operation_id=lambda: operation_id,
-    )
-
-    module_name, function_name = operation_id.rsplit('.', 1)
-
-    try:
-        module = importlib.import_module(module_name)
-        function = getattr(module, function_name)
-        if not asyncio.iscoroutinefunction(function):
-            raise UserHandlerError(f'{operation_id} did not resolve to coroutine')
-    except ImportError as err:
-        raise UserHandlerError(f'Failed to import module={module_name}') from err
-    except AttributeError as err:
-        raise UserHandlerError(
-            f'Failed to locate function={function_name} in module={module_name}',
-        ) from err
-    else:
-        return t.cast(t.Callable[..., t.Awaitable[t.Any]], function)
 
 
 def _get_target_app(
