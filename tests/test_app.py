@@ -307,52 +307,6 @@ def test_apply_specification_subapp(
     assert len(subapp.router.resources()) == len(the_spec.operations)
 
 
-@pytest.mark.parametrize(('url', 'variables', 'expected_base_path'), (
-    (
-        '/',
-        {},
-        '/',
-    ),
-    (
-        'https://example.org/',
-        {},
-        '/',
-    ),
-    (
-        '/v{api_version}',
-        {
-            'api_version': '1',
-        },
-        '/v1',
-    ),
-    (
-        'https://example.org/v{api_version}',
-        {
-            'api_version': '1',
-        },
-        '/v1',
-    ),
-    (
-        '{protocol}://example.org:{port}/v{api_version}',
-        {
-            'api_version': '1',
-            'port': '443',
-            'protocol': 'https',
-        },
-        '/v1',
-    ),
-))
-def test_app_get_base_path(
-        url: str,
-        variables: t.Dict[str, str],
-        expected_base_path: str,
-) -> None:
-    assert expected_base_path == app._get_base_path(
-        servers=[model.OASServer(url=url, variables=variables)],
-        base_path=None,
-    ) == expected_base_path
-
-
 def test_app_no_override() -> None:
     with pytest.raises(TypeError):
 
