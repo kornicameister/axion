@@ -24,7 +24,8 @@ def make(servers: t.List[specification.OASServer]) -> str:
         'Computing base path using server definition = {server}',
         server=first_server,
     )
-    the_base_path = yarl.URL(first_server.url.format(**first_server.variables)).path
+
+    the_base_path: str = yarl.URL(first_server.url.format(**first_server.variables)).path
 
     logger.info(
         'API base path will be {base_path}',
