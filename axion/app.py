@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import inspect
 from pathlib import Path
 import typing as t
 
@@ -119,13 +118,13 @@ def _make_handler(operation: model.Operation) -> web_app._Handler:
     user_handler = _resolve_handler(operation.operation_id)
 
     async def handler(request: web.Request) -> web.StreamResponse:
-        resp = await user_handler()
-        return resp
+        await user_handler()  # pragma: no cover
+        return web.Response()  # pragma: no cover
 
     return handler
 
 
-def _resolve_handler(operation_id: str) -> t.Callable[..., web.StreamResponse]:
+def _resolve_handler(operation_id: str) -> t.Callable[..., t.Awaitable[t.Any]]:
     logger.opt(lazy=True).debug(
         'Resolving user handler via operation_id={operation_id}',
         operation_id=lambda: operation_id,
@@ -135,27 +134,17 @@ def _resolve_handler(operation_id: str) -> t.Callable[..., web.StreamResponse]:
 
     try:
         module = importlib.import_module(module_name)
-    except ImportError as import_error:
-        raise UserHandlerError(f'Failed to import module={module}') from import_error
-
-    try:
         function = getattr(module, function_name)
-    except AttributeError:
+        if not asyncio.iscoroutinefunction(function):
+            raise UserHandlerError(f'{operation_id} did not resolve to coroutine')
+    except ImportError as err:
+        raise UserHandlerError(f'Failed to import module={module_name}') from err
+    except AttributeError as err:
         raise UserHandlerError(
             f'Failed to locate function={function_name} in module={module_name}',
-        )
-
-    if not asyncio.iscoroutinefunction(function):
-        raise UserHandlerError(f'{operation_id} did not resolve to coroutine')
+        ) from err
     else:
-        # analyze return value
-        return_type: t.Type[t.Any] = inspect.getmember(function)[0][1]['return']
-        if not issubclass(return_type, web.StreamResponse):
-            raise UserHandlerError(
-                f'User handler must return {type(web.StreamResponse)}',
-            )
-
-    return t.cast(t.Callable[..., web.StreamResponse], function)
+        return t.cast(t.Callable[..., t.Awaitable[t.Any]], function)
 
 
 def _get_target_app(

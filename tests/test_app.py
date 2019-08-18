@@ -268,11 +268,14 @@ def test_apply_specification_no_subapp(
     the_app = app.Application(root_dir=Path.cwd())
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
+    resolve_handler = mocker.patch('axion.app._resolve_handler')
 
     the_app.add_api(
         spec_location=spec_path,
         base_path='/',
     )
+
+    assert resolve_handler.call_count == len(the_spec.operations)
 
     assert add_route_spy.call_count == len(the_spec.operations)
     assert len(the_app.root_app.router.resources()) == len(the_spec.operations)
@@ -287,11 +290,14 @@ def test_apply_specification_subapp(
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
     add_subapp_spy = mocker.spy(the_app.root_app, 'add_subapp')
+    resolve_handler = mocker.patch('axion.app._resolve_handler')
 
     the_app.add_api(
         spec_location=spec_path,
         base_path='/api',
     )
+
+    assert resolve_handler.call_count == len(the_spec.operations)
 
     assert add_route_spy.call_count == 0
     assert add_subapp_spy.call_count == 1
