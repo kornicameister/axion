@@ -8,6 +8,7 @@ from axion import specification
 
 def make(servers: t.List[specification.OASServer]) -> str:
     server_count = len(servers)
+
     if server_count > 1:
         logger.warning(
             (
@@ -18,6 +19,7 @@ def make(servers: t.List[specification.OASServer]) -> str:
             count=len(servers),
         )
     first_server = servers[0]
+
     logger.debug(
         'Computing base path using server definition = {server}',
         server=first_server,
