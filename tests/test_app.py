@@ -6,8 +6,8 @@ import pytest
 import pytest_mock as ptm
 
 from axion import app
-from axion import spec
-from axion.spec import model
+from axion.specification import loader
+from axion.specification import model
 
 
 def test_app_add_api_single_server(
@@ -22,7 +22,7 @@ def test_app_add_api_single_server(
     loaded_spec.servers = [single_server]
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         return_value=loaded_spec,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -35,7 +35,7 @@ def test_app_add_api_single_server(
     spec_load.assert_called_once_with(spec_location)
     apply_spec.assert_called_once_with(
         for_app=the_app.root_app,
-        specification=loaded_spec,
+        spec=loaded_spec,
     )
 
     assert the_app.root_dir == Path.cwd()
@@ -53,7 +53,7 @@ def test_app_add_more_than_single_server_gives_warning(
         model.OASServer(url='/v2', variables={}),
     ]
 
-    mocker.patch('axion.spec.load', return_value=loaded_spec)
+    mocker.patch('axion.specification.load', return_value=loaded_spec)
     mocker.patch('axion.app._apply_specification')
     loguru_warning = mocker.patch('loguru.logger.warning')
 
@@ -85,7 +85,7 @@ def test_app_add_api_duplicated_base_path(
         return spec_one if path == spec_one_path else spec_two
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -101,15 +101,15 @@ def test_app_add_api_duplicated_base_path(
     if server_url == '/':
         apply_spec.assert_called_once_with(
             for_app=the_app.root_app,
-            specification=spec_one,
+            spec=spec_one,
         )
     else:
         # if we are adding onto the different base path
         # and there's a duplicate assume that last added
-        # app got the proper load
+        # app got the proper load_spec
         apply_spec.assert_called_once_with(
             for_app=the_app.root_app._subapps[-1],
-            specification=spec_one,
+            spec=spec_one,
         )
 
 
@@ -129,7 +129,7 @@ def test_app_add_api_overlapping_base_paths(
         return spec_one if path == spec_one_path else spec_two
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -144,7 +144,7 @@ def test_app_add_api_overlapping_base_paths(
 
     apply_spec.assert_called_once_with(
         for_app=the_app.root_app,
-        specification=spec_one,
+        spec=spec_one,
     )
 
 
@@ -157,7 +157,7 @@ def test_app_add_with_custom_base_path(
     spec_one_path = tmp_path / 'openapi_1.yml'
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         return_value=spec_one,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -171,7 +171,7 @@ def test_app_add_with_custom_base_path(
     assert len(router_resources) == 0
     apply_spec.assert_any_call(
         for_app=the_app.root_app,
-        specification=spec_one,
+        spec=spec_one,
     )
 
 
@@ -181,7 +181,7 @@ def test_app_add_with_relative_base_path(mocker: ptm.MockFixture) -> None:
     spec_one_path = Path('../tests/specifications/simple.yml')
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         return_value=spec_one,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -195,7 +195,7 @@ def test_app_add_with_relative_base_path(mocker: ptm.MockFixture) -> None:
     assert len(router_resources) == 0
     apply_spec.assert_any_call(
         for_app=the_app.root_app,
-        specification=spec_one,
+        spec=spec_one,
     )
 
 
@@ -224,7 +224,7 @@ def test_app_add_api_different_base_path(
             return spec_admin
 
     spec_load = mocker.patch(
-        'axion.spec.load',
+        'axion.specification.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -255,7 +255,7 @@ def test_app_add_api_different_base_path(
         )
         apply_spec.assert_any_call(
             for_app=sub_app._app,
-            specification=the_spec,
+            spec=the_spec,
         )
 
 
@@ -264,7 +264,7 @@ def test_apply_specification_no_subapp(
         mocker: ptm.MockFixture,
 ) -> None:
 
-    the_spec = spec.load(spec_path)
+    the_spec = loader.load_spec(spec_path)
     the_app = app.Application(root_dir=Path.cwd())
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')
@@ -285,7 +285,7 @@ def test_apply_specification_subapp(
         spec_path: Path,
         mocker: ptm.MockFixture,
 ) -> None:
-    the_spec = spec.load(spec_path)
+    the_spec = loader.load_spec(spec_path)
     the_app = app.Application(root_dir=Path.cwd())
 
     add_route_spy = mocker.spy(the_app.root_app.router, 'add_route')

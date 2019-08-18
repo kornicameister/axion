@@ -9,8 +9,7 @@ from loguru import logger
 import typing_extensions as te
 import yarl
 
-from axion import spec
-from axion.spec import model
+from axion import specification
 
 APIs = t.Dict[str, web.Application]
 
@@ -62,14 +61,14 @@ class Application:
 
     def add_api(
             self,
-            spec_location: spec.SpecLocation,
+            spec_location: Path,
             base_path: t.Optional[str] = None,
             middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
     ) -> None:
         if not spec_location.is_absolute():
             spec_location = (self.root_dir / spec_location).resolve()
 
-        loaded_spec = spec.load(spec_location)
+        loaded_spec = specification.load(spec_location)
         target_app, target_base_path = _get_target_app(
             root_app=self.root_app,
             known_base_paths=self.api_base_paths,
@@ -81,7 +80,7 @@ class Application:
 
         _apply_specification(
             for_app=target_app,
-            specification=loaded_spec,
+            spec=loaded_spec,
         )
         if target_app != self.root_app:
             logger.info(
@@ -97,10 +96,10 @@ class Application:
 
 def _apply_specification(
         for_app: web.Application,
-        specification: model.OASSpecification,
+        spec: specification.OASSpecification,
 ) -> None:
 
-    for op in specification.operations:
+    for op in spec.operations:
         the_route = for_app.router.add_route(
             method=op.http_method.value,
             path=op.path.human_repr(),
@@ -114,7 +113,7 @@ def _apply_specification(
         )
 
 
-def _make_handler(operation: model.Operation) -> web_app._Handler:
+def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
     user_handler = _resolve_handler(operation.operation_id)
 
     async def handler(request: web.Request) -> web.StreamResponse:
@@ -150,7 +149,7 @@ def _resolve_handler(operation_id: str) -> t.Callable[..., t.Awaitable[t.Any]]:
 def _get_target_app(
         root_app: web.Application,
         known_base_paths: t.Set[str],
-        servers: t.List[model.OASServer],
+        servers: t.List[specification.OASServer],
         middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
         base_path: t.Optional[str] = None,
 ) -> t.Tuple[web.Application, str]:
@@ -196,7 +195,7 @@ def _get_target_app(
 
 
 def _get_base_path(
-        servers: t.List[model.OASServer],
+        servers: t.List[specification.OASServer],
         base_path: t.Optional[str] = None,
 ) -> str:
     the_base_path: str
