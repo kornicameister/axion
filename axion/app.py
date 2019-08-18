@@ -5,7 +5,6 @@ from aiohttp import web
 from aiohttp import web_app
 from loguru import logger
 import typing_extensions as te
-import yarl
 
 from axion import application
 from axion import specification
@@ -125,10 +124,7 @@ def _get_target_app(
         middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
         base_path: t.Optional[str] = None,
 ) -> t.Tuple[web.Application, str]:
-    the_base_path = _get_base_path(
-        servers=servers,
-        base_path=base_path,
-    )
+    the_base_path = base_path or application.get_base_path(servers=servers)
 
     def check_overlapping() -> bool:
         for known_base_path in known_base_paths:
@@ -164,41 +160,3 @@ def _get_target_app(
         )
         nested_app = web.Application(middlewares=middlewares or ())
         return nested_app, the_base_path
-
-
-def _get_base_path(
-        servers: t.List[specification.OASServer],
-        base_path: t.Optional[str] = None,
-) -> str:
-    the_base_path: str
-
-    if base_path:
-        logger.debug(
-            'Using user provided base path = {base_path}',
-            base_path=base_path,
-        )
-        the_base_path = base_path
-    else:
-        server_count = len(servers)
-        if server_count > 1:
-            logger.warning(
-                (
-                    'There are {count} servers, axion will assume first one. '
-                    'This behavior might change in the future, once axion knows '
-                    'how to deal with multiple servers'
-                ),
-                count=len(servers),
-            )
-        first_server = servers[0]
-        logger.debug(
-            'Computing base path using server definition = {server}',
-            server=first_server,
-        )
-        the_base_path = yarl.URL(first_server.url.format(**first_server.variables)).path
-
-    logger.info(
-        'API base path will be {base_path}',
-        base_path=the_base_path,
-    )
-
-    return the_base_path
