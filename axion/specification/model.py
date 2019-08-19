@@ -125,23 +125,6 @@ class OASMediaType:
 
 
 @dataclass(frozen=True)
-class OASMediaTypeExample:
-    summary: str
-    description: str
-    value: t.Any
-    externalValue: yarl.URL
-
-
-@dataclass(frozen=True)
-class OASMediaTypeEncoding:
-    content_type: MimeType
-    style: t.Optional['OASParameterStyle']
-    exclude: t.Optional[bool]
-    allow_reserved: t.Optional[bool]
-    headers: t.Set['OASHeaderParameter'] = field(default_factory=lambda: set())
-
-
-@dataclass(frozen=True)
 class OASType:
     default: t.Optional[t.Any]
     example: t.Optional[t.Any]
