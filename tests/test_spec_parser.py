@@ -181,6 +181,35 @@ def test_spec_load_follow_ref_no_such_ref() -> None:
         parser._follow_ref({}, '#/components/schemas/Dummy')
 
 
+@pytest.mark.parametrize(
+    'param_name,param_in,expected_param_name',
+    (
+        ('appName', model.OASHeaderParameter, 'appName'),
+        ('appName', model.OASQueryParameter, 'app_name'),
+        ('appName', model.OASPathParameter, 'app_name'),
+        ('appName', model.OASCookieParameter, 'appName'),
+    ),
+)
+def test_spec_snake_case_behavior(
+        param_name: str,
+        param_in: t.Type[t.Any],
+        expected_param_name: str,
+) -> None:
+    param_def = {
+        'required': True,
+        'schema': {
+            'type': 'string',
+        },
+    }
+    param = parser._resolve_parameter(
+        components={},
+        param_name=param_name,
+        param_def=param_def,
+        param_in=param_in,
+    )
+    assert param.name == expected_param_name
+
+
 def test_spec_resolve_param_path() -> None:
     param_def = {
         'schema': {
