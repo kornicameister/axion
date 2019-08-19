@@ -32,7 +32,8 @@ def test_spec_build_oas_string_invalid_min_max_length(
 
 
 @pytest.mark.parametrize(
-    'pattern,should_match,should_not_match', (
+    'pattern,should_match,should_not_match',
+    (
         ('^[a-z]*$', ['a', 'ab', 'abc'], ['123', '456']),
         ('^[a-z0-9_-]{3,16}$', ['my-us3r_n4m3'], ['th1s1s-wayt00_l0ngt0beausername']),
     ),
