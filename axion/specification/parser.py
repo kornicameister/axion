@@ -408,21 +408,38 @@ def _build_oas_object(
         if not isinstance(raw_additional_properties, bool):
             # it may either be an empty dict or schema
             if len(raw_additional_properties) == 0:
-                additional_properties = True  # type: t.Union[bool, model.OASType]
+                value = True  # type: t.Union[bool, model.OASType]
             else:
-                additional_properties = _resolve_schema(
+                value = _resolve_schema(
                     components,
                     raw_additional_properties,
                 )
         else:
-            additional_properties = raw_additional_properties
+            value = raw_additional_properties
 
-        return additional_properties
+        return value
+
+    properties = {
+        name: _resolve_schema(
+            components,
+            property_def,
+        )
+        for name, property_def in work_item.get('properties', {}).items()
+    }
+    additional_properties = _resolve_additional_properties()
 
     raw_discriminator = work_item.get('discriminator')
     if raw_discriminator is not None:
+        property_name = raw_discriminator['propertyName']
+
+        if property_name not in properties and not additional_properties:
+            raise ValueError(
+                f'Discriminator {property_name} not found in '
+                f'object properties [{", ".join(properties.keys())}]',
+            )
+
         discriminator = model.OASObjectDiscriminator(
-            property_name=raw_discriminator['propertyName'],
+            property_name=property_name,
             mapping=raw_discriminator.get('mapping'),
         )  # type: t.Optional[model.OASObjectDiscriminator]
     else:
@@ -430,11 +447,8 @@ def _build_oas_object(
 
     return model.OASObjectType(
         required=set(work_item.get('required', [])),
-        additional_properties=_resolve_additional_properties(),
-        properties={
-            name: _resolve_schema(components, property_def)
-            for name, property_def in work_item.get('properties', {}).items()
-        },
+        additional_properties=additional_properties,
+        properties=properties,
         discriminator=discriminator,
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
