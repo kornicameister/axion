@@ -375,7 +375,7 @@ class OASObjectDiscriminator:
             mapping: t.Optional[t.Dict[str, str]] = None,
     ) -> None:
         self.property_name = property_name
-        self.mapping = mapping or {}
+        self.mapping = mapping
 
 
 @te.final
