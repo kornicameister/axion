@@ -190,7 +190,7 @@ def test_spec_load_follow_ref_no_such_ref() -> None:
         ('appName', model.OASCookieParameter, 'appName'),
     ),
 )
-def test_spec_snake_case_behavior(
+def test_spec_snake_case_behavior_for_param(
         param_name: str,
         param_in: t.Type[t.Any],
         expected_param_name: str,
