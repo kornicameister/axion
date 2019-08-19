@@ -361,7 +361,7 @@ def _resolve_schema(
                     ],
                 )
         return mix_value
-    elif 'type' not in work_item:
+    else:
         return model.OASAnyType(
             nullable=bool(work_item.get('nullable', False)),
             read_only=bool(work_item.get('readOnly', False)),
@@ -370,8 +370,6 @@ def _resolve_schema(
             default=work_item.get('default'),
             example=work_item.get('example'),
         )
-    else:
-        raise ValueError(f'Cannot deduce how to handle {type(work_item)}: {work_item}')
 
 
 def _build_oas_array(
