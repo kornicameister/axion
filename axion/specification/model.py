@@ -76,9 +76,6 @@ class OperationParameters(t.List['OASParameter']):
     def names(self) -> t.FrozenSet[str]:
         return frozenset(map(lambda p: p.name, self))
 
-    def path_parameters(self) -> t.Iterable['OASPathParameter']:
-        return iter(param for param in self if isinstance(param, OASPathParameter))
-
 
 @te.final
 class OASOperation:

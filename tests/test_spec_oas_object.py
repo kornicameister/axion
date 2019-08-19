@@ -110,4 +110,3 @@ def test_spec_oas_object_discriminator_property_additional_properties(
 
 def test_spec_build_oas_object_correct_python_type() -> None:
     assert issubclass(parser._build_oas_object({}, {}).python_type, dict)
-
