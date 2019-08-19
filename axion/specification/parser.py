@@ -227,7 +227,6 @@ def _resolve_parameter(
             param_in=param_in,
         )
     else:
-        param_name = _convert_to_snake_case(param_name)
         # needed to determine proper content carried by the field
         # either schema or content will bet set, otherwise OAS is invalid
         schema = param_def.get('schema', None)
@@ -282,7 +281,7 @@ def _resolve_parameter(
                     f'Path parameter {param_name} must have required set to True',
                 )
             return model.OASPathParameter(
-                name=param_name,
+                name=_convert_to_snake_case(param_name),
                 example=example,
                 required=required,
                 explode=explode,
@@ -292,7 +291,7 @@ def _resolve_parameter(
         elif issubclass(param_in, model.OASQueryParameter):
             allow_reserved = bool(param_def.get('allowReserved', False))
             return model.OASQueryParameter(
-                name=param_name,
+                name=_convert_to_snake_case(param_name),
                 example=example,
                 required=required,
                 explode=explode,
