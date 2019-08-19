@@ -4,7 +4,6 @@ import typing as t
 
 from loguru import logger
 import openapi_spec_validator as osv
-import typing_extensions as te
 import yarl
 
 from axion.specification import exceptions
@@ -40,7 +39,7 @@ def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
 def _resolve_operations(
         paths: t.Dict['str', t.Dict[str, t.Any]],
         components: t.Dict['str', t.Dict[str, t.Any]],
-) -> model.Operations:
+) -> model.OASOperations:
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = set()
     for op_path, op_path_definition in paths.items():
@@ -69,7 +68,7 @@ def _resolve_operations(
                     operation_parameters.append(param_def)
 
             operation = model.OASOperation(
-                operation_id=model.OperationId(definition['operationId']),
+                id=model.OASOperationId(definition['operationId']),
                 path=yarl.URL(op_path),
                 http_method=model.HTTPMethod(op_http_method),
                 deprecated=bool(definition.get('deprecated', False)),
@@ -86,7 +85,7 @@ def _resolve_operations(
                 operation=lambda: operation,
             )
 
-    return model.Operations(frozenset(operations))
+    return frozenset(operations)
 
 
 def _resolve_responses(
@@ -102,7 +101,7 @@ def _resolve_responses(
                     components,
                     header_name,
                     header_def,
-                    'header',
+                    model.OASHeaderParameter,
                 ) for header_name, header_def in rp_def.get('headers', {}).items()
             ],
             content=_resolve_content(
@@ -172,7 +171,12 @@ def _resolve_parameters(
         else:
             param_def = param
 
-        param_in = param_def['in']
+        param_in = {
+            'header': model.OASHeaderParameter,
+            'path': model.OASPathParameter,
+            'query': model.OASQueryParameter,
+            'cookie': model.OASCookieParameter,
+        }[param_def['in']]
         param_name = param_def['name']
 
         logger.opt(lazy=True).trace(
@@ -182,7 +186,7 @@ def _resolve_parameters(
         )
 
         resolved_parameters.append(
-            _resolve_parameter(
+            _resolve_parameter(  # type: ignore
                 components=components,
                 param_name=param_name,
                 param_def=param_def,
@@ -200,12 +204,21 @@ def _convert_to_snake_case(s: str) -> str:
     return CamelCaseToSnakeCaseRegex.sub(r'_\1', s).lower()
 
 
+Param = t.TypeVar(
+    'Param',
+    model.OASHeaderParameter,
+    model.OASPathParameter,
+    model.OASCookieParameter,
+    model.OASQueryParameter,
+)
+
+
 def _resolve_parameter(
         components: t.Dict[str, t.Dict[str, t.Any]],
         param_name: str,
         param_def: t.Dict[str, t.Any],
-        param_in: te.Literal['header', 'path', 'query', 'cookie'],
-) -> model.OASParameter:
+        param_in: t.Type[Param],
+) -> Param:
     if '$ref' in param_def:
         return _resolve_parameter(
             components=components,
@@ -220,7 +233,7 @@ def _resolve_parameter(
         schema = param_def.get('schema', None)
         style = model.ParameterStyles[param_def.get(
             'style',
-            model.ParameterStyleDefaults[param_in],
+            param_in.default_style,
         )]
         content = param_def.get('content', None)
 
@@ -230,9 +243,14 @@ def _resolve_parameter(
         deprecated = bool(param_def.get('deprecated', False))
         example = param_def.get('example', None)
 
-        final_schema: t.Union[t.Tuple[model.OASType, model.OASParameterStyle],
-                              model.OASContent,
-                              ]
+        # those fields are valid either for cookie or header
+        allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
+            param_def.get('allowEmptyValue', False),
+        )
+
+        final_schema: t.Union[t.Tuple[model.OASType[t.Any],
+                                      model.OASParameterStyle,
+                                      ], model.OASContent]
         if content is not None:
             final_schema = _resolve_content(components, param_def)
         else:
@@ -245,7 +263,7 @@ def _resolve_parameter(
                 style,
             )
 
-        if param_in == 'header':
+        if issubclass(param_in, model.OASHeaderParameter):
             if param_name.lower() in ('content-type', 'accept', 'authorization'):
                 raise ValueError(
                     f'Header parameter name {param_name} is reserved thus invalid',
@@ -258,7 +276,7 @@ def _resolve_parameter(
                 deprecated=deprecated,
                 schema=final_schema,
             )
-        elif param_in == 'path':
+        elif issubclass(param_in, model.OASPathParameter):
             if not required:
                 raise ValueError(
                     f'Path parameter {param_name} must have required set to True',
@@ -271,16 +289,9 @@ def _resolve_parameter(
                 deprecated=deprecated,
                 schema=final_schema,
             )
-        elif param_in == 'query':
-            allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
-                param_def.get('allowEmptyValue', False),
-            )
-            allow_reserved: t.Optional[bool] = bool(
-                param_def.get('allowReserved', False),
-            )
-
-            # TODO figure out why mypy disallows that definition
-            return model.OASQueryParameter(  # type: ignore
+        elif issubclass(param_in, model.OASQueryParameter):
+            allow_reserved = bool(param_def.get('allowReserved', False))
+            return model.OASQueryParameter(
                 name=param_name,
                 example=example,
                 required=required,
@@ -290,7 +301,7 @@ def _resolve_parameter(
                 allow_empty_value=allow_empty_value,
                 allow_reserved=allow_reserved,
             )
-        elif param_in == 'cookie':
+        elif issubclass(param_in, model.OASCookieParameter):
             return model.OASCookieParameter(
                 name=param_name,
                 example=example,
@@ -298,18 +309,19 @@ def _resolve_parameter(
                 explode=explode,
                 deprecated=deprecated,
                 schema=final_schema,
+                allow_empty_value=allow_empty_value,
             )
         else:
             raise ValueError(
                 f'Cannot build parameter {param_name} '
-                f'definition from {type(param_in)}',
+                f'definition from {param_in}',
             )
 
 
 def _resolve_schema(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-) -> model.OASType:
+) -> model.OASType[t.Any]:
 
     resolvers = {
         'number': functools.partial(_build_oas_number, float),
@@ -318,7 +330,7 @@ def _resolve_schema(
         'string': _build_oas_string,
         'array': functools.partial(_build_oas_array, components),
         'object': functools.partial(_build_oas_object, components),
-    }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType]]
+    }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType[t.Any]]]
 
     if '$ref' in work_item:
         return _resolve_schema(
@@ -336,14 +348,14 @@ def _resolve_schema(
 
         def _handle_not(
                 raw_mixed_schema_or_not: t.Dict[str, t.Any],
-        ) -> t.Tuple[bool, model.OASType]:
+        ) -> t.Tuple[bool, model.OASType[t.Any]]:
             negated = raw_mixed_schema_or_not.get('not', None)
             if negated is not None:
                 return False, _resolve_schema(components, negated)
             else:
                 return True, _resolve_schema(components, raw_mixed_schema_or_not)
 
-        mix_value: model.OASMixedType
+        mix_value: model.OASMixedType[t.Any]
         for mix_key in ('allOf', 'anyOf', 'oneOf'):
             maybe_mix_definition = work_item.get(mix_key, None)
             if maybe_mix_definition is not None:
@@ -355,7 +367,7 @@ def _resolve_schema(
                     deprecated=bool(work_item.get('deprecated', False)),
                     default=work_item.get('default'),
                     example=work_item.get('example'),
-                    type=mix_type,
+                    mix_type=mix_type,
                     in_mix=[
                         _handle_not(mixed_type_schema)
                         for mixed_type_schema in maybe_mix_definition
@@ -400,7 +412,7 @@ def _build_oas_object(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
 ) -> model.OASObjectType:
-    def _resolve_additional_properties() -> t.Union[bool, model.OASType]:
+    def _resolve_additional_properties() -> t.Union[bool, model.OASType[t.Any]]:
         raw_additional_properties = work_item.get(
             'additionalProperties',
             True,
@@ -409,7 +421,7 @@ def _build_oas_object(
         if not isinstance(raw_additional_properties, bool):
             # it may either be an empty dict or schema
             if len(raw_additional_properties) == 0:
-                value = True  # type: t.Union[bool, model.OASType]
+                value = True  # type: t.Union[bool, model.OASType[t.Any]]
             else:
                 value = _resolve_schema(
                     components,
@@ -526,13 +538,13 @@ def _build_oas_string(
 def _build_oas_number(
         number_cls: t.Type[model.N],
         work_item: t.Dict[str, t.Any],
-) -> model.OASNumberType[model.N]:
+) -> model.OASNumberType:
     detected_types = set()
 
-    default_value: t.Optional[t.Union[int, float]] = None
-    example_value: t.Optional[t.Union[int, float]] = None
-    minimum: t.Optional[t.Union[int, float]] = None
-    maximum: t.Optional[t.Union[int, float]] = None
+    default_value: t.Optional[model.N] = None
+    example_value: t.Optional[model.N] = None
+    minimum: t.Optional[model.N] = None
+    maximum: t.Optional[model.N] = None
 
     keys = ('default', 'example', 'minimum', 'maximum')
     for key in keys:
@@ -547,13 +559,13 @@ def _build_oas_number(
                     f'{[int, float]} are permitted',
                 )
             elif key == 'default':
-                default_value = key_value
+                default_value = number_cls(key_value)
             elif key == 'example':
-                example_value = key_value
+                example_value = number_cls(key_value)
             elif key == 'minimum':
-                example_value = key_value
+                example_value = number_cls(key_value)
             elif key == 'maximum':
-                example_value = key_value
+                example_value = number_cls(key_value)
 
     if len(detected_types) == 2:
         raise exceptions.OASInvalidTypeValue(
@@ -563,10 +575,10 @@ def _build_oas_number(
 
     return model.OASNumberType(
         number_cls=number_cls,
-        default=number_cls(default_value) if default_value else None,
-        example=number_cls(example_value) if example_value else None,
-        minimum=number_cls(minimum) if minimum else None,
-        maximum=number_cls(maximum) if maximum else None,
+        default=default_value,
+        example=example_value,
+        minimum=minimum,
+        maximum=maximum,
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
         write_only=bool(work_item.get('writeOnly', False)),

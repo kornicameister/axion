@@ -31,7 +31,7 @@ from axion.specification import parser
 )
 def test_spec_oas_object_free_form(
         properties: t.Optional[t.Dict[str, t.Any]],
-        additional_properties: t.Union[bool, model.OASType],
+        additional_properties: t.Union[bool, model.OASType[t.Any]],
         expected_result: bool,
 ) -> None:
     assert parser._build_oas_object({}, {

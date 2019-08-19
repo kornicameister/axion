@@ -297,28 +297,28 @@ def test_spec_render_complex_schema() -> None:
 
     rings_get_all_op = next(
         filter(
-            lambda op: op and op.operation_id == 'frodo.lotr.rings.get_all',
+            lambda op: op and op.id == 'frodo.lotr.rings.get_all',
             loaded_spec.operations,
         ),
         None,
     )  # type: t.Optional[model.Operation]
     rings_make_one_op = next(
         filter(
-            lambda op: op and op.operation_id == 'frodo.lotr.rings.make_one',
+            lambda op: op and op.id == 'frodo.lotr.rings.make_one',
             loaded_spec.operations,
         ),
         None,
     )  # type: t.Optional[model.Operation]
     rings_put_one_op = next(
         filter(
-            lambda op: op and op.operation_id == 'frodo.lotr.rings.put_one',
+            lambda op: op and op.id == 'frodo.lotr.rings.put_one',
             loaded_spec.operations,
         ),
         None,
     )  # type: t.Optional[model.Operation]
     rings_get_one_op = next(
         filter(
-            lambda op: op and op.operation_id == 'frodo.lotr.rings.get_one',
+            lambda op: op and op.id == 'frodo.lotr.rings.get_one',
             loaded_spec.operations,
         ),
         None,
