@@ -9,6 +9,15 @@ HTTPCode = t.NewType('HTTPCode', int)
 OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
 
 
+class PythonTypeCompatible(te.Protocol):
+    @property
+    def python_type(self) -> t.Any:
+        # typing on its own does not have a type
+        # try reveal_type(t.Optional[str]) for instance
+        # and see that it says 'Any'
+        ...
+
+
 @enum.unique
 class HTTPMethod(str, enum.Enum):
     GET = 'get'
@@ -43,21 +52,21 @@ OASContent = t.Dict[MimeType, 'OASMediaType']
 
 @dataclass(frozen=True)
 class OASResponse:
-    headers: t.List['OASHeaderParameter'] = field(default_factory=lambda: [])
+    headers: t.List['OASParameter'] = field(default_factory=lambda: [])
     content: 'OASContent' = field(default_factory=lambda: {})
 
 
 OASResponses = t.Dict[OASResponseCode, OASResponse]
 
-
-@dataclass(frozen=True)
-class OperationParameterKey:
-    location: str
-    name: str
-
-
 OperationId = t.NewType('OperationId', str)
-OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
+
+
+class OperationParameters(t.List['OASParameter']):
+    def names(self) -> t.FrozenSet[str]:
+        return frozenset(map(lambda p: p.name, self))
+
+    def path_parameters(self) -> t.Iterable['OASPathParameter']:
+        return iter(param for param in self if isinstance(param, OASPathParameter))
 
 
 @dataclass(frozen=True, repr=False)
@@ -125,7 +134,7 @@ class OASMediaType:
 
 
 @dataclass(frozen=True)
-class OASType:
+class OASType(PythonTypeCompatible):
     default: t.Optional[t.Any]
     example: t.Optional[t.Any]
     nullable: t.Optional[bool]
@@ -136,7 +145,9 @@ class OASType:
 
 @dataclass(frozen=True)
 class OASAnyType(OASType):
-    ...
+    @property
+    def python_type(self) -> t.Any:
+        return object
 
 
 @dataclass(frozen=True)
@@ -150,11 +161,19 @@ class OASMixedType(OASType):
     type: Type
     in_mix: t.List[t.Tuple[bool, OASType]]
 
+    @property
+    def python_type(self) -> t.Any:
+        return dict
+
 
 @dataclass(frozen=True)
 class OASBooleanType(OASType):
     default: t.Optional[bool]
     example: t.Optional[bool]
+
+    @property
+    def python_type(self) -> t.Any:
+        return bool
 
 
 N = t.TypeVar('N', float, int)
@@ -162,6 +181,7 @@ N = t.TypeVar('N', float, int)
 
 @dataclass(frozen=True)
 class OASNumberType(OASType, t.Generic[N]):
+    number_cls: t.Type[N]
     default: t.Optional[N]
     example: t.Optional[N]
     format: t.Optional[str]
@@ -170,6 +190,10 @@ class OASNumberType(OASType, t.Generic[N]):
     multiple_of: t.Optional[t.Union[N]]
     exclusive_minimum: t.Optional[bool]
     exclusive_maximum: t.Optional[bool]
+
+    @property
+    def python_type(self) -> t.Any:
+        return self.number_cls
 
 
 @dataclass(frozen=True)
@@ -181,11 +205,19 @@ class OASStringType(OASType):
     pattern: t.Optional[t.Pattern[str]]
     format: t.Optional[str]
 
+    @property
+    def python_type(self) -> t.Any:
+        return str
+
 
 @dataclass(frozen=True)
 class OASFileType(OASType):
     example: t.Optional[None] = field(init=False, default=None)
     default: t.Optional[None] = field(init=False, default=None)
+
+    @property
+    def python_type(self) -> t.Any:
+        return str
 
 
 @dataclass(frozen=True)
@@ -204,6 +236,10 @@ class OASObjectType(OASType):
     discriminator: t.Optional[OASObjectDiscriminator] = None
 
     @property
+    def python_type(self) -> t.Any:
+        return dict
+
+    @property
     def is_free_form(self) -> bool:
         if self.properties:
             return False
@@ -218,15 +254,32 @@ class OASArrayType(OASType):
     max_length: t.Optional[int]
     unique_items: t.Optional[bool]
 
+    @property
+    def python_type(self) -> t.Any:
+        return list
+
 
 @dataclass(frozen=True)
-class OASParameter:
+class OASParameter(PythonTypeCompatible):
     name: str
     schema: t.Union[t.Tuple[OASType, 'OASParameterStyle'], OASContent]
     example: t.Optional[t.Any]
     required: t.Optional[bool]
     explode: t.Optional[bool]
     deprecated: t.Optional[bool]
+
+    @property
+    def python_type(self) -> t.Any:
+        if isinstance(self.schema, tuple):
+
+            # TODO most likely that needs to deal with explode stuff
+            #      and specialities of style
+
+            oas_type, _ = self.schema
+            python_type = oas_type.python_type
+            return python_type if self.required else t.Optional[python_type]
+        else:
+            raise ValueError('No idea yet how to build python type here')
 
 
 @dataclass(frozen=True)
@@ -254,22 +307,15 @@ class OASHeaderParameter(OASParameter):
 class OASParameterStyle:
     name: str
     type: t.Set[t.Type[OASType]]
-    locations: t.Set[t.Type[OASParameter]]
+    locations: t.Set[te.Literal['path', 'cookie', 'query', 'header']]
 
 
-ParameterLocations = {
-    'query': OASQueryParameter,
-    'path': OASPathParameter,
-    'header': OASHeaderParameter,
-    'cookie': OASCookieParameter,
+ParameterStyleDefaults: t.Dict[str, str] = {
+    'query': 'form',
+    'path': 'simple',
+    'header': 'simple',
+    'cookie': 'form',
 }
-ParameterStyleDefaults = {
-    OASQueryParameter: 'form',
-    OASPathParameter: 'simple',
-    OASHeaderParameter: 'simple',
-    OASCookieParameter: 'form',
-}
-# TODO refactor into function
 ParameterStyles: t.Dict[str, OASParameterStyle] = {
     'form': OASParameterStyle(
         name='form',
@@ -280,7 +326,7 @@ ParameterStyles: t.Dict[str, OASParameterStyle] = {
             OASObjectType,
             OASArrayType,
         },
-        locations={OASQueryParameter, OASCookieParameter},
+        locations={'query', 'cookie'},
     ),
     'label': OASParameterStyle(
         name='label',
@@ -291,7 +337,7 @@ ParameterStyles: t.Dict[str, OASParameterStyle] = {
             OASObjectType,
             OASArrayType,
         },
-        locations={OASPathParameter},
+        locations={'path'},
     ),
     'matrix': OASParameterStyle(
         name='matrix',
@@ -302,26 +348,26 @@ ParameterStyles: t.Dict[str, OASParameterStyle] = {
             OASObjectType,
             OASArrayType,
         },
-        locations={OASPathParameter},
+        locations={'path'},
     ),
     'simple': OASParameterStyle(
         name='simple',
         type={OASArrayType},
-        locations={OASPathParameter, OASHeaderParameter},
+        locations={'path', 'header'},
     ),
     'spaceDelimited': OASParameterStyle(
         name='spaceDelimited',
         type={OASArrayType},
-        locations={OASQueryParameter},
+        locations={'query'},
     ),
     'pipeDelimited': OASParameterStyle(
         name='pipeDelimited',
         type={OASArrayType},
-        locations={OASQueryParameter},
+        locations={'query'},
     ),
     'deepObject': OASParameterStyle(
         name='deepObject',
         type={OASObjectType},
-        locations={OASQueryParameter},
+        locations={'query'},
     ),
 }

@@ -4,6 +4,7 @@ import typing as t
 
 from loguru import logger
 import openapi_spec_validator as osv
+import typing_extensions as te
 import yarl
 
 from axion.specification import exceptions
@@ -62,10 +63,10 @@ def _resolve_operations(
                 components,
                 definition.pop('parameters', []),
             )
-            for param_key, param_def in global_parameters.items():
-                if param_key not in operation_parameters:
+            for param_def in global_parameters:
+                if param_def.name not in operation_parameters.names():
                     # global parameter copied into local parameter
-                    operation_parameters[param_key] = param_def
+                    operation_parameters.append(param_def)
 
             operation = model.OASOperation(
                 operation_id=model.OperationId(definition['operationId']),
@@ -101,7 +102,7 @@ def _resolve_responses(
                     components,
                     header_name,
                     header_def,
-                    model.OASHeaderParameter,
+                    'header',
                 ) for header_name, header_def in rp_def.get('headers', {}).items()
             ],
             content=_resolve_content(
@@ -150,15 +151,6 @@ def _resolve_content(
         return {}
 
 
-P = t.TypeVar(
-    'P',
-    model.OASCookieParameter,
-    model.OASQueryParameter,
-    model.OASPathParameter,
-    model.OASHeaderParameter,
-)
-
-
 def _resolve_parameters(
         components: t.Dict[str, t.Any],
         parameters: t.List[t.Dict[str, t.Any]],
@@ -167,7 +159,9 @@ def _resolve_parameters(
         'Resolving {count} of parameters',
         count=lambda: len(parameters),
     )
-    resolved_parameters: model.OperationParameters = {}
+
+    resolved_parameters = []
+
     for param in parameters:
         if '$ref' in param:
             logger.trace(
@@ -187,25 +181,31 @@ def _resolve_parameters(
             param_in=lambda: param_in,
         )
 
-        resolved_parameters[model.OperationParameterKey(
-            location=param_in,
-            name=param_name,
-        )] = _resolve_parameter(
-            components,
-            param_name,
-            param_def,
-            model.ParameterLocations[param_in],
+        resolved_parameters.append(
+            _resolve_parameter(
+                components=components,
+                param_name=param_name,
+                param_def=param_def,
+                param_in=param_in,
+            ),
         )
 
-    return resolved_parameters
+    return model.OperationParameters(resolved_parameters)
+
+
+CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
+
+
+def _convert_to_snake_case(s: str) -> str:
+    return CamelCaseToSnakeCaseRegex.sub(r'_\1', s).lower()
 
 
 def _resolve_parameter(
         components: t.Dict[str, t.Dict[str, t.Any]],
         param_name: str,
         param_def: t.Dict[str, t.Any],
-        param_in: t.Type[P],
-) -> P:
+        param_in: te.Literal['header', 'path', 'query', 'cookie'],
+) -> model.OASParameter:
     if '$ref' in param_def:
         return _resolve_parameter(
             components=components,
@@ -214,6 +214,7 @@ def _resolve_parameter(
             param_in=param_in,
         )
     else:
+        param_name = _convert_to_snake_case(param_name)
         # needed to determine proper content carried by the field
         # either schema or content will bet set, otherwise OAS is invalid
         schema = param_def.get('schema', None)
@@ -244,7 +245,7 @@ def _resolve_parameter(
                 style,
             )
 
-        if issubclass(param_in, model.OASHeaderParameter):
+        if param_in == 'header':
             if param_name.lower() in ('content-type', 'accept', 'authorization'):
                 raise ValueError(
                     f'Header parameter name {param_name} is reserved thus invalid',
@@ -257,7 +258,7 @@ def _resolve_parameter(
                 deprecated=deprecated,
                 schema=final_schema,
             )
-        elif issubclass(param_in, model.OASPathParameter):
+        elif param_in == 'path':
             if not required:
                 raise ValueError(
                     f'Path parameter {param_name} must have required set to True',
@@ -270,7 +271,7 @@ def _resolve_parameter(
                 deprecated=deprecated,
                 schema=final_schema,
             )
-        elif issubclass(param_in, model.OASQueryParameter):
+        elif param_in == 'query':
             allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
                 param_def.get('allowEmptyValue', False),
             )
@@ -289,7 +290,7 @@ def _resolve_parameter(
                 allow_empty_value=allow_empty_value,
                 allow_reserved=allow_reserved,
             )
-        elif issubclass(param_in, model.OASCookieParameter):
+        elif param_in == 'cookie':
             return model.OASCookieParameter(
                 name=param_name,
                 example=example,
@@ -311,8 +312,8 @@ def _resolve_schema(
 ) -> model.OASType:
 
     resolvers = {
-        'number': _build_oas_number,
-        'integer': _build_oas_number,
+        'number': functools.partial(_build_oas_number, float),
+        'integer': functools.partial(_build_oas_number, int),
         'boolean': _build_oas_boolean,
         'string': _build_oas_string,
         'array': functools.partial(_build_oas_array, components),
@@ -523,8 +524,9 @@ def _build_oas_string(
 
 
 def _build_oas_number(
+        number_cls: t.Type[model.N],
         work_item: t.Dict[str, t.Any],
-) -> model.OASNumberType[t.Union[int, float]]:
+) -> model.OASNumberType[model.N]:
     detected_types = set()
 
     default_value: t.Optional[t.Union[int, float]] = None
@@ -560,10 +562,11 @@ def _build_oas_number(
         )
 
     return model.OASNumberType(
-        default=default_value,
-        example=example_value,
-        minimum=minimum,
-        maximum=maximum,
+        number_cls=number_cls,
+        default=number_cls(default_value) if default_value else None,
+        example=number_cls(example_value) if example_value else None,
+        minimum=number_cls(minimum) if minimum else None,
+        maximum=number_cls(maximum) if maximum else None,
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
         write_only=bool(work_item.get('writeOnly', False)),
