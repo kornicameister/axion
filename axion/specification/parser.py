@@ -346,14 +346,18 @@ def _resolve_schema(
     elif set(work_item.keys()).intersection(['anyOf', 'allOf', 'oneOf']):
         return _build_oas_mix(components, work_item)
     else:
-        return model.OASAnyType(
-            nullable=bool(work_item.get('nullable', False)),
-            read_only=bool(work_item.get('readOnly', False)),
-            write_only=bool(work_item.get('writeOnly', False)),
-            deprecated=bool(work_item.get('deprecated', False)),
-            default=work_item.get('default'),
-            example=work_item.get('example'),
-        )
+        return _build_oas_any(work_item)
+
+
+def _build_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
+    return model.OASAnyType(
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=work_item.get('default'),
+        example=work_item.get('example'),
+    )
 
 
 def _build_oas_mix(
@@ -382,7 +386,7 @@ def _build_oas_mix(
                 default=work_item.get('default'),
                 example=work_item.get('example'),
                 kind=mix_kind,
-                schemas=[
+                sub_schemas=[
                     _handle_not(mixed_type_schema)
                     for mixed_type_schema in maybe_mix_definition
                 ],

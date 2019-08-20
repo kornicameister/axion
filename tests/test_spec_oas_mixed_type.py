@@ -80,10 +80,10 @@ def test_oas_mixed_type_build(
     )
 
     assert mix_type.kind == mix_kind
-    assert len(mix_type.schemas) == len(in_mix)
+    assert len(mix_type.sub_schemas) == len(in_mix)
     assert list(
         map(
             lambda v: (v[0], type(v[1])),
-            mix_type.schemas,
+            mix_type.sub_schemas,
         ),
     ) == expected_schemas

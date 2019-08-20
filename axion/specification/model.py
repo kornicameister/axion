@@ -7,11 +7,22 @@ import yarl
 
 HTTPCode = t.NewType('HTTPCode', int)
 
+PTC = t.Type[t.Union[str,
+                     float,
+                     int,
+                     bool,
+                     t.Dict[t.Any, t.Any],
+                     t.List[t.Any],
+                     t.AbstractSet[t.Any],
+                     object,
+                     ],
+             ]
+
 
 class PythonTypeCompatible(abc.ABC):
     @property
     @abc.abstractmethod
-    def python_type(self) -> t.Any:
+    def python_type(self) -> PTC:
         # typing on its own does not have a type
         # try reveal_type(t.Optional[str]) for instance
         # and see that it says 'Any'
@@ -196,7 +207,7 @@ class OASType(t.Generic[V], PythonTypeCompatible):
 @te.final
 class OASAnyType(OASType[t.Any]):
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[object]:
         return object
 
 
@@ -204,7 +215,7 @@ class OASAnyType(OASType[t.Any]):
 class OASMixedType(OASType[V]):
     __slots__ = (
         'kind',
-        'schemas',
+        'sub_schemas',
     )
 
     @enum.unique
@@ -222,7 +233,7 @@ class OASMixedType(OASType[V]):
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
             kind: Kind,
-            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+            sub_schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
             default=default,
@@ -233,17 +244,17 @@ class OASMixedType(OASType[V]):
             write_only=write_only,
         )
         self.kind = kind
-        self.schemas = schemas
+        self.sub_schemas = sub_schemas
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
         return dict
 
 
 @te.final
 class OASBooleanType(OASType[bool]):
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[bool]:
         return bool
 
 
@@ -295,7 +306,7 @@ class OASNumberType(OASType[N]):
         self.exclusive_minimum = exclusive_minimum
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[N]:
         return self.number_cls
 
 
@@ -335,7 +346,7 @@ class OASStringType(OASType[str]):
         self.format = format
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[str]:
         return str
 
 
@@ -358,7 +369,7 @@ class OASFileType(OASType[None]):
         )
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[str]:
         return str
 
 
@@ -420,7 +431,7 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
         self.discriminator = discriminator
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
         return dict
 
     @property
@@ -466,7 +477,7 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         self.unique_items = unique_items
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[t.Union[t.AbstractSet[t.Any], t.List[t.Any]]]:
         return set if self.unique_items else list
 
 
@@ -498,15 +509,14 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
         self.deprecated = deprecated
 
     @property
-    def python_type(self) -> t.Any:
+    def python_type(self) -> t.Type[t.Any]:
         if isinstance(self.schema, tuple):
 
             # TODO most likely that needs to deal with explode stuff
             #      and specialities of style
 
             oas_type, _ = self.schema
-            python_type = oas_type.python_type
-            return python_type if self.required else t.Optional[python_type]
+            return oas_type.python_type
         else:
             raise ValueError('No idea yet how to build python type here')
 
