@@ -11,3 +11,7 @@ from axion.specification import parser
 def test_spec_build_oas_boolean_wrong_value_type(key: str, value: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
         parser._build_oas_boolean({key: value})
+
+
+def test_spec_build_oas_boolean_correct_python_type() -> None:
+    assert issubclass(parser._build_oas_boolean({}).python_type, bool)

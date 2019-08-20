@@ -39,7 +39,7 @@ def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
 def _resolve_operations(
         paths: t.Dict['str', t.Dict[str, t.Any]],
         components: t.Dict['str', t.Dict[str, t.Any]],
-) -> model.Operations:
+) -> model.OASOperations:
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = set()
     for op_path, op_path_definition in paths.items():
@@ -62,13 +62,13 @@ def _resolve_operations(
                 components,
                 definition.pop('parameters', []),
             )
-            for param_key, param_def in global_parameters.items():
-                if param_key not in operation_parameters:
+            for param_def in global_parameters:
+                if param_def.name not in operation_parameters.names():
                     # global parameter copied into local parameter
-                    operation_parameters[param_key] = param_def
+                    operation_parameters.append(param_def)
 
             operation = model.OASOperation(
-                operation_id=model.OperationId(definition['operationId']),
+                id=model.OASOperationId(definition['operationId']),
                 path=yarl.URL(op_path),
                 http_method=model.HTTPMethod(op_http_method),
                 deprecated=bool(definition.get('deprecated', False)),
@@ -85,7 +85,7 @@ def _resolve_operations(
                 operation=lambda: operation,
             )
 
-    return model.Operations(frozenset(operations))
+    return frozenset(operations)
 
 
 def _resolve_responses(
@@ -150,15 +150,6 @@ def _resolve_content(
         return {}
 
 
-P = t.TypeVar(
-    'P',
-    model.OASCookieParameter,
-    model.OASQueryParameter,
-    model.OASPathParameter,
-    model.OASHeaderParameter,
-)
-
-
 def _resolve_parameters(
         components: t.Dict[str, t.Any],
         parameters: t.List[t.Dict[str, t.Any]],
@@ -167,7 +158,9 @@ def _resolve_parameters(
         'Resolving {count} of parameters',
         count=lambda: len(parameters),
     )
-    resolved_parameters: model.OperationParameters = {}
+
+    resolved_parameters = []
+
     for param in parameters:
         if '$ref' in param:
             logger.trace(
@@ -178,7 +171,12 @@ def _resolve_parameters(
         else:
             param_def = param
 
-        param_in = param_def['in']
+        param_in = {
+            'header': model.OASHeaderParameter,
+            'path': model.OASPathParameter,
+            'query': model.OASQueryParameter,
+            'cookie': model.OASCookieParameter,
+        }[param_def['in']]
         param_name = param_def['name']
 
         logger.opt(lazy=True).trace(
@@ -187,25 +185,40 @@ def _resolve_parameters(
             param_in=lambda: param_in,
         )
 
-        resolved_parameters[model.OperationParameterKey(
-            location=param_in,
-            name=param_name,
-        )] = _resolve_parameter(
-            components,
-            param_name,
-            param_def,
-            model.ParameterLocations[param_in],
+        resolved_parameters.append(
+            _resolve_parameter(  # type: ignore
+                components=components,
+                param_name=param_name,
+                param_def=param_def,
+                param_in=param_in,
+            ),
         )
 
-    return resolved_parameters
+    return model.OperationParameters(resolved_parameters)
+
+
+CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
+
+
+def _convert_to_snake_case(s: str) -> str:
+    return CamelCaseToSnakeCaseRegex.sub(r'_\1', s).lower()
+
+
+Param = t.TypeVar(
+    'Param',
+    model.OASHeaderParameter,
+    model.OASPathParameter,
+    model.OASCookieParameter,
+    model.OASQueryParameter,
+)
 
 
 def _resolve_parameter(
         components: t.Dict[str, t.Dict[str, t.Any]],
         param_name: str,
         param_def: t.Dict[str, t.Any],
-        param_in: t.Type[P],
-) -> P:
+        param_in: t.Type[Param],
+) -> Param:
     if '$ref' in param_def:
         return _resolve_parameter(
             components=components,
@@ -219,7 +232,7 @@ def _resolve_parameter(
         schema = param_def.get('schema', None)
         style = model.ParameterStyles[param_def.get(
             'style',
-            model.ParameterStyleDefaults[param_in],
+            param_in.default_style,
         )]
         content = param_def.get('content', None)
 
@@ -229,9 +242,14 @@ def _resolve_parameter(
         deprecated = bool(param_def.get('deprecated', False))
         example = param_def.get('example', None)
 
-        final_schema: t.Union[t.Tuple[model.OASType, model.OASParameterStyle],
-                              model.OASContent,
-                              ]
+        # those fields are valid either for cookie or header
+        allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
+            param_def.get('allowEmptyValue', False),
+        )
+
+        final_schema: t.Union[t.Tuple[model.OASType[t.Any],
+                                      model.OASParameterStyle,
+                                      ], model.OASContent]
         if content is not None:
             final_schema = _resolve_content(components, param_def)
         else:
@@ -263,7 +281,7 @@ def _resolve_parameter(
                     f'Path parameter {param_name} must have required set to True',
                 )
             return model.OASPathParameter(
-                name=param_name,
+                name=_convert_to_snake_case(param_name),
                 example=example,
                 required=required,
                 explode=explode,
@@ -271,16 +289,9 @@ def _resolve_parameter(
                 schema=final_schema,
             )
         elif issubclass(param_in, model.OASQueryParameter):
-            allow_empty_value: t.Optional[bool] = None if 'style' in param_def else bool(
-                param_def.get('allowEmptyValue', False),
-            )
-            allow_reserved: t.Optional[bool] = bool(
-                param_def.get('allowReserved', False),
-            )
-
-            # TODO figure out why mypy disallows that definition
-            return model.OASQueryParameter(  # type: ignore
-                name=param_name,
+            allow_reserved = bool(param_def.get('allowReserved', False))
+            return model.OASQueryParameter(
+                name=_convert_to_snake_case(param_name),
                 example=example,
                 required=required,
                 explode=explode,
@@ -297,27 +308,28 @@ def _resolve_parameter(
                 explode=explode,
                 deprecated=deprecated,
                 schema=final_schema,
+                allow_empty_value=allow_empty_value,
             )
         else:
             raise ValueError(
                 f'Cannot build parameter {param_name} '
-                f'definition from {type(param_in)}',
+                f'definition from {param_in}',
             )
 
 
 def _resolve_schema(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-) -> model.OASType:
+) -> model.OASType[t.Any]:
 
     resolvers = {
-        'number': _build_oas_number,
-        'integer': _build_oas_number,
+        'number': functools.partial(_build_oas_number, float),
+        'integer': functools.partial(_build_oas_number, int),
         'boolean': _build_oas_boolean,
         'string': _build_oas_string,
         'array': functools.partial(_build_oas_array, components),
         'object': functools.partial(_build_oas_object, components),
-    }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType]]
+    }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType[t.Any]]]
 
     if '$ref' in work_item:
         return _resolve_schema(
@@ -332,44 +344,54 @@ def _resolve_schema(
         )
         return resolvers[oas_type](work_item)
     elif set(work_item.keys()).intersection(['anyOf', 'allOf', 'oneOf']):
-
-        def _handle_not(
-                raw_mixed_schema_or_not: t.Dict[str, t.Any],
-        ) -> t.Tuple[bool, model.OASType]:
-            negated = raw_mixed_schema_or_not.get('not', None)
-            if negated is not None:
-                return False, _resolve_schema(components, negated)
-            else:
-                return True, _resolve_schema(components, raw_mixed_schema_or_not)
-
-        mix_value: model.OASMixedType
-        for mix_key in ('allOf', 'anyOf', 'oneOf'):
-            maybe_mix_definition = work_item.get(mix_key, None)
-            if maybe_mix_definition is not None:
-                mix_type = model.OASMixedType.Type(mix_key)
-                mix_value = model.OASMixedType(
-                    nullable=bool(work_item.get('nullable', False)),
-                    read_only=bool(work_item.get('readOnly', False)),
-                    write_only=bool(work_item.get('writeOnly', False)),
-                    deprecated=bool(work_item.get('deprecated', False)),
-                    default=work_item.get('default'),
-                    example=work_item.get('example'),
-                    type=mix_type,
-                    in_mix=[
-                        _handle_not(mixed_type_schema)
-                        for mixed_type_schema in maybe_mix_definition
-                    ],
-                )
-        return mix_value
+        return _build_oas_mix(components, work_item)
     else:
-        return model.OASAnyType(
-            nullable=bool(work_item.get('nullable', False)),
-            read_only=bool(work_item.get('readOnly', False)),
-            write_only=bool(work_item.get('writeOnly', False)),
-            deprecated=bool(work_item.get('deprecated', False)),
-            default=work_item.get('default'),
-            example=work_item.get('example'),
-        )
+        return _build_oas_any(work_item)
+
+
+def _build_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
+    return model.OASAnyType(
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=work_item.get('default'),
+        example=work_item.get('example'),
+    )
+
+
+def _build_oas_mix(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+) -> model.OASMixedType[t.Any]:
+    def _handle_not(
+            raw_mixed_schema_or_not: t.Dict[str, t.Any],
+    ) -> t.Tuple[bool, model.OASType[t.Any]]:
+        negated = raw_mixed_schema_or_not.get('not', None)
+        if negated is not None:
+            return False, _resolve_schema(components, negated)
+        else:
+            return True, _resolve_schema(components, raw_mixed_schema_or_not)
+
+    mix_value: model.OASMixedType[t.Any]
+    for mix_key in ('allOf', 'anyOf', 'oneOf'):
+        maybe_mix_definition = work_item.get(mix_key, None)
+        if maybe_mix_definition is not None:
+            mix_kind = model.OASMixedType.Kind(mix_key)
+            mix_value = model.OASMixedType(
+                nullable=bool(work_item.get('nullable', False)),
+                read_only=bool(work_item.get('readOnly', False)),
+                write_only=bool(work_item.get('writeOnly', False)),
+                deprecated=bool(work_item.get('deprecated', False)),
+                default=work_item.get('default'),
+                example=work_item.get('example'),
+                kind=mix_kind,
+                sub_schemas=[
+                    _handle_not(mixed_type_schema)
+                    for mixed_type_schema in maybe_mix_definition
+                ],
+            )
+    return mix_value
 
 
 def _build_oas_array(
@@ -399,7 +421,7 @@ def _build_oas_object(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
 ) -> model.OASObjectType:
-    def _resolve_additional_properties() -> t.Union[bool, model.OASType]:
+    def _resolve_additional_properties() -> t.Union[bool, model.OASType[t.Any]]:
         raw_additional_properties = work_item.get(
             'additionalProperties',
             True,
@@ -408,7 +430,7 @@ def _build_oas_object(
         if not isinstance(raw_additional_properties, bool):
             # it may either be an empty dict or schema
             if len(raw_additional_properties) == 0:
-                value = True  # type: t.Union[bool, model.OASType]
+                value = True  # type: t.Union[bool, model.OASType[t.Any]]
             else:
                 value = _resolve_schema(
                     components,
@@ -523,14 +545,15 @@ def _build_oas_string(
 
 
 def _build_oas_number(
+        number_cls: t.Type[model.N],
         work_item: t.Dict[str, t.Any],
-) -> model.OASNumberType[t.Union[int, float]]:
+) -> model.OASNumberType:
     detected_types = set()
 
-    default_value: t.Optional[t.Union[int, float]] = None
-    example_value: t.Optional[t.Union[int, float]] = None
-    minimum: t.Optional[t.Union[int, float]] = None
-    maximum: t.Optional[t.Union[int, float]] = None
+    default_value: t.Optional[model.N] = None
+    example_value: t.Optional[model.N] = None
+    minimum: t.Optional[model.N] = None
+    maximum: t.Optional[model.N] = None
 
     keys = ('default', 'example', 'minimum', 'maximum')
     for key in keys:
@@ -545,13 +568,13 @@ def _build_oas_number(
                     f'{[int, float]} are permitted',
                 )
             elif key == 'default':
-                default_value = key_value
+                default_value = number_cls(key_value)
             elif key == 'example':
-                example_value = key_value
+                example_value = number_cls(key_value)
             elif key == 'minimum':
-                example_value = key_value
+                example_value = number_cls(key_value)
             elif key == 'maximum':
-                example_value = key_value
+                example_value = number_cls(key_value)
 
     if len(detected_types) == 2:
         raise exceptions.OASInvalidTypeValue(
@@ -560,6 +583,7 @@ def _build_oas_number(
         )
 
     return model.OASNumberType(
+        number_cls=number_cls,
         default=default_value,
         example=example_value,
         minimum=minimum,

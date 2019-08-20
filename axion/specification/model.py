@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, InitVar
+import abc
 import enum
 import typing as t
 
@@ -6,7 +6,27 @@ import typing_extensions as te
 import yarl
 
 HTTPCode = t.NewType('HTTPCode', int)
-OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
+
+PTC = t.Type[t.Union[str,
+                     float,
+                     int,
+                     bool,
+                     t.Dict[t.Any, t.Any],
+                     t.List[t.Any],
+                     t.AbstractSet[t.Any],
+                     object,
+                     ],
+             ]
+
+
+class PythonTypeCompatible(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def python_type(self) -> PTC:
+        # typing on its own does not have a type
+        # try reveal_type(t.Optional[str]) for instance
+        # and see that it says 'Any'
+        ...  # pragma: no cover
 
 
 @enum.unique
@@ -20,13 +40,14 @@ class HTTPMethod(str, enum.Enum):
     DELETE = 'delete'
 
 
-@dataclass
+@te.final
 class MimeType:
-    type: str = field(init=False)
-    subtype: str = field(init=False)
-    raw_type: InitVar[str]
+    __slots__ = (
+        'type',
+        'subtype',
+    )
 
-    def __post_init__(self, raw_type: str) -> None:
+    def __init__(self, raw_type: str) -> None:
         _type, _subtype = raw_type.split('/')
         self.type = _type.lower()
         self.subtype = _subtype.lower()
@@ -39,169 +60,379 @@ class MimeType:
 
 
 OASContent = t.Dict[MimeType, 'OASMediaType']
+OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
+OASResponses = t.Dict[OASResponseCode, 'OASResponse']
+OASOperationId = t.NewType('OASOperationId', str)
+OASOperations = t.FrozenSet['OASOperation']
 
 
-@dataclass(frozen=True)
+@te.final
 class OASResponse:
-    headers: t.List['OASHeaderParameter'] = field(default_factory=lambda: [])
-    content: 'OASContent' = field(default_factory=lambda: {})
+    __slots__ = (
+        'headers',
+        'content',
+    )
+
+    def __init__(
+            self,
+            headers: t.List['OASHeaderParameter'],
+            content: 'OASContent',
+    ) -> None:
+        self.headers = headers
+        self.content = content
 
 
-OASResponses = t.Dict[OASResponseCode, OASResponse]
+@te.final
+class OperationParameters(t.List['OASParameter']):
+    def names(self) -> t.FrozenSet[str]:
+        return frozenset(map(lambda p: p.name, self))
 
 
-@dataclass(frozen=True)
-class OperationParameterKey:
-    location: str
-    name: str
-
-
-OperationId = t.NewType('OperationId', str)
-OperationParameters = t.Dict[OperationParameterKey, 'OASParameter']
-
-
-@dataclass(frozen=True, repr=False)
+@te.final
 class OASOperation:
-    operation_id: OperationId = field(
-        hash=True,
-        compare=True,
-        metadata={'key': True},
+    __slots__ = (
+        'id',
+        'path',
+        'http_method',
+        'deprecated',
+        'responses',
+        'parameters',
     )
-    path: yarl.URL = field(
-        hash=True,
-        compare=True,
-        metadata={'key': True},
-    )
-    http_method: HTTPMethod = field(
-        hash=True,
-        compare=True,
-        metadata={'key': True},
-    )
-    deprecated: bool = field(
-        hash=False,
-        compare=False,
-    )
-    responses: OASResponses = field(
-        hash=False,
-        compare=False,
-    )
-    parameters: OperationParameters = field(
-        hash=False,
-        compare=False,
-    )
+
+    def __init__(
+            self,
+            id: str,
+            path: yarl.URL,
+            http_method: HTTPMethod,
+            deprecated: bool,
+            responses: OASResponses,
+            parameters: OperationParameters,
+    ) -> None:
+        self.id = id
+        self.path = path
+        self.http_method = http_method
+        self.deprecated = deprecated
+        self.responses = responses
+        self.parameters = parameters
+
+    def __hash__(self) -> int:
+        return hash(self.id) * hash(self.http_method) * hash(self.path)
 
     def __repr__(self) -> str:
         return (
-            f'[{self.operation_id}] {self.http_method.name} -> {self.path.human_repr()}'
+            f'[{self.id}] {self.http_method.name} -> {self.path.human_repr()}'
         )  # pragma: no cover
 
 
-class Operations(t.FrozenSet[OASOperation]):
-    ...
-
-
-@dataclass(frozen=True)
+@te.final
 class OASServer:
-    url: str
-    # does not deal with all possible values
-    # just holds the name of the variable
-    # and its default value (which is required by OAS)
-    variables: t.Dict[str, str] = field(default_factory=lambda: {})
+    __slots__ = (
+        'url',
+        'variables',
+    )
+
+    def __init__(
+            self,
+            url: str,
+            variables: t.Dict[str, str],
+    ) -> None:
+        self.url = url
+        self.variables = variables
 
 
-@dataclass(frozen=True)
+@te.final
 class OASSpecification:
-    version: str
-    servers: t.List[OASServer]
-    operations: Operations
+    __slots__ = (
+        'version',
+        'servers',
+        'operations',
+    )
+
+    def __init__(
+            self,
+            version: str,
+            servers: t.List[OASServer],
+            operations: OASOperations,
+    ) -> None:
+        self.version = version
+        self.servers = servers
+        self.operations = operations
 
 
-@dataclass(frozen=True)
+@te.final
 class OASMediaType:
-    schema: 'OASType'
+    __slots__ = ('schema')
+
+    def __init__(
+            self,
+            schema: 'OASType[t.Any]',
+    ) -> None:
+        self.schema = schema
+
     # TODO fix up examples and encoding later on
     # examples: t.Optional[t.Dict[MimeType, 'OASMediaTypeExample']]
     # encoding: t.Optional[t.Dict[str, 'OASMediaTypeEncoding']]
 
 
-@dataclass(frozen=True)
-class OASType:
-    default: t.Optional[t.Any]
-    example: t.Optional[t.Any]
-    nullable: t.Optional[bool]
-    deprecated: t.Optional[bool]  # so we can put a warning
-    read_only: t.Optional[bool]  # only in responses
-    write_only: t.Optional[bool]  # only in requests
+V = t.TypeVar('V')
 
 
-@dataclass(frozen=True)
-class OASAnyType(OASType):
-    ...
+class OASType(t.Generic[V], PythonTypeCompatible):
+    __slots__ = (
+        'default',
+        'example',
+        'nullable',
+        'deprecated',
+        'read_only',
+        'write_only',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[V],
+            example: t.Optional[V],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],  # so we can put a warning
+            read_only: t.Optional[bool],  # only in responses
+            write_only: t.Optional[bool],  # only in requests
+    ) -> None:
+        self.default = default
+        self.example = example
+        self.nullable = nullable
+        self.deprecated = deprecated
+        self.read_only = read_only
+        self.write_only = write_only
 
 
-@dataclass(frozen=True)
-class OASMixedType(OASType):
+@te.final
+class OASAnyType(OASType[t.Any]):
+    @property
+    def python_type(self) -> t.Type[object]:
+        return object
+
+
+@te.final
+class OASMixedType(OASType[V]):
+    __slots__ = (
+        'kind',
+        'sub_schemas',
+    )
+
     @enum.unique
-    class Type(str, enum.Enum):
+    class Kind(str, enum.Enum):
         UNION = 'allOf'
         EITHER = 'oneOf'
         ANY = 'anyOf'
 
-    type: Type
-    in_mix: t.List[t.Tuple[bool, OASType]]
+    def __init__(
+            self,
+            default: t.Optional[V],
+            example: t.Optional[V],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            kind: Kind,
+            sub_schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.kind = kind
+        self.sub_schemas = sub_schemas
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict  # pragma: no cover
 
 
-@dataclass(frozen=True)
-class OASBooleanType(OASType):
-    default: t.Optional[bool]
-    example: t.Optional[bool]
+@te.final
+class OASBooleanType(OASType[bool]):
+    @property
+    def python_type(self) -> t.Type[bool]:
+        return bool
 
 
-N = t.TypeVar('N', float, int)
+N = t.Union[float, int]
 
 
-@dataclass(frozen=True)
-class OASNumberType(OASType, t.Generic[N]):
-    default: t.Optional[N]
-    example: t.Optional[N]
-    format: t.Optional[str]
-    minimum: t.Optional[N]
-    maximum: t.Optional[N]
-    multiple_of: t.Optional[t.Union[N]]
-    exclusive_minimum: t.Optional[bool]
-    exclusive_maximum: t.Optional[bool]
+@te.final
+class OASNumberType(OASType[N]):
+    __slots__ = (
+        'format',
+        'minimum',
+        'maximum',
+        'multiple_of',
+        'exclusive_maximum',
+        'exclusive_minimum',
+        'number_cls',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[N],
+            example: t.Optional[N],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            number_cls: t.Type[N],
+            format: t.Optional[str],
+            minimum: t.Optional[N],
+            maximum: t.Optional[N],
+            multiple_of: t.Optional[N],
+            exclusive_minimum: t.Optional[bool],
+            exclusive_maximum: t.Optional[bool],
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.number_cls = number_cls
+        self.format = format
+        self.minumum = minimum
+        self.maximum = maximum
+        self.multiple_of = multiple_of
+        self.exclusive_maximum = exclusive_maximum
+        self.exclusive_minimum = exclusive_minimum
+
+    @property
+    def python_type(self) -> t.Type[N]:
+        return self.number_cls
 
 
-@dataclass(frozen=True)
-class OASStringType(OASType):
-    default: t.Optional[str]
-    example: t.Optional[str]
-    min_length: t.Optional[int]
-    max_length: t.Optional[int]
-    pattern: t.Optional[t.Pattern[str]]
-    format: t.Optional[str]
+@te.final
+class OASStringType(OASType[str]):
+    __slots__ = (
+        'min_length',
+        'max_length',
+        'pattern',
+        'format',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[str],
+            example: t.Optional[str],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            min_length: t.Optional[int],
+            max_length: t.Optional[int],
+            pattern: t.Optional[t.Pattern[str]],
+            format: t.Optional[str],
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.min_length = min_length
+        self.max_length = max_length
+        self.pattern = pattern
+        self.format = format
+
+    @property
+    def python_type(self) -> t.Type[str]:
+        return str
 
 
-@dataclass(frozen=True)
-class OASFileType(OASType):
-    example: t.Optional[None] = field(init=False, default=None)
-    default: t.Optional[None] = field(init=False, default=None)
+@te.final
+class OASFileType(OASType[None]):
+    def __init__(
+            self,
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+    ) -> None:
+        super().__init__(
+            default=None,
+            example=None,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+
+    @property
+    def python_type(self) -> t.Type[str]:
+        return str
 
 
-@dataclass(frozen=True)
+@te.final
 class OASObjectDiscriminator:
-    property_name: str
-    mapping: t.Optional[t.Dict[str, str]]
+    __slots__ = (
+        'property_name',
+        'mapping',
+    )
+
+    def __init__(
+            self,
+            property_name: str,
+            mapping: t.Optional[t.Dict[str, str]] = None,
+    ) -> None:
+        self.property_name = property_name
+        self.mapping = mapping
 
 
-@dataclass(frozen=True)
-class OASObjectType(OASType):
-    min_properties: t.Optional[int] = None
-    max_properties: t.Optional[int] = None
-    properties: t.Dict[str, OASType] = field(default_factory=lambda: {})
-    required: t.Set[str] = field(default_factory=lambda: set())
-    additional_properties: t.Union[bool, OASType] = True
-    discriminator: t.Optional[OASObjectDiscriminator] = None
+@te.final
+class OASObjectType(OASType[t.Dict[str, t.Any]]):
+    __slots__ = (
+        'min_properties',
+        'max_properties',
+        'properties',
+        'required',
+        'additional_properties',
+        'discriminator',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[t.Dict[str, t.Any]],
+            example: t.Optional[t.Dict[str, t.Any]],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            min_properties: t.Optional[int] = None,
+            max_properties: t.Optional[int] = None,
+            properties: t.Optional[t.Dict[str, OASType[t.Any]]] = None,
+            required: t.Optional[t.Set[str]] = None,
+            additional_properties: t.Union[bool, OASType[t.Any]] = True,
+            discriminator: t.Optional[OASObjectDiscriminator] = None,
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.min_properties = min_properties
+        self.max_properties = max_properties
+        self.properties = properties or {}
+        self.required = required or set()
+        self.additional_properties = additional_properties
+        self.discriminator = discriminator
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict
 
     @property
     def is_free_form(self) -> bool:
@@ -211,65 +442,159 @@ class OASObjectType(OASType):
             return self.additional_properties is True
 
 
-@dataclass(frozen=True)
-class OASArrayType(OASType):
-    items_type: t.Union[OASType, OASMixedType]
-    min_length: t.Optional[int]
-    max_length: t.Optional[int]
-    unique_items: t.Optional[bool]
+class OASArrayType(OASType[t.Iterable[t.Any]]):
+    __slots__ = (
+        'items_type',
+        'min_length',
+        'max_length',
+        'unique_items',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[t.Iterable[t.Any]],
+            example: t.Optional[t.Iterable[t.Any]],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            items_type: OASType[t.Any],
+            min_length: t.Optional[int],
+            max_length: t.Optional[int],
+            unique_items: t.Optional[bool],
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.items_type = items_type
+        self.min_length = min_length
+        self.max_lenght = max_length
+        self.unique_items = unique_items
+
+    @property
+    def python_type(self) -> t.Type[t.Union[t.AbstractSet[t.Any], t.List[t.Any]]]:
+        return set if self.unique_items else list
 
 
-@dataclass(frozen=True)
-class OASParameter:
-    name: str
-    schema: t.Union[t.Tuple[OASType, 'OASParameterStyle'], OASContent]
-    example: t.Optional[t.Any]
-    required: t.Optional[bool]
-    explode: t.Optional[bool]
-    deprecated: t.Optional[bool]
+class OASParameter(PythonTypeCompatible, abc.ABC):
+    __slots__ = (
+        'name',
+        'schema',
+        'example',
+        'required',
+        'explode',
+        'deprecated',
+    )
+    default_style: t.ClassVar[str] = ''
+
+    def __init__(
+            self,
+            name: str,
+            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+            example: t.Optional[t.Any],
+            required: t.Optional[bool],
+            explode: t.Optional[bool],
+            deprecated: t.Optional[bool],
+    ) -> None:
+        self.name = name
+        self.schema = schema
+        self.example = example
+        self.required = required
+        self.explode = explode
+        self.deprecated = deprecated
+
+    @property
+    def python_type(self) -> t.Type[t.Any]:
+        if isinstance(self.schema, tuple):
+
+            # TODO most likely that needs to deal with explode stuff
+            #      and specialities of style
+
+            oas_type, _ = self.schema
+            return oas_type.python_type
+        else:
+            raise ValueError(
+                'No idea yet how to build python type here',
+            )  # pragma: no cover
 
 
-@dataclass(frozen=True)
+@te.final
 class OASPathParameter(OASParameter):
-    ...
+    default_style: t.ClassVar[str] = 'simple'
 
 
-@dataclass(frozen=True)
+@te.final
 class OASQueryParameter(OASParameter):
-    allow_empty_value: t.Optional[bool]
-    allow_reserved: t.Optional[bool]
+    __slots__ = (
+        'allow_empty_value',
+        'allow_reserved',
+    )
+    default_style: t.ClassVar[str] = 'form'
+
+    def __init__(
+            self,
+            name: str,
+            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+            example: t.Optional[t.Any],
+            required: t.Optional[bool],
+            explode: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            allow_empty_value: t.Optional[bool],
+            allow_reserved: t.Optional[bool],
+    ) -> None:
+        super().__init__(name, schema, example, required, explode, deprecated)
+        self.allow_empty_value = allow_empty_value
+        self.allow_reserved = allow_reserved
 
 
-@dataclass(frozen=True)
+@te.final
 class OASCookieParameter(OASParameter):
-    ...
+    __slots__ = ('allow_empty_value')
+    default_style: t.ClassVar[str] = 'form'
+
+    def __init__(
+            self,
+            name: str,
+            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+            example: t.Optional[t.Any],
+            required: t.Optional[bool],
+            explode: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            allow_empty_value: t.Optional[bool],
+    ) -> None:
+        super().__init__(name, schema, example, required, explode, deprecated)
+        self.allow_empty_value = allow_empty_value
 
 
-@dataclass(frozen=True)
+@te.final
 class OASHeaderParameter(OASParameter):
-    ...
+    default_style: t.ClassVar[str] = 'simple'
 
 
-@dataclass(frozen=True)
+@te.final
 class OASParameterStyle:
-    name: str
-    type: t.Set[t.Type[OASType]]
-    locations: t.Set[t.Type[OASParameter]]
+    __slots__ = (
+        'name',
+        'type',
+        'locations',
+    )
+
+    def __init__(
+            self,
+            name: str,
+            type: t.Set[t.Type[OASType[t.Any]]],
+            locations: t.Set[t.Type[OASParameter]],
+    ) -> None:
+        self.name = name
+        self.type = type
+        self.locations = locations
 
 
-ParameterLocations = {
-    'query': OASQueryParameter,
-    'path': OASPathParameter,
-    'header': OASHeaderParameter,
-    'cookie': OASCookieParameter,
-}
-ParameterStyleDefaults = {
-    OASQueryParameter: 'form',
-    OASPathParameter: 'simple',
-    OASHeaderParameter: 'simple',
-    OASCookieParameter: 'form',
-}
-# TODO refactor into function
 ParameterStyles: t.Dict[str, OASParameterStyle] = {
     'form': OASParameterStyle(
         name='form',
@@ -280,7 +605,10 @@ ParameterStyles: t.Dict[str, OASParameterStyle] = {
             OASObjectType,
             OASArrayType,
         },
-        locations={OASQueryParameter, OASCookieParameter},
+        locations={
+            OASQueryParameter,
+            OASCookieParameter,
+        },
     ),
     'label': OASParameterStyle(
         name='label',

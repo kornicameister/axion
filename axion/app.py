@@ -97,18 +97,18 @@ def _apply_specification(
         the_route = for_app.router.add_route(
             method=op.http_method.value,
             path=op.path.human_repr(),
-            name=op.operation_id,
+            name=op.id,
             handler=_make_handler(op),
         )
         logger.opt(lazy=True).debug(
             'Registered route={route} for {op_id}',
             route=lambda: the_route,
-            op_id=lambda: op.operation_id,
+            op_id=lambda: op.id,
         )
 
 
 def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
-    user_handler = application.resolve_handler(operation.operation_id)
+    user_handler = application.resolve_handler(operation.id)
 
     async def handler(request: web.Request) -> web.StreamResponse:
         await user_handler()  # pragma: no cover

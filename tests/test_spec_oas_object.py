@@ -31,7 +31,7 @@ from axion.specification import parser
 )
 def test_spec_oas_object_free_form(
         properties: t.Optional[t.Dict[str, t.Any]],
-        additional_properties: t.Union[bool, model.OASType],
+        additional_properties: t.Union[bool, model.OASType[t.Any]],
         expected_result: bool,
 ) -> None:
     assert parser._build_oas_object({}, {
@@ -106,3 +106,7 @@ def test_spec_oas_object_discriminator_property_additional_properties(
                 'If additionalProperties==true discriminator may be found in them, '
                 'therefore this exception should not occur.',
             )
+
+
+def test_spec_build_oas_object_correct_python_type() -> None:
+    assert issubclass(parser._build_oas_object({}, {}).python_type, dict)

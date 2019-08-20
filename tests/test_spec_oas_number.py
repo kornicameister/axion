@@ -6,11 +6,24 @@ from axion.specification import exceptions
 from axion.specification import parser
 
 
+@pytest.mark.parametrize('number_cls', (int, float))
+def test_spec_build_oas_number_correct_python_type(
+        number_cls: t.Type[t.Union[int, float]],
+) -> None:
+    assert issubclass(
+        parser._build_oas_number(
+            number_cls=number_cls,
+            work_item={},
+        ).python_type,
+        number_cls,
+    )
+
+
 @pytest.mark.parametrize('key', ('default', 'example', 'minimum', 'maximum'))
 @pytest.mark.parametrize('value', ['1', bool, {}, []])
 def test_spec_build_oas_number_wrong_value_type(key: str, value: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parser._build_oas_number({key: value})
+        parser._build_oas_number(int, {key: value})
 
 
 @pytest.mark.parametrize(
@@ -25,7 +38,10 @@ def test_spec_build_oas_number_mismatch_example_default(
         default: t.Any,
 ) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parser._build_oas_number({
-            'example': example,
-            'default': default,
-        })
+        parser._build_oas_number(
+            int,
+            {
+                'example': example,
+                'default': default,
+            },
+        )

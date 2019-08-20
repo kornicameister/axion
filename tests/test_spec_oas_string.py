@@ -7,6 +7,10 @@ from axion.specification import model
 from axion.specification import parser
 
 
+def test_spec_build_oas_string_correct_python_type() -> None:
+    assert issubclass(parser._build_oas_string({}).python_type, str)
+
+
 @pytest.mark.parametrize('default', [1, bool, {}, []])
 def test_spec_build_oas_string_default_wrong_type(default: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
