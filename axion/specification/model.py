@@ -512,10 +512,6 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
     @property
     def python_type(self) -> t.Type[t.Any]:
         if isinstance(self.schema, tuple):
-
-            # TODO most likely that needs to deal with explode stuff
-            #      and specialities of style
-
             oas_type, _ = self.schema
             return oas_type.python_type
         else:
