@@ -248,7 +248,7 @@ class OASMixedType(OASType[V]):
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
-        return dict
+        return dict  # pragma: no cover
 
 
 @te.final
@@ -518,7 +518,9 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
             oas_type, _ = self.schema
             return oas_type.python_type
         else:
-            raise ValueError('No idea yet how to build python type here')
+            raise ValueError(
+                'No idea yet how to build python type here',
+            )  # pragma: no cover
 
 
 @te.final
