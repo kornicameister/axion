@@ -19,14 +19,24 @@ from axion.specification import parser
     # yapf: disable
     (
         (
-            [{'type': 'string'}],
+            [{
+                'type': 'string',
+            }],
             [(True, model.OASStringType)],
         ),
         (
             [
-                {'type': 'string'},
-                {'type': 'number'},
-                {'not': {'type': 'boolean'}},
+                {
+                    'type': 'string',
+                },
+                {
+                    'type': 'number',
+                },
+                {
+                    'not': {
+                        'type': 'boolean',
+                    },
+                },
             ],
             [
                 (True, model.OASStringType),
@@ -36,8 +46,17 @@ from axion.specification import parser
         ),
         (
             [
-                {'type': 'object', 'properties': {'name': {'type': 'string'}}},
-                {'description': 'Test'},
+                {
+                    'type': 'object',
+                    'properties': {
+                        'name': {
+                            'type': 'string',
+                        },
+                    },
+                },
+                {
+                    'description': 'Test',
+                },
             ],
             [
                 (True, model.OASObjectType),
