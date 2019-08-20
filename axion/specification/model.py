@@ -491,6 +491,7 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
         'deprecated',
     )
     default_style: t.ClassVar[str] = ''
+    available_styles: t.ClassVar[t.AbstractSet[str]] = set()
 
     def __init__(
             self,
@@ -525,7 +526,8 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
 @te.final
 class OASPathParameter(OASParameter):
-    default_style: t.ClassVar[str] = 'simple'
+    default_style = 'simple'
+    available_styles = {'simple', 'label', 'matrix'}
 
 
 @te.final
@@ -534,7 +536,13 @@ class OASQueryParameter(OASParameter):
         'allow_empty_value',
         'allow_reserved',
     )
-    default_style: t.ClassVar[str] = 'form'
+    default_style = 'form'
+    available_styles = {
+        'form',
+        'spaceDelimited',
+        'pipeDelimited',
+        'deepObject',
+    }
 
     def __init__(
             self,
@@ -555,7 +563,8 @@ class OASQueryParameter(OASParameter):
 @te.final
 class OASCookieParameter(OASParameter):
     __slots__ = ('allow_empty_value')
-    default_style: t.ClassVar[str] = 'form'
+    default_style = 'form'
+    available_styles = {'form'}
 
     def __init__(
             self,
@@ -573,7 +582,8 @@ class OASCookieParameter(OASParameter):
 
 @te.final
 class OASHeaderParameter(OASParameter):
-    default_style: t.ClassVar[str] = 'simple'
+    default_style = 'simple'
+    available_styles = {'form'}
 
 
 @te.final
