@@ -203,12 +203,12 @@ class OASAnyType(OASType[t.Any]):
 @te.final
 class OASMixedType(OASType[V]):
     __slots__ = (
-        'mix_type',
-        'in_mix',
+        'kind',
+        'schemas',
     )
 
     @enum.unique
-    class Type(str, enum.Enum):
+    class Kind(str, enum.Enum):
         UNION = 'allOf'
         EITHER = 'oneOf'
         ANY = 'anyOf'
@@ -221,8 +221,8 @@ class OASMixedType(OASType[V]):
             deprecated: t.Optional[bool],
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
-            mix_type: Type,
-            in_mix: t.List[t.Tuple[bool, OASType[t.Any]]],
+            kind: Kind,
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
             default=default,
@@ -232,8 +232,8 @@ class OASMixedType(OASType[V]):
             read_only=read_only,
             write_only=write_only,
         )
-        self.mix_type = mix_type
-        self.in_min = in_mix
+        self.kind = kind
+        self.schemas = schemas
 
     @property
     def python_type(self) -> t.Any:
