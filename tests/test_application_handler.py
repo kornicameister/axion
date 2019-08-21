@@ -1,3 +1,4 @@
+import sys
 import typing as t
 
 import pytest
@@ -143,6 +144,20 @@ class TestAnalysisParameters:
         assert 'id' in err.value
         assert repr(err.value['id']) == 'expected str, but got bool'
 
+    @pytest.mark.skipif(
+        sys.version_info < (3, 7),
+        reason=(
+            'This test case fails on 3.6 because typing signatures '
+            'look different in 3.6 than in 3.7. '
+            'This needs to be figured out in compatible way that '
+            'provides actual markup used by user without hiding types '
+            'carried in containers.'
+            ' '
+            'For example: '
+            'In 3.7 repr(typing.List[bool]) == "typing.List[bool]" '
+            'but in 3.6 that is "List"'
+        ),
+    )
     def test_signature_all_bad_type(self) -> None:
         async def foo(
                 id: float,
