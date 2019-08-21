@@ -19,7 +19,10 @@ async def async_f() -> None:
 @pytest.mark.parametrize(
     'operation_id,error_msg',
     (
-        ('really_dummy.api.get_all', 'Failed to import module=really_dummy.api'),
+        (
+            'really_dummy.api.get_all',
+            'Failed to import module=really_dummy.api',
+        ),
         (
             'tests.test_application_handler.foo',
             'Failed to locate function=foo in module=tests.test_application_handler',
