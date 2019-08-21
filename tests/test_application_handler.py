@@ -1,7 +1,6 @@
 import typing as t
 
 import pytest
-import pytest_mock as ptm
 
 from axion.application import handler
 from axion.specification import model
@@ -44,7 +43,7 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
-class TestAnalysisPathQueryParameters:
+class TestAnalysisParameters:
     operation = list(
         parser._resolve_operations(
             components={},
@@ -95,11 +94,89 @@ class TestAnalysisPathQueryParameters:
         ),
     )[0]
 
-    def test_signature_mismatch(self) -> None:
-        handler._analyze(
-            handler=test_handler,
-            operation=self.operation,
-        )
+    def test_signature_mismatch_missing(self) -> None:
+        async def foo(
+                limit: t.Optional[int],
+                page: t.Optional[float],
+                include_extra: t.Optional[bool],
+        ) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                handler=foo,
+                operation=self.operation,
+            )
+        assert len(err.value.errors) == 1
+        assert 'id' in err.value
+        assert err.value['id'] == 'missing'
+
+    def test_signature_all_missing(self) -> None:
+        async def foo() -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                handler=foo,
+                operation=self.operation,
+            )
+        assert len(err.value.errors) == 4
+        for key in ('id', 'limit', 'page', 'include_extra'):
+            assert key in err.value
+            assert err.value[key] == 'missing'
+
+    def test_signature_mismatch_bad_type(self) -> None:
+        async def foo(
+                id: bool,
+                limit: t.Optional[int],
+                page: t.Optional[float],
+                include_extra: t.Optional[bool],
+        ) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                handler=foo,
+                operation=self.operation,
+            )
+        assert len(err.value.errors) == 1
+        assert 'id' in err.value
+        assert repr(err.value['id']) == 'expected str, but got bool'
+
+    def test_signature_all_bad_type(self) -> None:
+        async def foo(
+                id: float,
+                limit: t.Optional[t.Union[int, float]],
+                page: t.Optional[t.AbstractSet[bool]],
+                include_extra: t.Optional[t.AnyStr],
+        ) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                handler=foo,
+                operation=self.operation,
+            )
+        assert len(err.value.errors) == 4
+        for key in ('id', 'limit', 'page', 'include_extra'):
+            assert key in err.value
+            if key == 'id':
+                assert repr(err.value[key]) == 'expected str, but got float'
+            if key == 'limit':
+                assert repr(
+                    err.value[key],
+                ) == 'expected typing.Optional[int], but got typing.Optional[float,int]'
+            if key == 'page':
+                assert repr(
+                    err.value[key],
+                ) == (
+                    'expected typing.Optional[float], but got '
+                    'typing.Optional[typing.AbstractSet[bool]]'
+                )
+            if key == 'include_extra':
+                assert repr(
+                    err.value[key],
+                ) == 'expected typing.Optional[bool], but got typing.Optional[AnyStr]'
 
     def test_signature_match(self) -> None:
         async def test_handler(
