@@ -108,6 +108,8 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
+
+        assert err.value.operation_id == 'foo'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert err.value['id'] == 'missing'
@@ -121,6 +123,8 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
+
+        assert err.value.operation_id == 'foo'
         assert len(err.value) == 4
         for key in ('id', 'limit', 'page', 'include_extra'):
             assert key in err.value
@@ -140,6 +144,8 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
+
+        assert err.value.operation_id == 'foo'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert repr(err.value['id']) == 'expected str, but got bool'
@@ -172,6 +178,8 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
+
+        assert err.value.operation_id == 'foo'
         assert len(err.value) == 4
         for mismatch in err.value:
             if mismatch.param_name == 'id':
