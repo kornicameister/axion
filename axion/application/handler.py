@@ -192,6 +192,6 @@ def _readable_t(val: T) -> str:
         if issubclass(last_type, type(None)):
             return f'typing.Optional[{",".join(qualified_name(tt) for tt in val[:-1])}]'
         else:
-            return f'typing.Union[{",".join(qualified_name(tt) for tt in val)}]]'
+            return f'typing.Union[{",".join(qualified_name(tt) for tt in val)}]'
     else:
         return f'{qualified_name(val)}'

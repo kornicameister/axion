@@ -169,7 +169,7 @@ class TestAnalysisParameters:
                 id: float,
                 limit: t.Optional[t.Union[int, float]],
                 page: t.Optional[t.AbstractSet[bool]],
-                include_extra: t.Optional[t.AnyStr],
+                include_extra: t.Union[int, str],
         ) -> None:
             ...
 
@@ -200,10 +200,8 @@ class TestAnalysisParameters:
             elif mismatch.param_name == 'include_extra':
                 assert repr(
                     err.value[mismatch.param_name],
-                ) == (
-                    'expected typing.Optional[bool], but got '
-                    'typing.Optional[typing.AnyStr]'
-                )
+                ) == ('expected typing.Optional[bool], but got '
+                      'typing.Union[int,str]')
 
     def test_signature_match(self) -> None:
         async def test_handler(
