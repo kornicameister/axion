@@ -30,7 +30,7 @@ async def async_f() -> None:
         ),
     ),
 )
-def test_make_handler(
+def test_make_handler_bad_cases(
         operation_id: str,
         error_msg: str,
 ) -> None:
