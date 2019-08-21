@@ -67,7 +67,7 @@ class InvalidHandlerError(
         return self._operation_id
 
     @property
-    def errors(self) -> t.Mapping[str, Reason]:
+    def reasons(self) -> t.Mapping[str, Reason]:
         return {e.param_name: e.reason for e in self._errors or []}
 
     def __iter__(self) -> t.Iterator[Error]:  # type: ignore
@@ -77,7 +77,7 @@ class InvalidHandlerError(
         return len(self._errors or [])
 
     def __getitem__(self, key: str) -> Reason:
-        return self.errors[key]
+        return self.reasons[key]
 
 
 def make(operation: specification.OASOperation) -> Handler:
