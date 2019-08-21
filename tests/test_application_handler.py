@@ -16,26 +16,44 @@ async def async_f() -> None:
     ...
 
 
-def test_resolve_handler_module_not_found() -> None:
+@pytest.mark.parametrize(
+    'operation_id,error_msg',
+    (
+        ('really_dummy.api.get_all', 'Failed to import module=really_dummy.api'),
+        (
+            'tests.test_application_handler.foo',
+            'Failed to locate function=foo in module=tests.test_application_handler',
+        ),
+        (
+            'tests.test_application_handler.normal_f',
+            'tests.test_application_handler.normal_f did not resolve to coroutine',
+        ),
+    ),
+)
+def test_make_handler(
+        operation_id: str,
+        error_msg: str,
+) -> None:
+    operation = list(
+        parser._resolve_operations(
+            components={},
+            paths={
+                '/{name}': {
+                    'post': {
+                        'operationId': operation_id,
+                        'responses': {
+                            'default': {
+                                'description': 'fake',
+                            },
+                        },
+                    },
+                },
+            },
+        ),
+    )[0]
     with pytest.raises(handler.InvalidHandlerError) as err:
-        handler._resolve(model.OASOperationId('really_dummy.api.get_all'))
-    assert err.match('Failed to import module=really_dummy.api')
-
-
-def test_resolve_handler_function_not_found() -> None:
-    with pytest.raises(handler.InvalidHandlerError) as err:
-        handler._resolve(model.OASOperationId('tests.test_application_handler.foo'))
-    assert err.match(
-        'Failed to locate function=foo in module=tests.test_application_handler',
-    )
-
-
-def test_resolve_handler_not_couroutine() -> None:
-    with pytest.raises(handler.InvalidHandlerError) as err:
-        handler._resolve(model.OASOperationId('tests.test_application_handler.normal_f'))
-    assert err.match(
-        'tests.test_application_handler.normal_f did not resolve to coroutine',
-    )
+        handler.make(operation)
+    assert err.match(error_msg)
 
 
 def test_resolve_handler_couroutine() -> None:
