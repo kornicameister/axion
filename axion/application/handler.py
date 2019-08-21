@@ -70,8 +70,8 @@ class InvalidHandlerError(
     def errors(self) -> t.Mapping[str, Reason]:
         return {e.param_name: e.reason for e in self._errors or []}
 
-    def __iter__(self) -> t.Iterator[Reason]:  # type: ignore
-        return iter(e.reason for e in self._errors or [])
+    def __iter__(self) -> t.Iterator[Error]:  # type: ignore
+        return iter(e for e in self._errors or [])
 
     def __len__(self) -> int:
         return len(self._errors or [])

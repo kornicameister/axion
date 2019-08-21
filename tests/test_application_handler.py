@@ -108,7 +108,7 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
-        assert len(err.value.errors) == 1
+        assert len(err.value) == 1
         assert 'id' in err.value
         assert err.value['id'] == 'missing'
 
@@ -121,7 +121,7 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
-        assert len(err.value.errors) == 4
+        assert len(err.value) == 4
         for key in ('id', 'limit', 'page', 'include_extra'):
             assert key in err.value
             assert err.value[key] == 'missing'
@@ -140,7 +140,7 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
-        assert len(err.value.errors) == 1
+        assert len(err.value) == 1
         assert 'id' in err.value
         assert repr(err.value['id']) == 'expected str, but got bool'
 
@@ -172,25 +172,26 @@ class TestAnalysisParameters:
                 handler=foo,
                 operation=self.operation,
             )
-        assert len(err.value.errors) == 4
-        for key in ('id', 'limit', 'page', 'include_extra'):
-            assert key in err.value
-            if key == 'id':
-                assert repr(err.value[key]) == 'expected str, but got float'
-            if key == 'limit':
+        assert len(err.value) == 4
+        for mismatch in err.value:
+            if mismatch.param_name == 'id':
                 assert repr(
-                    err.value[key],
+                    err.value[mismatch.param_name],
+                ) == 'expected str, but got float'
+            elif mismatch.param_name == 'limit':
+                assert repr(
+                    err.value[mismatch.param_name],
                 ) == 'expected typing.Optional[int], but got typing.Optional[float,int]'
-            if key == 'page':
+            elif mismatch.param_name == 'page':
                 assert repr(
-                    err.value[key],
+                    err.value[mismatch.param_name],
                 ) == (
                     'expected typing.Optional[float], but got '
                     'typing.Optional[typing.AbstractSet[bool]]'
                 )
-            if key == 'include_extra':
+            elif mismatch.param_name == 'include_extra':
                 assert repr(
-                    err.value[key],
+                    err.value[mismatch.param_name],
                 ) == (
                     'expected typing.Optional[bool], but got '
                     'typing.Optional[typing.AnyStr]'
