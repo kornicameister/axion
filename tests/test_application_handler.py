@@ -176,7 +176,10 @@ class TestAnalysisParameters:
             if key == 'include_extra':
                 assert repr(
                     err.value[key],
-                ) == 'expected typing.Optional[bool], but got typing.Optional[AnyStr]'
+                ) == (
+                    'expected typing.Optional[bool], but got '
+                    'typing.Optional[typing.AnyStr]'
+                )
 
     def test_signature_match(self) -> None:
         async def test_handler(
