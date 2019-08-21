@@ -1,7 +1,7 @@
 import asyncio
 import importlib
-import inspect
 import typing as t
+import functools
 
 from loguru import logger
 
@@ -21,12 +21,12 @@ class OASHandlerMismatch(Exception):
 def make(operation: specification.OASOperation) -> Handler:
     logger.info('Making user handler for op={op}', op=operation)
     return _analyze(
-        _resolve(operation.operation_id),
+        _resolve(operation.id),
         operation,
     )
 
 
-def _resolve(operation_id: str) -> Handler:
+def _resolve(operation_id: specification.OASOperationId) -> Handler:
     logger.opt(lazy=True).debug(
         'Resolving user handler via operation_id={operation_id}',
         operation_id=lambda: operation_id,
@@ -53,16 +53,19 @@ def _analyze(
         handler: Handler,
         operation: specification.OASOperation,
 ) -> Handler:
-    signature = inspect.signature(handler)
-
+    signature = t.get_type_hints(handler)
     for op_param in operation.parameters:
         try:
-            handler_param = signature.parameters[op_param.name]
-            if handler_param.annotation != op_param.python_type:
+            handler_param = signature[op_param.name]
+
+            handler_param_args = getattr(handler_param, '__args__', handler_param)
+            op_param_type_args = _build_annotation_args(op_param)
+
+            if handler_param_args != op_param_type_args:
                 raise OASHandlerMismatch(
                     f'{op_param.name} argument of {handler} expected to have '
-                    f'type {op_param.python_type}, but in fact it is '
-                    f'{handler_param.annotation}',
+                    f'type {op_param_type_args}, but in fact it is '
+                    f'{handler_param}',
                 )
         except KeyError as err:
             raise OASHandlerMismatch(
@@ -70,3 +73,15 @@ def _analyze(
             ) from err
 
     return handler
+
+
+@functools.lru_cache(maxsize=10)
+def _build_annotation_args(
+        param: specification.OASParameter,
+) -> t.Union[t.Type[t.Any], t.Tuple[t.Type[t.Any], ...]]:
+    p_type = param.python_type
+    p_required = param.required
+    if not p_required:
+        return p_type, type(None)
+    else:
+        return p_type
