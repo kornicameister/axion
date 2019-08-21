@@ -183,8 +183,6 @@ def _readable_t(val: T) -> str:
             # there is no name via __qualname__
             # might be that we are dealing with something from typing
             name = repr(tt).replace('~', '')
-            if 'typing.' not in name:
-                name = f'typing.{name}'
         return name
 
     if isinstance(val, tuple):
