@@ -101,7 +101,7 @@ class OASOperation:
 
     def __init__(
             self,
-            id: str,
+            id: OASOperationId,
             path: yarl.URL,
             http_method: HTTPMethod,
             deprecated: bool,
