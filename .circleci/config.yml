@@ -91,7 +91,7 @@ jobs:
     steps:
       - checkout
       - <<: *install_prepare
-      - run: pip install twine
+      - run: pip install twine setuptools --upgrade
       - run: python setup.py twine --commit --rebuild --egg=all --sdist=all
 
 workflows:
