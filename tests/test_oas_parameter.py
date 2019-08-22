@@ -135,12 +135,15 @@ def test_header_param_invalid_name(param_name: str) -> None:
 
 
 @pytest.mark.parametrize(
-    'param_in',
+    'param_in,param_required',
     (
-        model.OASPathParameter,
-        model.OASHeaderParameter,
-        model.OASQueryParameter,
-        model.OASCookieParameter,
+        (model.OASPathParameter, True),
+        (model.OASHeaderParameter, True),
+        (model.OASHeaderParameter, False),
+        (model.OASQueryParameter, True),
+        (model.OASQueryParameter, False),
+        (model.OASCookieParameter, True),
+        (model.OASCookieParameter, False),
     ),
 )
 @pytest.mark.parametrize(
@@ -150,6 +153,7 @@ def test_header_param_invalid_name(param_name: str) -> None:
 def test_param_python_type(
         oas_type: str,
         param_in: t.Type[t.Any],
+        param_required: bool,
         python_type: t.Type[t.Any],
 ) -> None:
     param = parser._resolve_parameter(
@@ -157,7 +161,7 @@ def test_param_python_type(
         param_name='foo',
         param_in=param_in,
         param_def={
-            'required': True,
+            'required': param_required,
             'schema': {
                 'type': oas_type,
             },
