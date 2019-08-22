@@ -1,7 +1,9 @@
 import sys
 import typing as t
 
+from _pytest import logging
 import pytest
+import pytest_mock as ptm
 
 from axion.application import handler
 from axion.specification import model
@@ -65,6 +67,45 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
+class TestAnalysisNoParameters:
+    operation = list(
+        parser._resolve_operations(
+            components={},
+            paths={
+                '/{name}': {
+                    'post': {
+                        'operationId': 'TestAnalysisNoParameters',
+                        'responses': {
+                            'default': {
+                                'description': 'fake',
+                            },
+                        },
+                    },
+                },
+            },
+        ),
+    )[0]
+
+    def test_it(
+            self,
+            mocker: ptm.MockFixture,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo() -> None:
+            ...
+
+        spy = mocker.spy(handler, '_analyze_parameters')
+        handler._analyze(
+            handler=foo,
+            operation=self.operation,
+        )
+
+        assert (
+            'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
+        )
+        assert not spy.called
+
+
 class TestAnalysisParameters:
     operation = list(
         parser._resolve_operations(
@@ -72,7 +113,7 @@ class TestAnalysisParameters:
             paths={
                 '/{name}': {
                     'post': {
-                        'operationId': 'foo',
+                        'operationId': 'TestAnalysisParameters',
                         'responses': {
                             'default': {
                                 'description': 'fake',
@@ -130,7 +171,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert err.value['id'] == 'missing'
@@ -145,7 +186,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for key in ('id', 'limit', 'page', 'include_extra'):
             assert key in err.value
@@ -166,7 +207,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert repr(err.value['id']) == 'expected str, but got bool'
@@ -200,7 +241,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for mismatch in err.value:
             if mismatch.param_name == 'id':

@@ -81,7 +81,7 @@ class InvalidHandlerError(
 
 
 def make(operation: specification.OASOperation) -> Handler:
-    logger.info('Making user handler for op={op}', op=operation)
+    logger.opt(record=True).info('Making user handler for op={op}', op=operation)
     return _analyze(
         _resolve(operation.id),
         operation,
@@ -89,7 +89,10 @@ def make(operation: specification.OASOperation) -> Handler:
 
 
 def _resolve(operation_id: specification.OASOperationId) -> Handler:
-    logger.opt(lazy=True).debug(
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).debug(
         'Resolving user handler via operation_id={operation_id}',
         operation_id=lambda: operation_id,
     )
@@ -123,8 +126,39 @@ def _analyze(
         operation: specification.OASOperation,
 ) -> Handler:
     signature = t.get_type_hints(handler)
-    errors = set()
 
+    errors = None
+    if operation.parameters:
+        errors = _analyze_parameters(operation, signature)
+    else:
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).debug(
+            '{op_id} does not declare any parameters',
+            op_id=lambda: operation.id,
+        )
+
+    if errors:
+        logger.opt(record=True).error(
+            'Collected {count} mismatch error{s} for {op_id} handler',
+            count=len(errors),
+            op_id=operation.id,
+            s='s' if len(errors) > 1 else '',
+        )
+        raise InvalidHandlerError(
+            operation_id=operation.id,
+            errors=errors,
+        )
+
+    return handler
+
+
+def _analyze_parameters(
+        operation: specification.OASOperation,
+        signature: t.Dict[str, t.Any],
+) -> t.Set[Error]:
+    errors = set()
     for op_param in operation.parameters:
         try:
             handler_param = signature[op_param.name]
@@ -149,20 +183,7 @@ def _analyze(
                     reason='missing',
                 ),
             )
-
-    if errors:
-        logger.error(
-            'Collected {count} mismatch error{s} for {op_id} handler',
-            count=len(errors),
-            op_id=operation.id,
-            s='s' if len(errors) > 1 else '',
-        )
-        raise InvalidHandlerError(
-            operation_id=operation.id,
-            errors=errors,
-        )
-
-    return handler
+    return errors
 
 
 @functools.lru_cache(maxsize=10)
