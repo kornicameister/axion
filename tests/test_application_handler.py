@@ -100,7 +100,9 @@ class TestAnalysisNoParameters:
             operation=self.operation,
         )
 
-        assert 'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
+        assert (
+            'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
+        )
         assert not spy.called
 
 
