@@ -85,12 +85,6 @@ class OASOperation(t.NamedTuple):
     def __hash__(self) -> int:
         return hash(self.id)
 
-    def __eq__(self, other: t.Any) -> bool:
-        if isinstance(other, OASOperation):
-            return self.id == other.id
-        else:
-            return False
-
     def __repr__(self) -> str:
         return (
             f'[{self.id}] {self.http_method.name} -> {self.path.human_repr()}'
@@ -474,12 +468,6 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
     def __hash__(self) -> int:
         return hash(self.name)
-
-    def __eq__(self, other: t.Any) -> bool:
-        if isinstance(other, OASParameter):
-            return self.name == other.name
-        else:
-            return False
 
     @property
     def python_type(self) -> t.Type[t.Any]:
