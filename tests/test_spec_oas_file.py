@@ -13,7 +13,7 @@ from axion.specification import parser
         ('binary', model.OASFileType),
     ),
 )
-def test_oas_file_type(
+def test_oas_string_is_file(
         str_format: str,
         expected_cls: t.Type[t.Any],
 ) -> None:

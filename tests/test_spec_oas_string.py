@@ -7,24 +7,24 @@ from axion.specification import model
 from axion.specification import parser
 
 
-def test_spec_build_oas_string_correct_python_type() -> None:
+def test_correct_python_type() -> None:
     assert issubclass(parser._build_oas_string({}).python_type, str)
 
 
 @pytest.mark.parametrize('default', [1, bool, {}, []])
-def test_spec_build_oas_string_default_wrong_type(default: t.Any) -> None:
+def test_default_wrong_type(default: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
         parser._build_oas_string({'default': default})
 
 
 @pytest.mark.parametrize('example', [1, bool, {}, []])
-def test_spec_build_oas_string_example_wrong_type(example: t.Any) -> None:
+def test_example_wrong_type(example: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
         parser._build_oas_string({'example': example})
 
 
 @pytest.mark.parametrize(('min_length', 'max_length'), [(2, 1), (10, 1)])
-def test_spec_build_oas_string_invalid_min_max_length(
+def test_invalid_min_max_length(
         min_length: int,
         max_length: int,
 ) -> None:
@@ -42,7 +42,7 @@ def test_spec_build_oas_string_invalid_min_max_length(
         ('^[a-z0-9_-]{3,16}$', ['my-us3r_n4m3'], ['th1s1s-wayt00_l0ngt0beausername']),
     ),
 )
-def test_spec_build_oas_number_pattern(
+def test_pattern(
         pattern: str,
         should_match: t.List[str],
         should_not_match: t.List[str],
