@@ -3,6 +3,7 @@ import typing as t
 
 from _pytest import logging
 import pytest
+import pytest_mock as ptm
 
 from axion.application import handler
 from axion.specification import model
@@ -87,17 +88,20 @@ class TestAnalysisNoParameters:
 
     def test_it(
             self,
+            mocker: ptm.MockFixture,
             caplog: logging.LogCaptureFixture,
     ) -> None:
         async def foo() -> None:
             ...
 
+        spy = mocker.spy(handler, '_analyze_parameters')
         handler._analyze(
             handler=foo,
             operation=self.operation,
         )
 
         assert 'foo does not declare any parameters' in caplog.messages
+        assert not spy.called
 
 
 class TestAnalysisParameters:
