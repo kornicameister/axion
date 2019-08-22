@@ -134,7 +134,7 @@ class OASMediaType:
 V = t.TypeVar('V')
 
 
-class OASType(t.Generic[V], PythonTypeCompatible):
+class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
     __slots__ = (
         'default',
         'example',
