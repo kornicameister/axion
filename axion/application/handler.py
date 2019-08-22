@@ -81,7 +81,7 @@ class InvalidHandlerError(
 
 
 def make(operation: specification.OASOperation) -> Handler:
-    logger.info('Making user handler for op={op}', op=operation)
+    logger.opt(record=True).info('Making user handler for op={op}', op=operation)
     return _analyze(
         _resolve(operation.id),
         operation,
@@ -89,7 +89,10 @@ def make(operation: specification.OASOperation) -> Handler:
 
 
 def _resolve(operation_id: specification.OASOperationId) -> Handler:
-    logger.opt(lazy=True).debug(
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).debug(
         'Resolving user handler via operation_id={operation_id}',
         operation_id=lambda: operation_id,
     )
@@ -149,9 +152,17 @@ def _analyze(
                     reason='missing',
                 ),
             )
+    else:
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).debug(
+            '{op_id} does not declare any parameters',
+            op_id=lambda: operation.id,
+        )
 
     if errors:
-        logger.error(
+        logger.opt(record=True).error(
             'Collected {count} mismatch error{s} for {op_id} handler',
             count=len(errors),
             op_id=operation.id,

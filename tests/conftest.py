@@ -1,6 +1,9 @@
+import logging
 from pathlib import Path
 import secrets
 
+from _pytest import logging as _logging
+from loguru import logger
 import pytest
 
 SPECS = list((Path.cwd() / 'tests' / 'specifications').glob('*yml'))
@@ -14,3 +17,16 @@ def random_spec() -> Path:
 @pytest.fixture
 def spec_path(random_spec: Path) -> Path:
     return random_spec
+
+
+@pytest.fixture
+def caplog(caplog: _logging.LogCaptureFixture) -> _logging.LogCaptureFixture:
+    class LoguruHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            logging.getLogger(record.name).handle(record)
+
+    logger.add(
+        LoguruHandler(),
+        format='{message}',
+    )
+    yield caplog

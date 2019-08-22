@@ -1,6 +1,7 @@
 import sys
 import typing as t
 
+from _pytest import logging
 import pytest
 
 from axion.application import handler
@@ -63,6 +64,40 @@ def test_resolve_handler_couroutine() -> None:
     assert handler._resolve(
         model.OASOperationId('tests.test_application_handler.async_f'),
     ) is async_f
+
+
+class TestAnalysisNoParameters:
+    operation = list(
+        parser._resolve_operations(
+            components={},
+            paths={
+                '/{name}': {
+                    'post': {
+                        'operationId': 'foo',
+                        'responses': {
+                            'default': {
+                                'description': 'fake',
+                            },
+                        },
+                    },
+                },
+            },
+        ),
+    )[0]
+
+    def test_it(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo() -> None:
+            ...
+
+        handler._analyze(
+            handler=foo,
+            operation=self.operation,
+        )
+
+        assert 'foo does not declare any parameters' in caplog.messages
 
 
 class TestAnalysisParameters:
