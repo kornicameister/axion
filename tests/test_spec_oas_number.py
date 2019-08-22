@@ -7,7 +7,7 @@ from axion.specification import parser
 
 
 @pytest.mark.parametrize('number_cls', (int, float))
-def test_python_type(number_cls: t.Type[t.Union[int, float]], ) -> None:
+def test_python_type(number_cls: t.Type[t.Union[int, float]]) -> None:
     assert issubclass(
         parser._build_oas_number(
             number_cls=number_cls,
