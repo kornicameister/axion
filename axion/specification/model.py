@@ -64,18 +64,13 @@ OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
 OASResponses = t.Mapping[OASResponseCode, 'OASResponse']
 OASOperationId = t.NewType('OASOperationId', str)
 OASOperations = t.FrozenSet['OASOperation']
+OASParameters = t.FrozenSet['OASParameter']
 
 
 @te.final
 class OASResponse(t.NamedTuple):
     headers: t.FrozenSet['OASHeaderParameter']
     content: 'OASContent'
-
-
-@te.final
-class OASParameters(t.FrozenSet['OASParameter']):
-    def names(self) -> t.FrozenSet[str]:
-        return frozenset(map(lambda p: p.name, self))
 
 
 @te.final

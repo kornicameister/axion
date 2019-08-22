@@ -72,7 +72,7 @@ def _resolve_operations(
                     responses_dict=definition['responses'],
                     components=components,
                 ),
-                parameters=model.OASParameters(operation_parameters),
+                parameters=operation_parameters,
             )
             operations.add(operation)
 
