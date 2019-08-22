@@ -7,9 +7,7 @@ from axion.specification import parser
 
 
 @pytest.mark.parametrize('number_cls', (int, float))
-def test_spec_build_oas_number_correct_python_type(
-        number_cls: t.Type[t.Union[int, float]],
-) -> None:
+def test_python_type(number_cls: t.Type[t.Union[int, float]]) -> None:
     assert issubclass(
         parser._build_oas_number(
             number_cls=number_cls,
@@ -21,7 +19,7 @@ def test_spec_build_oas_number_correct_python_type(
 
 @pytest.mark.parametrize('key', ('default', 'example', 'minimum', 'maximum'))
 @pytest.mark.parametrize('value', ['1', bool, {}, []])
-def test_spec_build_oas_number_wrong_value_type(key: str, value: t.Any) -> None:
+def test_wrong_value_type(key: str, value: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
         parser._build_oas_number(int, {key: value})
 
@@ -33,7 +31,7 @@ def test_spec_build_oas_number_wrong_value_type(key: str, value: t.Any) -> None:
         (1.0, 0),
     ),
 )
-def test_spec_build_oas_number_mismatch_example_default(
+def test_mismatch_example_default(
         example: t.Any,
         default: t.Any,
 ) -> None:

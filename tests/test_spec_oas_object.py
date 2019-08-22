@@ -29,7 +29,7 @@ from axion.specification import parser
         }, {}, False),
     ),
 )
-def test_spec_oas_object_free_form(
+def test_free_form(
         properties: t.Optional[t.Dict[str, t.Any]],
         additional_properties: t.Union[bool, model.OASType[t.Any]],
         expected_result: bool,
@@ -40,7 +40,7 @@ def test_spec_oas_object_free_form(
     }).is_free_form is expected_result
 
 
-def test_spec_oas_object_discriminator() -> None:
+def test_discriminator() -> None:
     oas_object = parser._build_oas_object(
         {},
         {
@@ -70,7 +70,7 @@ def test_spec_oas_object_discriminator() -> None:
     'additional_properties,should_raise',
     ((True, False), (False, True)),
 )
-def test_spec_oas_object_discriminator_property_additional_properties(
+def test_discriminator_and__additional_properties(
         additional_properties: bool,
         should_raise: bool,
 ) -> None:
@@ -108,5 +108,5 @@ def test_spec_oas_object_discriminator_property_additional_properties(
             )
 
 
-def test_spec_build_oas_object_correct_python_type() -> None:
+def test_correct_python_type() -> None:
     assert issubclass(parser._build_oas_object({}, {}).python_type, dict)

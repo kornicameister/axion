@@ -9,7 +9,7 @@ from axion.specification import parser
     'unique_items,python_type',
     ((True, set), (False, list)),
 )
-def test_spec_build_oas_array_correct_python_type(
+def test_python_type(
         unique_items: bool,
         python_type: t.Type[t.Any],
 ) -> None:
