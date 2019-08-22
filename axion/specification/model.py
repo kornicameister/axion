@@ -59,64 +59,31 @@ class MimeType:
         return hash(self.type + '/' + self.subtype)
 
 
-OASContent = t.Dict[MimeType, 'OASMediaType']
+OASContent = t.Mapping[MimeType, 'OASMediaType']
 OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
-OASResponses = t.Dict[OASResponseCode, 'OASResponse']
+OASResponses = t.Mapping[OASResponseCode, 'OASResponse']
 OASOperationId = t.NewType('OASOperationId', str)
 OASOperations = t.FrozenSet['OASOperation']
+OASParameters = t.FrozenSet['OASParameter']
 
 
 @te.final
-class OASResponse:
-    __slots__ = (
-        'headers',
-        'content',
-    )
-
-    def __init__(
-            self,
-            headers: t.List['OASHeaderParameter'],
-            content: 'OASContent',
-    ) -> None:
-        self.headers = headers
-        self.content = content
+class OASResponse(t.NamedTuple):
+    headers: t.FrozenSet['OASHeaderParameter']
+    content: 'OASContent'
 
 
 @te.final
-class OperationParameters(t.List['OASParameter']):
-    def names(self) -> t.FrozenSet[str]:
-        return frozenset(map(lambda p: p.name, self))
-
-
-@te.final
-class OASOperation:
-    __slots__ = (
-        'id',
-        'path',
-        'http_method',
-        'deprecated',
-        'responses',
-        'parameters',
-    )
-
-    def __init__(
-            self,
-            id: OASOperationId,
-            path: yarl.URL,
-            http_method: HTTPMethod,
-            deprecated: bool,
-            responses: OASResponses,
-            parameters: OperationParameters,
-    ) -> None:
-        self.id = id
-        self.path = path
-        self.http_method = http_method
-        self.deprecated = deprecated
-        self.responses = responses
-        self.parameters = parameters
+class OASOperation(t.NamedTuple):
+    id: OASOperationId
+    path: yarl.URL
+    http_method: HTTPMethod
+    deprecated: bool
+    responses: OASResponses
+    parameters: OASParameters
 
     def __hash__(self) -> int:
-        return hash(self.id) * hash(self.http_method) * hash(self.path)
+        return hash(self.id)
 
     def __repr__(self) -> str:
         return (
@@ -125,19 +92,9 @@ class OASOperation:
 
 
 @te.final
-class OASServer:
-    __slots__ = (
-        'url',
-        'variables',
-    )
-
-    def __init__(
-            self,
-            url: str,
-            variables: t.Dict[str, str],
-    ) -> None:
-        self.url = url
-        self.variables = variables
+class OASServer(t.NamedTuple):
+    url: str
+    variables: t.Dict[str, str]
 
 
 @te.final
@@ -508,6 +465,9 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
         self.required = required
         self.explode = explode
         self.deprecated = deprecated
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     @property
     def python_type(self) -> t.Type[t.Any]:

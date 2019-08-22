@@ -61,11 +61,7 @@ def _resolve_operations(
             operation_parameters = _resolve_parameters(
                 components,
                 definition.pop('parameters', []),
-            )
-            for param_def in global_parameters:
-                if param_def.name not in operation_parameters.names():
-                    # global parameter copied into local parameter
-                    operation_parameters.append(param_def)
+            ).union(global_parameters)
 
             operation = model.OASOperation(
                 id=model.OASOperationId(definition['operationId']),
@@ -96,14 +92,14 @@ def _resolve_responses(
 
     for rp_code, rp_def in responses_dict.items():
         responses[_response_code(rp_code)] = model.OASResponse(
-            headers=[
+            headers=frozenset(
                 _resolve_parameter(
                     components,
                     header_name,
                     header_def,
                     model.OASHeaderParameter,
                 ) for header_name, header_def in rp_def.get('headers', {}).items()
-            ],
+            ),
             content=_resolve_content(
                 components,
                 rp_def,
@@ -153,7 +149,7 @@ def _resolve_content(
 def _resolve_parameters(
         components: t.Dict[str, t.Any],
         parameters: t.List[t.Dict[str, t.Any]],
-) -> model.OperationParameters:
+) -> t.FrozenSet[model.OASParameter]:
     logger.opt(lazy=True).trace(
         'Resolving {count} of parameters',
         count=lambda: len(parameters),
@@ -194,7 +190,7 @@ def _resolve_parameters(
             ),
         )
 
-    return model.OperationParameters(resolved_parameters)
+    return frozenset(resolved_parameters)
 
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
