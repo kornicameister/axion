@@ -74,7 +74,7 @@ class TestAnalysisNoParameters:
             paths={
                 '/{name}': {
                     'post': {
-                        'operationId': 'foo',
+                        'operationId': 'TestAnalysisNoParameters',
                         'responses': {
                             'default': {
                                 'description': 'fake',
@@ -100,7 +100,7 @@ class TestAnalysisNoParameters:
             operation=self.operation,
         )
 
-        assert 'foo does not declare any parameters' in caplog.messages
+        assert 'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
         assert not spy.called
 
 
@@ -111,7 +111,7 @@ class TestAnalysisParameters:
             paths={
                 '/{name}': {
                     'post': {
-                        'operationId': 'foo',
+                        'operationId': 'TestAnalysisParameters',
                         'responses': {
                             'default': {
                                 'description': 'fake',
@@ -169,7 +169,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert err.value['id'] == 'missing'
@@ -184,7 +184,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for key in ('id', 'limit', 'page', 'include_extra'):
             assert key in err.value
@@ -205,7 +205,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
         assert repr(err.value['id']) == 'expected str, but got bool'
@@ -239,7 +239,7 @@ class TestAnalysisParameters:
                 operation=self.operation,
             )
 
-        assert err.value.operation_id == 'foo'
+        assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for mismatch in err.value:
             if mismatch.param_name == 'id':
