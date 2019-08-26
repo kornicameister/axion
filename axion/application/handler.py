@@ -1,30 +1,92 @@
 import asyncio
+import collections
 import functools
 import importlib
+import inspect
+import re
+import sys
 import typing as t
 
 from loguru import logger
+from multidict import istr
 import typing_extensions as te
 
 from axion import specification
 
-__all__ = ('InvalidHandlerError', )
+__all__ = (
+    'InvalidHandlerError',
+    'make',
+)
 
-Handler = t.Callable[..., t.Awaitable[t.Any]]
-T = t.Union[t.Type[t.Any], t.Tuple[t.Type[t.Any], ...]]
+F = t.Callable[..., t.Awaitable[t.Any]]
+T = t.Any
+
+OAS_Param = t.NamedTuple(
+    'OAS_Param',
+    (
+        ('param_in', specification.OASParameterLocation),
+        ('param_name', str),
+    ),
+)
+F_Param = t.NewType('F_Param', str)
+ParamMapping = t.Mapping[OAS_Param, F_Param]
+
+CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
 
 
-class IncorrectTypeReason(t.NamedTuple):
-    expected: T
+@te.final
+class Handler(t.NamedTuple):
+    fn: F
+    param_mapping: ParamMapping
+
+    @property
+    def path_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
+        return self._params('path')
+
+    @property
+    def header_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
+        return self._params('header')
+
+    @property
+    def query_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
+        return self._params('query')
+
+    def _params(
+            self,
+            param_in: specification.OASParameterLocation,
+    ) -> t.FrozenSet[t.Tuple[str, str]]:
+        gen = ((oas_param.param_name, fn_param)
+               for oas_param, fn_param in self.param_mapping.items()
+               if oas_param.param_in == param_in)
+        return frozenset(gen)
+
+
+class IncorrectTypeReason:
+    expected: t.List[T]
     actual: T
 
+    def __init__(self, expected: t.List[T], actual: T) -> None:
+        self.expected = expected
+        self.actual = actual
+
     def __repr__(self) -> str:
-        expected_str = _readable_t(self.expected)
+        expected_str = ','.join(_readable_t(rt) for rt in self.expected)
         actual_str = _readable_t(self.actual)
-        return f'expected {expected_str}, but got {actual_str}'
+        return f'expected [{expected_str}], but got {actual_str}'
 
 
-Reason = t.Union[te.Literal['missing'], IncorrectTypeReason]
+class DuplicatedArgumentReason(t.NamedTuple):
+    first_found_in: specification.OASParameterLocation
+    duplicated_in: specification.OASParameterLocation
+
+    def __repr__(self) -> str:
+        return f'in {self.first_found_in} duplicated by {self.duplicated_in}'
+
+
+Reason = t.Union[te.Literal['missing', 'unknown'],
+                 DuplicatedArgumentReason,
+                 IncorrectTypeReason,
+                 ]
 
 
 class Error(t.NamedTuple):
@@ -50,7 +112,7 @@ class InvalidHandlerError(
         header_msg = f'\n{operation_id} handler mismatch signature:'
         if errors and not message:
             error_str = '\n'.join(
-                f'argument => {m.param_name} : {m.reason}' for m in errors
+                f'argument {m.param_name} :: {m.reason}' for m in errors
             )
             message = '\n'.join([
                 header_msg,
@@ -88,7 +150,7 @@ def make(operation: specification.OASOperation) -> Handler:
     )
 
 
-def _resolve(operation_id: specification.OASOperationId) -> Handler:
+def _resolve(operation_id: specification.OASOperationId) -> F:
     logger.opt(
         lazy=True,
         record=True,
@@ -118,18 +180,32 @@ def _resolve(operation_id: specification.OASOperationId) -> Handler:
             message=f'Failed to locate function={function_name} in module={module_name}',
         ) from err
     else:
-        return t.cast(Handler, function)
+        return t.cast(F, function)
 
 
 def _analyze(
-        handler: Handler,
+        handler: F,
         operation: specification.OASOperation,
 ) -> Handler:
     signature = t.get_type_hints(handler)
 
-    errors = None
+    errors: t.Set[Error] = set()
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
     if operation.parameters:
-        errors = _analyze_parameters(operation, signature)
+
+        pq_errors, pq_params = _analyze_path_query(
+            specification.operation_filter_parameters(operation, 'path', 'query'),
+            signature,
+        )
+        h_errors, h_params = _analyze_headers(
+            specification.operation_filter_parameters(operation, 'header'),
+            signature,
+        )
+
+        errors.update(pq_errors, h_errors)
+        param_mapping.update(pq_params)
+        param_mapping.update(h_params)
     else:
         logger.opt(
             lazy=True,
@@ -151,17 +227,233 @@ def _analyze(
             errors=errors,
         )
 
-    return handler
+    return Handler(
+        fn=handler,
+        param_mapping=param_mapping,
+    )
 
 
-def _analyze_parameters(
-        operation: specification.OASOperation,
+def _analyze_headers(
+        parameters: t.Sequence[specification.OASParameter],
         signature: t.Dict[str, t.Any],
-) -> t.Set[Error]:
-    errors = set()
-    for op_param in operation.parameters:
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    """Analyzes signature of the handler against the headers.
+
+    axion supports defining headers in signature using:
+    - typing_extensions.TypedDict
+    - typing.Mapping
+    - Any other type is rejected with appropriate error.
+
+    Also, when parsing the signature along with operation, following is taken
+    into account:
+    1. function doest not have "headers" argument and there are no custom OAS headers
+        - OK
+    2. function doest not have "headers" argument and there are custom OAS headers
+        - Warning
+        - If there are custom headers defined user ought to specify them
+          in signature. There was a point to put them inside there after all.
+          However they might be used by a middleware or something, not necessarily
+          handler. The warning is the only reliable thing to say.
+    3. function has "headers" argument and there no custom OAS headers ->
+        - OK
+        - User might want to get a hold with headers like "Content-Type"
+        - With Mapping all reserved headers go in
+        - With TypedDict we must see if users wants one of reserved headers
+          Only reserved headers are allowed to be requested for.
+    4. function has "headers" argument and there are no custom OAS headers
+        - OK
+        - With Mapping all reserved headers + OAS headers go in
+        - With TypedDict allowed keys covers
+            - one or more of reserved headers
+            - all of OAS headers with appropriate types
+
+    See link bellow for information on reserved header
+    https://swagger.io/docs/specification/describing-parameters/#header-parameters
+    """
+    errors: t.Set[Error] = set()
+
+    sig_headers = signature.get('headers')
+    has_param_headers = len(parameters) > 0
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
+    if sig_headers is not None:
+        # pre-check type of headers param in signature
+        # must be either TypedDict, Mapping or a subclass of those
+        is_mapping, is_any = _is_mapping(sig_headers)
+        if not (is_mapping or is_any):
+            errors.add(
+                Error(
+                    param_name='headers',
+                    reason=IncorrectTypeReason(
+                        actual=sig_headers,
+                        expected=[
+                            t.Mapping[str, t.Any],
+                            te.TypedDict,
+                            t.Dict[str, t.Any],
+                        ],
+                    ),
+                ),
+            )
+            return errors, param_mapping
+        elif is_any:
+            logger.opt(record=True).warning(
+                'Detected usage of "headers" declared as typing.Any. '
+                'axion will allow such declaration but be warned that '
+                'you will loose all the help linters (like mypy) offer.',
+            )
+
+    if sig_headers is None and has_param_headers is None:
+        logger.opt(record=True).debug(
+            'No "headers" in signature and operation parameters',
+        )
+        return errors, param_mapping
+    elif sig_headers is None and has_param_headers:
+        logger.opt(record=True).warning(
+            '"headers" found in operation but not in signature. '
+            'Please double check that. axion cannot infer a correctness of '
+            'this situations. If you wish to access any "headers" defined in '
+            'specification, they have to be present in your handler '
+            'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
+            'or typing_extensions.TypedDict[str, typing.Any].',
+        )
+        return errors, param_mapping
+    elif sig_headers and has_param_headers is None:
+        logger.opt(
+            record=True,
+            lazy=True,
+        ).debug('"headers" found in signature but not in operation')
         try:
-            handler_param = signature[op_param.name]
+            # deal with typed dict, only reserved headers are allowed as dict
+            reserved_headers_keys = {
+                _get_f_param(rh): rh.lower()
+                for rh in specification.OASReservedHeaders
+            }
+            entries = t.get_type_hints(sig_headers).items()
+            if entries:
+                for sig_header_key, sig_header_type in entries:
+                    if sig_header_key not in reserved_headers_keys:
+                        logger.opt(record=True).error(
+                            '{sig_key} is not one of {reserved_headers} headers',
+                            sig_key=sig_header_key,
+                            reserved_headers=specification.OASReservedHeaders,
+                        )
+                        errors.add(
+                            Error(
+                                param_name=f'headers.{sig_header_key}',
+                                reason='unknown',
+                            ),
+                        )
+                    elif sig_header_type != str:
+                        errors.add(
+                            Error(
+                                param_name=f'headers.{sig_header_key}',
+                                reason=IncorrectTypeReason(
+                                    actual=sig_header_type,
+                                    expected=[str],
+                                ),
+                            ),
+                        )
+                    else:
+                        param_key = _get_f_param(sig_header_key)
+                        param_mapping[OAS_Param(
+                            param_in='header',
+                            param_name=reserved_headers_keys[param_key],
+                        )] = param_key
+            else:
+                raise TypeError('Not TypedDict to jump into exception below')
+        except TypeError:
+            # deal with mapping: in that case user will receive all
+            # reserved headers inside of the handler
+            for hdr in specification.OASReservedHeaders:
+                param_mapping[OAS_Param(
+                    param_in='header',
+                    param_name=hdr.lower(),
+                )] = _get_f_param(hdr)
+    else:
+        logger.opt(record=True).debug('"headers" found both in signature and operation')
+        param_header_names = {_get_f_param(rh.name): rh.name.lower() for rh in parameters}
+        reserved_headers_keys = {
+            _get_f_param(rh): rh.lower()
+            for rh in specification.OASReservedHeaders
+        }
+        try:
+            entries = t.get_type_hints(sig_headers)
+            if entries:
+                sig_headers_keys = set(entries.keys())
+                for sig_header_key, oas_header_key in param_header_names.items():
+                    if sig_header_key not in sig_headers_keys:
+                        if sig_header_key not in reserved_headers_keys:
+                            logger.opt(record=True).error(
+                                '{sig_key} is not one of {reserved_headers} headers',
+                                sig_key=sig_header_key,
+                                reserved_headers=specification.OASReservedHeaders,
+                            )
+                            errors.add(
+                                Error(
+                                    param_name=f'headers.{sig_header_key}',
+                                    reason='unknown',
+                                ),
+                            )
+                        else:
+                            errors.add(
+                                Error(
+                                    param_name=f'headers.{sig_header_key}',
+                                    reason='missing',
+                                ),
+                            )
+                    else:
+                        param_mapping[OAS_Param(
+                            param_in='header',
+                            param_name=oas_header_key,
+                        )] = sig_header_key
+            else:
+                raise TypeError('Not TypedDict to jump into exception below')
+        except TypeError:
+            for reserved_hdr_key, reserved_hdr_value in reserved_headers_keys:
+                param_mapping[OAS_Param(
+                    param_in='header',
+                    param_name=reserved_hdr_value,
+                )] = reserved_hdr_key
+            for sig_header_key, oas_header_key in param_header_names.items():
+                param_mapping[OAS_Param(
+                    param_in='header',
+                    param_name=oas_header_key,
+                )] = sig_header_key
+
+    return errors, param_mapping
+
+
+def _is_mapping(sig_headers: t.Any) -> t.Tuple[bool, bool]:
+    maybe_name = getattr(sig_headers, '_name', None)
+    maybe_supertype = getattr(sig_headers, '__supertype__', None)
+    maybe_mro = getattr(sig_headers, '__mro__', None)
+    if maybe_name:
+        # raw typing.Dict or typing.Mapping
+        return maybe_name in ('Mapping', 'Dict'), maybe_name.lower() == 'any'
+    elif maybe_supertype:
+        # typing.NewType
+        return _is_mapping(maybe_supertype)
+    elif maybe_mro:
+        for mro in inspect.getmro(sig_headers):
+            if issubclass(mro, (dict, collections.abc.Mapping)):
+                return True, False
+    elif sys.version_info < (3, 7):
+        return False, sig_headers is t.Any
+
+    return False, False
+
+
+def _analyze_path_query(
+        parameters: t.Sequence[specification.OASParameter],
+        signature: t.Dict[str, t.Any],
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    errors: t.Set[Error] = set()
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
+    for op_param in parameters:
+        try:
+            handler_param_name = _get_f_param(op_param.name)
+            handler_param = signature[handler_param_name]
 
             handler_param_args = getattr(handler_param, '__args__', handler_param)
             op_param_type_args = _build_annotation_args(op_param)
@@ -172,10 +464,32 @@ def _analyze_parameters(
                         param_name=op_param.name,
                         reason=IncorrectTypeReason(
                             actual=handler_param_args,
-                            expected=op_param_type_args,
+                            expected=[op_param_type_args],
                         ),
                     ),
                 )
+            else:
+                key = OAS_Param(
+                    param_in=specification.parameter_in(op_param),
+                    param_name=op_param.name,
+                )
+                if key not in param_mapping.values():
+                    param_mapping[key] = handler_param_name
+                else:
+                    errors.add(
+                        Error(
+                            param_name=op_param.name,
+                            reason=DuplicatedArgumentReason(
+                                first_found_in=next(
+                                    filter(
+                                        lambda pk: pk.param_name == op_param.name,
+                                        param_mapping.keys(),
+                                    ),
+                                ).param_in,
+                                duplicated_in=key.param_in,
+                            ),
+                        ),
+                    )
         except KeyError:
             errors.add(
                 Error(
@@ -183,7 +497,8 @@ def _analyze_parameters(
                     reason='missing',
                 ),
             )
-    return errors
+
+    return errors, param_mapping
 
 
 @functools.lru_cache(maxsize=10)
@@ -199,12 +514,16 @@ def _build_annotation_args(param: specification.OASParameter) -> T:
 @functools.lru_cache(maxsize=10)
 def _readable_t(val: T) -> str:
     def qualified_name(tt: t.Any) -> str:
-        name: str = getattr(tt, '__qualname__', '')
-        if not name:
-            # there is no name via __qualname__
-            # might be that we are dealing with something from typing
-            name = repr(tt).replace('~', '')
-        return name
+        the_name = str(tt)
+        if 'typing.' in the_name:
+            return the_name
+        else:
+            name: str = getattr(tt, '__qualname__', '')
+            if not name:
+                # there is no name via __qualname__
+                # might be that we are dealing with something from typing
+                name = repr(tt).replace('~', '')
+            return name
 
     if isinstance(val, tuple):
         last_type = val[-1]
@@ -214,3 +533,8 @@ def _readable_t(val: T) -> str:
             return f'typing.Union[{",".join(qualified_name(tt) for tt in val)}]'
     else:
         return f'{qualified_name(val)}'
+
+
+@functools.lru_cache(maxsize=100)
+def _get_f_param(s: t.Union[str, istr]) -> F_Param:
+    return F_Param(CamelCaseToSnakeCaseRegex.sub(r'_\1', s.replace('-', '_')).lower())

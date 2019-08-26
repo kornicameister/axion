@@ -193,13 +193,6 @@ def _resolve_parameters(
     return frozenset(resolved_parameters)
 
 
-CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
-
-
-def _convert_to_snake_case(s: str) -> str:
-    return CamelCaseToSnakeCaseRegex.sub(r'_\1', s).lower()
-
-
 Param = t.TypeVar(
     'Param',
     model.OASHeaderParameter,
@@ -226,7 +219,7 @@ def _resolve_parameter(
         # needed to determine proper content carried by the field
         # either schema or content will bet set, otherwise OAS is invalid
         schema = param_def.get('schema', None)
-        style = model.ParameterStyles[param_def.get(
+        style = model.OASParameterStyles[param_def.get(
             'style',
             param_in.default_style,
         )]
@@ -259,7 +252,7 @@ def _resolve_parameter(
             )
 
         if issubclass(param_in, model.OASHeaderParameter):
-            if param_name.lower() in ('content-type', 'accept', 'authorization'):
+            if param_name in model.OASReservedHeaders:
                 raise ValueError(
                     f'Header parameter name {param_name} is reserved thus invalid',
                 )
@@ -277,9 +270,8 @@ def _resolve_parameter(
                     f'Path parameter {param_name} must have required set to True',
                 )
             return model.OASPathParameter(
-                name=_convert_to_snake_case(param_name),
+                name=param_name,
                 example=example,
-                required=required,
                 explode=explode,
                 deprecated=deprecated,
                 schema=final_schema,
@@ -287,7 +279,7 @@ def _resolve_parameter(
         elif issubclass(param_in, model.OASQueryParameter):
             allow_reserved = bool(param_def.get('allowReserved', False))
             return model.OASQueryParameter(
-                name=_convert_to_snake_case(param_name),
+                name=param_name,
                 example=example,
                 required=required,
                 explode=explode,
@@ -304,7 +296,6 @@ def _resolve_parameter(
                 explode=explode,
                 deprecated=deprecated,
                 schema=final_schema,
-                allow_empty_value=allow_empty_value,
             )
         else:
             raise ValueError(
