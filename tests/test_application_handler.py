@@ -1,4 +1,3 @@
-import sys
 import typing as t
 
 from _pytest import logging
@@ -109,7 +108,7 @@ class TestAnalysisNoParameters:
         assert not spy.called
 
 
-class TestAnalysisHeaders:
+class TestHeaders:
     operations = parser._resolve_operations(
         components={},
         paths={
@@ -143,6 +142,7 @@ class TestAnalysisHeaders:
                         {
                             'name': 'X-Trace-Id',
                             'in': 'header',
+                            'required': True,
                             'schema': {
                                 'type': 'string',
                                 'format': 'uuid',
@@ -313,7 +313,7 @@ class TestAnalysisHeaders:
 
         assert len(err.value) == 1
         assert 'headers.accept' in err.value
-        assert repr(err.value['headers.accept']) == ('expected [str], but got int')
+        assert repr(err.value['headers.accept']) == 'expected [str], but got int'
 
     def test_no_oas_headers_typed_dict(
             self,
@@ -410,8 +410,11 @@ class TestAnalysisHeaders:
             accept: str
             x_trace_id: str
 
-        class FULL(One, Two, Three):
-            ...
+        class FULL(te.TypedDict):
+            content_type: str
+            accept: str
+            authorization: str
+            x_trace_id: str
 
         async def one(name: str, headers: One) -> None:
             ...
@@ -460,7 +463,7 @@ class TestAnalysisHeaders:
             caplog.clear()
 
 
-class TestAnalysisPathQuery:
+class TestPathQuery:
     operation = list(
         parser._resolve_operations(
             components={},
@@ -597,7 +600,7 @@ class TestAnalysisPathQuery:
                     'expected [typing.Optional[float]], but got '
                     'typing.Optional[typing.AbstractSet[bool]]'
                 )
-                assert repr(err.value[mismatch.param_name], ) == expected_msg
+                assert repr(err.value[mismatch.param_name]) == expected_msg
             elif mismatch.param_name == 'include_extra':
                 assert repr(
                     err.value[mismatch.param_name],

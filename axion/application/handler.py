@@ -260,7 +260,7 @@ def _analyze_headers(
         - With Mapping all reserved headers go in
         - With TypedDict we must see if users wants one of reserved headers
           Only reserved headers are allowed to be requested for.
-    4. function has "headers" argument and there are no custom OAS headers
+    4. function has "headers" argument and there are customer OAS headers
         - OK
         - With Mapping all reserved headers + OAS headers go in
         - With TypedDict allowed keys covers
@@ -271,25 +271,25 @@ def _analyze_headers(
     https://swagger.io/docs/specification/describing-parameters/#header-parameters
     """
     errors: t.Set[Error] = set()
-
-    sig_headers = signature.get('headers')
-    has_param_headers = len(parameters) > 0
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
-    if sig_headers is not None:
+    headers_arg = signature.get('headers')
+    has_param_headers = len(parameters) > 0
+
+    if headers_arg is not None:
         # pre-check type of headers param in signature
         # must be either TypedDict, Mapping or a subclass of those
-        is_mapping, is_any = _is_mapping(sig_headers)
+        is_mapping, is_any = _is_headers_arg_dict_like(headers_arg)
         if not (is_mapping or is_any):
             errors.add(
                 Error(
                     param_name='headers',
                     reason=IncorrectTypeReason(
-                        actual=sig_headers,
+                        actual=headers_arg,
                         expected=[
                             t.Mapping[str, t.Any],
-                            te.TypedDict,
                             t.Dict[str, t.Any],
+                            te.TypedDict,
                         ],
                     ),
                 ),
@@ -301,129 +301,189 @@ def _analyze_headers(
                 'axion will allow such declaration but be warned that '
                 'you will loose all the help linters (like mypy) offer.',
             )
-
-    if sig_headers is None and has_param_headers is None:
-        logger.opt(record=True).debug(
-            'No "headers" in signature and operation parameters',
-        )
-        return errors, param_mapping
-    elif sig_headers is None and has_param_headers:
-        logger.opt(record=True).warning(
-            '"headers" found in operation but not in signature. '
-            'Please double check that. axion cannot infer a correctness of '
-            'this situations. If you wish to access any "headers" defined in '
-            'specification, they have to be present in your handler '
-            'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
-            'or typing_extensions.TypedDict[str, typing.Any].',
-        )
-        return errors, param_mapping
-    elif sig_headers and has_param_headers is None:
-        logger.opt(
-            record=True,
-            lazy=True,
-        ).debug('"headers" found in signature but not in operation')
-        try:
-            # deal with typed dict, only reserved headers are allowed as dict
-            reserved_headers_keys = {
-                _get_f_param(rh): rh.lower()
-                for rh in specification.OASReservedHeaders
-            }
-            entries = t.get_type_hints(sig_headers).items()
-            if entries:
-                for sig_header_key, sig_header_type in entries:
-                    if sig_header_key not in reserved_headers_keys:
-                        logger.opt(record=True).error(
-                            '{sig_key} is not one of {reserved_headers} headers',
-                            sig_key=sig_header_key,
-                            reserved_headers=specification.OASReservedHeaders,
-                        )
-                        errors.add(
-                            Error(
-                                param_name=f'headers.{sig_header_key}',
-                                reason='unknown',
-                            ),
-                        )
-                    elif sig_header_type != str:
-                        errors.add(
-                            Error(
-                                param_name=f'headers.{sig_header_key}',
-                                reason=IncorrectTypeReason(
-                                    actual=sig_header_type,
-                                    expected=[str],
-                                ),
-                            ),
-                        )
-                    else:
-                        param_key = _get_f_param(sig_header_key)
-                        param_mapping[OAS_Param(
-                            param_in='header',
-                            param_name=reserved_headers_keys[param_key],
-                        )] = param_key
-            else:
-                raise TypeError('Not TypedDict to jump into exception below')
-        except TypeError:
-            # deal with mapping: in that case user will receive all
-            # reserved headers inside of the handler
-            for hdr in specification.OASReservedHeaders:
-                param_mapping[OAS_Param(
-                    param_in='header',
-                    param_name=hdr.lower(),
-                )] = _get_f_param(hdr)
+        if has_param_headers:
+            return _analyze_headers_signature_set_oas_set(
+                parameters=parameters,
+                headers_arg=headers_arg,
+            )
+        else:
+            return _analyze_headers_signature_set_oas_gone(headers_arg)
+    elif has_param_headers:
+        return _analyze_headers_signature_gone_oas_set()
     else:
-        logger.opt(record=True).debug('"headers" found both in signature and operation')
-        param_header_names = {_get_f_param(rh.name): rh.name.lower() for rh in parameters}
+        return _analyze_headers_signature_gone_oas_gone()
+
+
+def _analyze_headers_signature_gone_oas_gone() -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).debug('No "headers" in signature and operation parameters')
+    return set(), {}
+
+
+def _analyze_headers_signature_gone_oas_set() -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).warning(
+        '"headers" found in operation but not in signature. '
+        'Please double check that. axion cannot infer a correctness of '
+        'this situations. If you wish to access any "headers" defined in '
+        'specification, they have to be present in your handler '
+        'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
+        'or typing_extensions.TypedDict[str, typing.Any].',
+    )
+    return set(), {}
+
+
+def _analyze_headers_signature_set_oas_gone(
+        headers_arg: t.Any,
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(
+        record=True,
+        lazy=True,
+    ).debug('"headers" found in signature but not in operation')
+
+    errors: t.Set[Error] = set()
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
+    try:
+        # deal with typed dict, only reserved headers are allowed as dict
         reserved_headers_keys = {
             _get_f_param(rh): rh.lower()
             for rh in specification.OASReservedHeaders
         }
-        try:
-            entries = t.get_type_hints(sig_headers)
-            if entries:
-                sig_headers_keys = set(entries.keys())
-                for sig_header_key, oas_header_key in param_header_names.items():
-                    if sig_header_key not in sig_headers_keys:
-                        if sig_header_key not in reserved_headers_keys:
-                            logger.opt(record=True).error(
-                                '{sig_key} is not one of {reserved_headers} headers',
-                                sig_key=sig_header_key,
-                                reserved_headers=specification.OASReservedHeaders,
-                            )
-                            errors.add(
-                                Error(
-                                    param_name=f'headers.{sig_header_key}',
-                                    reason='unknown',
-                                ),
-                            )
-                        else:
-                            errors.add(
-                                Error(
-                                    param_name=f'headers.{sig_header_key}',
-                                    reason='missing',
-                                ),
-                            )
-                    else:
-                        param_mapping[OAS_Param(
-                            param_in='header',
-                            param_name=oas_header_key,
-                        )] = sig_header_key
-            else:
-                raise TypeError('Not TypedDict to jump into exception below')
-        except TypeError:
-            for reserved_hdr_key, reserved_hdr_value in reserved_headers_keys:
-                param_mapping[OAS_Param(
-                    param_in='header',
-                    param_name=reserved_hdr_value,
-                )] = reserved_hdr_key
-            for sig_header_key, oas_header_key in param_header_names.items():
-                param_mapping[OAS_Param(
-                    param_in='header',
-                    param_name=oas_header_key,
-                )] = sig_header_key
+        entries = t.get_type_hints(headers_arg).items()
+        if entries:
+            for hdr_param_name, hdr_param_type in entries:
+                if hdr_param_name not in reserved_headers_keys:
+                    logger.opt(record=True).error(
+                        '{sig_key} is not one of {reserved_headers} headers',
+                        sig_key=hdr_param_name,
+                        reserved_headers=specification.OASReservedHeaders,
+                    )
+                    errors.add(
+                        Error(
+                            param_name=f'headers.{hdr_param_name}',
+                            reason='unknown',
+                        ),
+                    )
+                elif hdr_param_type != str:
+                    errors.add(
+                        Error(
+                            param_name=f'headers.{hdr_param_name}',
+                            reason=IncorrectTypeReason(
+                                actual=hdr_param_type,
+                                expected=[str],
+                            ),
+                        ),
+                    )
+                else:
+                    param_key = _get_f_param(hdr_param_name)
+                    param_mapping[OAS_Param(
+                        param_in='header',
+                        param_name=reserved_headers_keys[param_key],
+                    )] = param_key
+        else:
+            raise TypeError(
+                'Not TypedDict to jump into exception below. '
+                'This is 3.6 compatibility action.',
+            )
+    except TypeError:
+        # deal with mapping: in that case user will receive all
+        # reserved headers inside of the handler
+        for hdr in specification.OASReservedHeaders:
+            param_mapping[OAS_Param(
+                param_in='header',
+                param_name=hdr.lower(),
+            )] = _get_f_param(hdr)
 
     return errors, param_mapping
 
 
-def _is_mapping(sig_headers: t.Any) -> t.Tuple[bool, bool]:
+def _analyze_headers_signature_set_oas_set(
+        parameters: t.Sequence[specification.OASParameter],
+        headers_arg: t.Any,
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).debug('"headers" found both in signature and operation')
+
+    errors: t.Set[Error] = set()
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
+    param_headers: t.Dict[F_Param, str] = {
+        _get_f_param(rh.name): rh.name
+        for rh in parameters
+    }
+    reserved_headers: t.Dict[F_Param, str] = {
+        _get_f_param(rh): rh
+        for rh in specification.OASReservedHeaders
+    }
+    all_headers_names = {**param_headers, **reserved_headers}
+
+    try:
+        entries = t.get_type_hints(headers_arg).items()
+        if entries:
+            for hdr_param_name, hdr_param_type in entries:
+                if hdr_param_name in all_headers_names:
+                    # now tricky part, for reserved headers we enforce str
+                    # for oas headers we do type check
+                    if hdr_param_name in reserved_headers and hdr_param_type != str:
+                        errors.add(
+                            Error(
+                                param_name=f'headers.{hdr_param_name}',
+                                reason=IncorrectTypeReason(
+                                    actual=hdr_param_type,
+                                    expected=[str],
+                                ),
+                            ),
+                        )
+                        continue
+                    elif hdr_param_name in param_headers:
+                        oas_param = next(
+                            filter(
+                                lambda p: p.name == param_headers[
+                                    _get_f_param(hdr_param_name)],
+                                parameters,
+                            ),
+                        )
+                        oas_param_type = _build_annotation_args(oas_param)
+                        if oas_param_type != hdr_param_type:
+                            errors.add(
+                                Error(
+                                    param_name=f'headers.{hdr_param_name}',
+                                    reason=IncorrectTypeReason(
+                                        actual=hdr_param_type,
+                                        expected=[str],
+                                    ),
+                                ),
+                            )
+                            continue
+
+                    param_mapping[OAS_Param(
+                        param_in='header',
+                        param_name=all_headers_names[_get_f_param(
+                            hdr_param_name,
+                        )].lower(),
+                    )] = _get_f_param(hdr_param_name)
+
+                else:
+                    errors.add(
+                        Error(
+                            param_name=f'headers.{hdr_param_name}',
+                            reason='missing',
+                        ),
+                    )
+        else:
+            raise TypeError(
+                'Not TypedDict to jump into exception below. '
+                'This is 3.6 compatibility action.',
+            )
+    except TypeError:
+        for hdr_param_name, hdr_param_type in all_headers_names.items():
+            param_mapping[OAS_Param(
+                param_in='header',
+                param_name=hdr_param_type.lower(),
+            )] = hdr_param_name
+
+    return errors, param_mapping
+
+
+def _is_headers_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
     maybe_name = getattr(sig_headers, '_name', None)
     maybe_supertype = getattr(sig_headers, '__supertype__', None)
     maybe_mro = getattr(sig_headers, '__mro__', None)
@@ -432,7 +492,7 @@ def _is_mapping(sig_headers: t.Any) -> t.Tuple[bool, bool]:
         return maybe_name in ('Mapping', 'Dict'), maybe_name.lower() == 'any'
     elif maybe_supertype:
         # typing.NewType
-        return _is_mapping(maybe_supertype)
+        return _is_headers_arg_dict_like(maybe_supertype)
     elif maybe_mro:
         for mro in inspect.getmro(sig_headers):
             if issubclass(mro, (dict, collections.abc.Mapping)):
@@ -501,7 +561,6 @@ def _analyze_path_query(
     return errors, param_mapping
 
 
-@functools.lru_cache(maxsize=10)
 def _build_annotation_args(param: specification.OASParameter) -> T:
     p_type = param.python_type
     p_required = param.required

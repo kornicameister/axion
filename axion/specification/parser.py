@@ -618,6 +618,7 @@ def _follow_ref(
         components: t.Dict[str, t.Any],
         ref: t.Optional[str] = None,
 ) -> t.Dict[str, t.Any]:
+    raw_schema: t.Dict[str, t.Any] = {}
     while ref is not None:
         _, component, name = ref.replace('#/', '').split('/')
         logger.opt(lazy=True).debug(
@@ -629,8 +630,8 @@ def _follow_ref(
         if '$ref' in raw_schema:
             ref = raw_schema['$ref']
         elif isinstance(raw_schema, dict):
-            return raw_schema
-    raise KeyError(f'No such ref={ref} exist')
+            break
+    return raw_schema
 
 
 def _response_code(val: str) -> model.OASResponseCode:

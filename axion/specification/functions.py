@@ -17,22 +17,19 @@ def operation_filter_parameters(
         operation: model.OASOperation,
         *types: model.OASParameterLocation,
 ) -> t.Sequence[model.OASParameter]:
-    if not (types and operation.parameters):
-        return list(operation.parameters)
-    else:
-        expected_types = tuple(
-            param_type for param_in, param_type in _PARAM_IN_TO_CLS_MAP.items()
-            if (param_in in types)
-        )
-        logger.opt(
-            record=True,
-            lazy=True,
-        ).debug(
-            'Filtering operation parameters by {expected_types}',
-            expected_types=lambda: expected_types,
-        )
+    expected_types = tuple(
+        param_type for param_in, param_type in _PARAM_IN_TO_CLS_MAP.items()
+        if (param_in in types)
+    )
+    logger.opt(
+        record=True,
+        lazy=True,
+    ).debug(
+        'Filtering operation parameters by {expected_types}',
+        expected_types=lambda: expected_types,
+    )
 
-        return list(filter(lambda p: isinstance(p, expected_types), operation.parameters))
+    return list(filter(lambda p: isinstance(p, expected_types), operation.parameters))
 
 
 def parameter_in(param: model.OASParameter) -> model.OASParameterLocation:
