@@ -67,7 +67,7 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
-class TestAnalysisNoParameters:
+class TestNoParameters:
     operation = list(
         parser._resolve_operations(
             components={},
@@ -295,8 +295,10 @@ class TestHeaders:
         assert 'headers.content_length' in err.value
         assert err.value['headers.content_length'] == 'unknown'
 
-    def test_no_oas_headers_typed_dict_bad_type(
+    @pytest.mark.parametrize('op_id', ('headers_op', 'no_headers_op'))
+    def test_typed_dict_bad_type(
             self,
+            op_id: str,
             caplog: logging.LogCaptureFixture,
     ) -> None:
         class Invalid(te.TypedDict):
@@ -308,7 +310,7 @@ class TestHeaders:
         with pytest.raises(handler.InvalidHandlerError) as err:
             handler._analyze(
                 goo,
-                next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+                next(filter(lambda op: op.id == op_id, self.operations)),
             )
 
         assert len(err.value) == 1
@@ -461,6 +463,27 @@ class TestHeaders:
 
             assert '"headers" found both in signature and operation' in caplog.messages
             caplog.clear()
+
+    def test_oas_headers_extra_header_typed_dict(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class Invalid(te.TypedDict):
+            user_agent: str
+            x_trace_id: str
+
+        async def goo(name: str, headers: Invalid) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                goo,
+                next(filter(lambda op: op.id == 'headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.user_agent' in err.value
+        assert err.value['headers.user_agent'] == 'unknown'
 
 
 class TestPathQuery:

@@ -465,7 +465,7 @@ def _analyze_headers_signature_set_oas_set(
                     errors.add(
                         Error(
                             param_name=f'headers.{hdr_param_name}',
-                            reason='missing',
+                            reason='unknown',
                         ),
                     )
         else:
