@@ -57,7 +57,7 @@ jobs:
           command: |
             eval "$(pyenv init -)"
             pyenv shell 3.6.8 3.7.4
-            tox -p auto -e py36-test,py37-test
+            tox
       - store_test_results:
           path: test-reports
       - store_artifacts:
