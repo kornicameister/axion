@@ -545,13 +545,7 @@ def _readable_t(val: T) -> str:
         the_name = str(tt)
         if 'typing.' in the_name:
             return the_name
-        else:
-            name: str = getattr(tt, '__qualname__', '')
-            if not name:
-                # there is no name via __qualname__
-                # might be that we are dealing with something from typing
-                name = repr(tt).replace('~', '')
-            return name
+        return t.cast(str, getattr(tt, '__qualname__', ''))
 
     if isinstance(val, tuple):
         last_type = val[-1]

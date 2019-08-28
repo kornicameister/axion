@@ -485,6 +485,26 @@ class TestHeaders:
         assert 'headers.user_agent' in err.value
         assert err.value['headers.user_agent'] == 'unknown'
 
+    def test_no_oas_headers_typed_dict_bad_type(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class Invalid(te.TypedDict):
+            x_trace_id: int
+
+        async def goo(name: str, headers: Invalid) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                goo,
+                next(filter(lambda op: op.id == 'headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.x_trace_id' in err.value
+        assert repr(err.value['headers.x_trace_id']) == 'expected [str], but got int'
+
 
 class TestPathQuery:
     operation = list(
