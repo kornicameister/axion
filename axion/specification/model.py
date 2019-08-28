@@ -480,7 +480,17 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
         self.deprecated = deprecated if deprecated is not None else False
 
     def __hash__(self) -> int:
-        return hash(self.name)
+        # class name determines the location of the parameter
+        # i.e. path, header, query, cookie
+        # parameters are unique by that fact
+        return hash((self.name, self.__class__.name))
+
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, OASParameter):
+            return (
+                self.name == other.name and self.__class__.name == other.__class__.name
+            )
+        return False
 
     @property
     def python_type(self) -> t.Type[t.Any]:

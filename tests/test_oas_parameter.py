@@ -33,6 +33,36 @@ def test_path_param_resolve() -> None:
     assert path.required
     assert path.example == 'Test'
 
+    cmp_path = model.OASPathParameter(
+        name='app_id',
+        schema=(
+            model.OASStringType(
+                default=None,
+                example=None,
+                nullable=None,
+                deprecated=None,
+                read_only=None,
+                write_only=None,
+                min_length=None,
+                max_length=None,
+                pattern=None,
+                format=None,
+            ),
+            model.OASParameterStyles['simple'],
+        ),
+        example='Test',
+        explode=True,
+        deprecated=False,
+    )
+
+    assert cmp_path == path
+
+    cmp_path.name = 'other'
+    assert not cmp_path == path
+    assert cmp_path != path
+
+    assert cmp_path != 'other'
+
 
 def test_path_param_path_required_false() -> None:
     param_def = {
