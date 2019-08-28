@@ -108,6 +108,209 @@ class TestNoParameters:
         assert not spy.called
 
 
+class TestCookies:
+    operations = parser._resolve_operations(
+        components={},
+        paths={
+            '/{name}': {
+                'parameters': [
+                    {
+                        'name': 'name',
+                        'in': 'path',
+                        'required': True,
+                        'schema': {
+                            'type': 'string',
+                        },
+                    },
+                ],
+                'post': {
+                    'operationId': 'no_cookies_op',
+                    'responses': {
+                        'default': {
+                            'description': 'fake',
+                        },
+                    },
+                },
+                'get': {
+                    'operationId': 'cookies_op',
+                    'responses': {
+                        'default': {
+                            'description': 'fake',
+                        },
+                    },
+                    'parameters': [
+                        {
+                            'in': 'cookie',
+                            'name': 'csrftoken',
+                            'required': True,
+                            'schema': {
+                                'type': 'string',
+                            },
+                        },
+                        {
+                            'in': 'cookie',
+                            'name': 'debug',
+                            'required': True,
+                            'schema': {
+                                'type': 'boolean',
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+    )
+
+    def test_signature_empty_on_oas_cookies(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str) -> None:
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'no_cookies_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert not hdrl.cookie_params
+        assert 'No "cookies" in signature and operation parameters' in caplog.messages
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Mapping[str, str],
+            t.Dict[str, str],
+            te.TypedDict(  # type: ignore
+                'Cookies', {
+                    'debug': bool,
+                    'csrftoken': str,
+                },
+            ),
+        ),
+    )
+    def test_signature_set_no_oas_cookies(
+            self,
+            the_type: t.Type[t.Any],
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                foo,
+                next(filter(lambda op: op.id == 'no_cookies_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'cookies' in err.value
+        assert err.value['cookies'] == 'unexpected'
+        assert '"cookies" found in signature but not in operation' in caplog.messages
+
+    def test_signature_empty_oas_cookies(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str) -> None:
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'cookies_op', self.operations)),
+        )
+
+        msg = (
+            '"cookies" found in operation but not in signature. '
+            'Please double check that. axion cannot infer a correctness of '
+            'this situations. If you wish to access any "cookies" defined in '
+            'specification, they have to be present in your handler '
+            'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
+            'or typing_extensions.TypedDict[str, typing.Any].'
+        )
+
+        assert hdrl.fn is foo
+        assert not hdrl.cookie_params
+        assert msg in caplog.messages
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Mapping[str, str],
+            t.Dict[str, str],
+            te.TypedDict(  # type: ignore
+                'Cookies', {
+                    'debug': bool,
+                    'csrftoken': str,
+                },
+            ),
+        ),
+    )
+    def test_signature_set_oas_cookies(
+            self,
+            the_type: t.Type[t.Any],
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'cookies_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert hdrl.cookie_params
+
+        assert ('csrftoken', 'csrftoken') in hdrl.cookie_params
+        assert ('debug', 'debug') in hdrl.cookie_params
+
+        assert '"cookies" found both in signature and operation' in caplog.messages
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.NamedTuple('Cookies', [('csrftoken', str), ('debug', bool)]),
+            int,
+            bool,
+            t.NewType('Cookies', int),
+            t.NewType('Cookies', bool),
+            t.List[str],
+            t.AbstractSet[str],
+            t.Set[str],
+        ),
+    )
+    @pytest.mark.parametrize(
+        'op_id',
+        (
+            'no_cookies_op',
+            'cookies_op',
+        ),
+    )
+    def test_invalid_cookies_type(
+            self,
+            op_id: str,
+            the_type: t.Type[t.Any],
+    ) -> None:
+        async def foo(name: str, headers: the_type) -> None:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                foo,
+                next(filter(lambda op: op.id == op_id, self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'cookies' in err.value
+        assert err.value['cookies'] == (
+            f'expected [typing.Mapping[str, typing.Any],'
+            f'typing.Dict[str,typing.Any],TypedDict] '
+            f', but got {handler._readable_t(the_type)}'
+        )
+
+
 class TestHeaders:
     operations = parser._resolve_operations(
         components={},
@@ -223,7 +426,7 @@ class TestHeaders:
         async def foo(name: str) -> None:
             ...
 
-        handler._analyze(
+        hdrl = handler._analyze(
             foo,
             next(filter(lambda op: op.id == 'headers_op', self.operations)),
         )
@@ -236,6 +439,9 @@ class TestHeaders:
             'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
             'or typing_extensions.TypedDict[str, typing.Any].'
         )
+
+        assert hdrl.fn is foo
+        assert not hdrl.header_params
         assert msg in caplog.messages
 
     def test_no_oas_headers_signature_empty(

@@ -50,6 +50,10 @@ class Handler(t.NamedTuple):
     def query_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('query')
 
+    @property
+    def cookie_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
+        return self._params('cookie')
+
     def _params(
             self,
             param_in: specification.OASParameterLocation,
@@ -74,7 +78,7 @@ class IncorrectTypeReason:
         return f'expected [{expected_str}], but got {actual_str}'
 
 
-Reason = t.Union[te.Literal['missing', 'unknown'], IncorrectTypeReason]
+Reason = t.Union[te.Literal['missing', 'unexpected', 'unknown'], IncorrectTypeReason]
 
 
 class Error(t.NamedTuple):
@@ -190,10 +194,15 @@ def _analyze(
             specification.operation_filter_parameters(operation, 'header'),
             signature,
         )
+        c_errors, c_params = _analyze_cookies(
+            specification.operation_filter_parameters(operation, 'cookie'),
+            signature,
+        )
 
-        errors.update(pq_errors, h_errors)
+        errors.update(pq_errors, h_errors, c_errors)
         param_mapping.update(pq_params)
         param_mapping.update(h_params)
+        param_mapping.update(c_params)
     else:
         logger.opt(
             lazy=True,
@@ -221,6 +230,175 @@ def _analyze(
     )
 
 
+def _analyze_cookies(
+        parameters: t.Sequence[specification.OASParameter],
+        signature: t.Dict[str, t.Any],
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    """Analyzes signature of the handler against the cookies.
+
+    axion supports defining cookies in signature using:
+    - typing_extensions.TypedDict
+    - typing.Mapping
+    - typing.Dict
+    - Any other type is rejected with appropriate error.
+
+    Also, when parsing the signature along with operation, following is taken
+    into account:
+    1. function does not have "cookies" argument and there are no custom OAS cookies
+        - OK
+    2. function has "cookies" argument and there no custom OAS cookies ->
+        - Error
+    3. function does not have "cookies" argument and there are custom OAS cookies
+        - Warning
+        - If there are custom cookies defined user ought to specify them
+          in signature. There was a point to put them inside there after all.
+          However they might be used by a middleware or something, not necessarily
+          handler. The warning is the only reliable thing to say.
+    4. function has "cookies" argument and there are customer OAS cookies
+        - OK
+        - With Mapping/Dict all parameters go as they are defined in operation
+        - With TypedDict allowed keys are only those defined in operation
+    """
+    cookies_arg = signature.get('cookies')
+    has_param_cookies = len(parameters) > 0
+
+    if cookies_arg is not None:
+        # pre-check type of headers param in signature
+        # must be either TypedDict, Mapping, Dict or a subclass of those
+        is_mapping, is_any = is_arg_dict_like(cookies_arg)
+        if not (is_mapping or is_any):
+            return {
+                Error(
+                    param_name='cookies',
+                    reason=IncorrectTypeReason(
+                        actual=cookies_arg,
+                        expected=[
+                            t.Mapping[str, t.Any],
+                            t.Dict[str, t.Any],
+                            te.TypedDict,
+                        ],
+                    ),
+                ),
+            }, {}
+        elif is_any:
+            logger.opt(record=True).warning(
+                'Detected usage of "cookies" declared as typing.Any. '
+                'axion will allow such declaration but be warned that '
+                'you will loose all the help linters (like mypy) offer.',
+            )
+        if has_param_cookies:
+            return _analyze_cookies_signature_set_oas_set(
+                parameters=parameters,
+                cookies_arg=cookies_arg,
+            )
+        else:
+            return _analyze_cookies_signature_set_oas_gone(cookies_arg)
+    elif has_param_cookies:
+        return _analyze_cookies_signature_gone_oas_set()
+    else:
+        return _analyze_cookies_signature_gone_oas_gone()
+
+
+def _analyze_cookies_signature_gone_oas_gone() -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).debug('No "cookies" in signature and operation parameters')
+    return set(), {}
+
+
+def _analyze_cookies_signature_gone_oas_set() -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).warning(
+        '"cookies" found in operation but not in signature. '
+        'Please double check that. axion cannot infer a correctness of '
+        'this situations. If you wish to access any "cookies" defined in '
+        'specification, they have to be present in your handler '
+        'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
+        'or typing_extensions.TypedDict[str, typing.Any].',
+    )
+    return set(), {}
+
+
+def _analyze_cookies_signature_set_oas_gone(
+        cookies_arg: t.Any,
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(
+        record=True,
+        lazy=True,
+    ).error('"cookies" found in signature but not in operation')
+    return {
+        Error(
+            param_name='cookies',
+            reason='unexpected',
+        ),
+    }, {}
+
+
+def _analyze_cookies_signature_set_oas_set(
+        parameters: t.Sequence[specification.OASParameter],
+        cookies_arg: t.Any,
+) -> t.Tuple[t.Set[Error], ParamMapping]:
+    logger.opt(record=True).debug('"cookies" found both in signature and operation')
+
+    errors: t.Set[Error] = set()
+    param_mapping: t.Dict[OAS_Param, F_Param] = {}
+
+    param_cookies: t.Dict[F_Param, str] = {
+        _get_f_param(rh.name): rh.name
+        for rh in parameters
+    }
+
+    try:
+        entries = t.get_type_hints(cookies_arg).items()
+        if entries:
+            for cookie_param_name, cookie_param_type in entries:
+                if cookie_param_name in param_cookies:
+
+                    oas_param = next(
+                        filter(
+                            lambda p: p.name == param_cookies[
+                                _get_f_param(cookie_param_name)],
+                            parameters,
+                        ),
+                    )
+                    oas_param_type = _build_annotation_args(oas_param)
+                    if oas_param_type != cookie_param_type:
+                        errors.add(
+                            Error(
+                                param_name=f'cookies.{cookie_param_name}',
+                                reason=IncorrectTypeReason(
+                                    actual=cookie_param_type,
+                                    expected=oas_param_type,
+                                ),
+                            ),
+                        )
+                    else:
+                        param_mapping[OAS_Param(
+                            param_in='cookie',
+                            param_name=param_cookies[_get_f_param(
+                                cookie_param_name,
+                            )].lower(),
+                        )] = _get_f_param(cookie_param_name)
+
+                else:
+                    errors.add(
+                        Error(
+                            param_name=f'headers.{cookie_param_name}',
+                            reason='unknown',
+                        ),
+                    )
+        else:
+            raise TypeError(
+                'Not TypedDict to jump into exception below. '
+                'This is 3.6 compatibility action.',
+            )
+    except TypeError:
+        for hdr_param_name, hdr_param_type in param_cookies.items():
+            param_mapping[OAS_Param(
+                param_in='cookie',
+                param_name=hdr_param_type.lower(),
+            )] = hdr_param_name
+
+    return errors, param_mapping
+
+
 def _analyze_headers(
         parameters: t.Sequence[specification.OASParameter],
         signature: t.Dict[str, t.Any],
@@ -230,13 +408,14 @@ def _analyze_headers(
     axion supports defining headers in signature using:
     - typing_extensions.TypedDict
     - typing.Mapping
+    - typing.Dict
     - Any other type is rejected with appropriate error.
 
     Also, when parsing the signature along with operation, following is taken
     into account:
-    1. function doest not have "headers" argument and there are no custom OAS headers
+    1. function does not have "headers" argument and there are no custom OAS headers
         - OK
-    2. function doest not have "headers" argument and there are custom OAS headers
+    2. function does not have "headers" argument and there are custom OAS headers
         - Warning
         - If there are custom headers defined user ought to specify them
           in signature. There was a point to put them inside there after all.
@@ -264,7 +443,7 @@ def _analyze_headers(
     if headers_arg is not None:
         # pre-check type of headers param in signature
         # must be either TypedDict, Mapping or a subclass of those
-        is_mapping, is_any = _is_headers_arg_dict_like(headers_arg)
+        is_mapping, is_any = is_arg_dict_like(headers_arg)
         if not (is_mapping or is_any):
             return {
                 Error(
@@ -467,7 +646,7 @@ def _analyze_headers_signature_set_oas_set(
     return errors, param_mapping
 
 
-def _is_headers_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
+def is_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
     maybe_name = getattr(sig_headers, '_name', '')
     if maybe_name.lower() == 'any':
         return False, True
@@ -479,7 +658,7 @@ def _is_headers_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
         return maybe_name in ('Mapping', 'Dict'), False
     elif maybe_supertype:
         # typing.NewType
-        return _is_headers_arg_dict_like(maybe_supertype)
+        return is_arg_dict_like(maybe_supertype)
     elif maybe_mro:
         for mro in maybe_mro:
             if issubclass(mro, (dict, collections.abc.Mapping)):
