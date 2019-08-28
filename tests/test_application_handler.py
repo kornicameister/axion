@@ -485,12 +485,27 @@ class TestHeaders:
         assert 'headers.user_agent' in err.value
         assert err.value['headers.user_agent'] == 'unknown'
 
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            int,
+            bool,
+            float,
+            bytes,
+            t.Dict[str, str],
+            t.AbstractSet[str],
+            t.AbstractSet[bool],
+            t.Set[int],
+            t.Sequence[t.Any],
+        ),
+    )
     def test_no_oas_headers_typed_dict_bad_type(
             self,
+            the_type: t.Type[t.Any],
             caplog: logging.LogCaptureFixture,
     ) -> None:
         class Invalid(te.TypedDict):
-            x_trace_id: int
+            x_trace_id: the_type  # type: ignore
 
         async def goo(name: str, headers: Invalid) -> None:
             ...
@@ -503,7 +518,9 @@ class TestHeaders:
 
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
-        assert repr(err.value['headers.x_trace_id']) == 'expected [str], but got int'
+        assert repr(
+            err.value['headers.x_trace_id'],
+        ) == f'expected [str], but got {handler._readable_t(the_type)}'
 
 
 class TestPathQuery:
