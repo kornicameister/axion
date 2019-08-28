@@ -1,9 +1,9 @@
-import sys
 import typing as t
 
 from _pytest import logging
 import pytest
 import pytest_mock as ptm
+import typing_extensions as te
 
 from axion.application import handler
 from axion.specification import model
@@ -67,7 +67,7 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
-class TestAnalysisNoParameters:
+class TestNoParameters:
     operation = list(
         parser._resolve_operations(
             components={},
@@ -86,7 +86,7 @@ class TestAnalysisNoParameters:
         ),
     )[0]
 
-    def test_it(
+    def test_empty_signature(
             self,
             mocker: ptm.MockFixture,
             caplog: logging.LogCaptureFixture,
@@ -94,7 +94,9 @@ class TestAnalysisNoParameters:
         async def foo() -> None:
             ...
 
-        spy = mocker.spy(handler, '_analyze_parameters')
+        spy = mocker.spy(handler, '_analyze_path_query')
+        mocker.Mock(handler, '_analyze_headers', return_value=(set(), False))
+
         handler._analyze(
             handler=foo,
             operation=self.operation,
@@ -106,7 +108,422 @@ class TestAnalysisNoParameters:
         assert not spy.called
 
 
-class TestAnalysisParameters:
+class TestHeaders:
+    operations = parser._resolve_operations(
+        components={},
+        paths={
+            '/{name}': {
+                'parameters': [
+                    {
+                        'name': 'name',
+                        'in': 'path',
+                        'required': True,
+                        'schema': {
+                            'type': 'string',
+                        },
+                    },
+                ],
+                'post': {
+                    'operationId': 'no_headers_op',
+                    'responses': {
+                        'default': {
+                            'description': 'fake',
+                        },
+                    },
+                },
+                'get': {
+                    'operationId': 'headers_op',
+                    'responses': {
+                        'default': {
+                            'description': 'fake',
+                        },
+                    },
+                    'parameters': [
+                        {
+                            'name': 'X-Trace-Id',
+                            'in': 'header',
+                            'required': True,
+                            'schema': {
+                                'type': 'string',
+                                'format': 'uuid',
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+    )
+
+    @pytest.mark.parametrize('variation', (0, 1))
+    def test_valid_headers_any_type(
+            self,
+            variation: int,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        if variation == 0:
+            Headers = t.Any
+        else:
+            Headers = t.NewType('Headers', t.Any)  # type: ignore
+
+        async def foo(name: str, headers: Headers) -> None:  # type: ignore
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert hdrl.header_params
+        msg = (
+            'Detected usage of "headers" declared as typing.Any. '
+            'axion will allow such declaration but be warned that '
+            'you will loose all the help linters (like mypy) offer.'
+        )
+        assert msg in caplog.messages
+
+    @pytest.mark.parametrize('variation', (0, 1, 2, 3, 4, 5))
+    def test_invalid_headers_type(
+            self,
+            variation: int,
+    ) -> None:
+        if variation == 0:
+            Headers = t.NamedTuple('Headers', [('test', int)])
+        elif variation == 1:
+            Headers = t.NewType('Headers', list)  # type: ignore
+        elif variation == 2:
+
+            class Base(t.NamedTuple):
+                test: int
+
+            class Headers(Base):  # type: ignore
+                ...
+        elif variation == 3:
+            Headers = t.NewType('Headers', bool)  # type: ignore
+        elif variation == 4:
+            Headers = t.AbstractSet[str]  # type: ignore
+        else:
+            Headers = t.List[str]  # type: ignore
+
+        async def foo(name: str, headers: Headers) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                foo,
+                next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+
+    def test_oas_headers_signature_empty(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str) -> None:
+            ...
+
+        handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'headers_op', self.operations)),
+        )
+
+        msg = (
+            '"headers" found in operation but not in signature. '
+            'Please double check that. axion cannot infer a correctness of '
+            'this situations. If you wish to access any "headers" defined in '
+            'specification, they have to be present in your handler '
+            'as either "typing.Dict[str, typing.Any]", "typing.Mapping[str, typing.Any]" '
+            'or typing_extensions.TypedDict[str, typing.Any].'
+        )
+        assert msg in caplog.messages
+
+    def test_no_oas_headers_signature_empty(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str) -> None:
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert not hdrl.header_params
+        assert 'No "headers" in signature and operation parameters' in caplog.messages
+
+    def test_no_oas_headers_mapping(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str, headers: t.Mapping[str, str]) -> None:
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert hdrl.header_params
+
+        assert ('accept', 'accept') in hdrl.header_params
+        assert ('authorization', 'authorization') in hdrl.header_params
+        assert ('content-type', 'content_type') in hdrl.header_params
+
+        assert '"headers" found in signature but not in operation' in caplog.messages
+
+    def test_no_oas_headers_typed_dict_unknown_header(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class EXTRA_INVALID(te.TypedDict):
+            content_length: str
+
+        async def extra_invalid(name: str, headers: EXTRA_INVALID) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                extra_invalid,
+                next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.content_length' in err.value
+        assert err.value['headers.content_length'] == 'unknown'
+
+    @pytest.mark.parametrize('op_id', ('headers_op', 'no_headers_op'))
+    def test_typed_dict_bad_type(
+            self,
+            op_id: str,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class Invalid(te.TypedDict):
+            accept: int
+
+        async def goo(name: str, headers: Invalid) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                goo,
+                next(filter(lambda op: op.id == op_id, self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.accept' in err.value
+        assert repr(err.value['headers.accept']) == 'expected [str], but got int'
+
+    def test_no_oas_headers_typed_dict(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class CT(te.TypedDict):
+            content_type: str
+
+        class AUTH(te.TypedDict):
+            authorization: str
+
+        class ACCEPT(te.TypedDict):
+            accept: str
+
+        class FULL(CT, AUTH, ACCEPT):
+            ...
+
+        async def content_type(name: str, headers: CT) -> None:
+            ...
+
+        async def auth(name: str, headers: AUTH) -> None:
+            ...
+
+        async def accept(name: str, headers: ACCEPT) -> None:
+            ...
+
+        async def full(name: str, headers: FULL) -> None:
+            ...
+
+        for fn in (accept, auth, content_type, full):
+            hdrl = handler._analyze(
+                fn,
+                next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+            )
+
+            assert hdrl.fn is fn
+            assert hdrl.header_params
+
+            if fn is content_type:
+                assert ('content-type', 'content_type') in hdrl.header_params
+
+                assert ('accept', 'accept') not in hdrl.header_params
+                assert ('authorization', 'authorization') not in hdrl.header_params
+            if fn is auth:
+                assert ('authorization', 'authorization') in hdrl.header_params
+
+                assert ('accept', 'accept') not in hdrl.header_params
+                assert ('content-type', 'content_type') not in hdrl.header_params
+            if fn is accept:
+                assert ('accept', 'accept') in hdrl.header_params
+
+                assert ('authorization', 'authorization') not in hdrl.header_params
+                assert ('content-type', 'content_type') not in hdrl.header_params
+            if fn is full:
+                assert ('accept', 'accept') in hdrl.header_params
+                assert ('authorization', 'authorization') in hdrl.header_params
+                assert ('content-type', 'content_type') in hdrl.header_params
+
+            assert '"headers" found in signature but not in operation' in caplog.messages
+            caplog.clear()
+
+    def test_oas_headers_signature_mapping(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str, headers: t.Mapping[str, str]) -> None:
+            ...
+
+        operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
+        hdrl = handler._analyze(foo, operation)
+
+        assert hdrl.fn is foo
+        assert hdrl.header_params
+
+        assert ('accept', 'accept') in hdrl.header_params
+        assert ('authorization', 'authorization') in hdrl.header_params
+        assert ('content-type', 'content_type') in hdrl.header_params
+        assert ('x-trace-id', 'x_trace_id') in hdrl.header_params
+        assert '"headers" found both in signature and operation' in caplog.messages
+
+    def test_oas_headers_signature_typed_dict(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class One(te.TypedDict):
+            content_type: str
+            x_trace_id: str
+
+        class Two(te.TypedDict):
+            authorization: str
+            x_trace_id: str
+
+        class Three(te.TypedDict):
+            accept: str
+            x_trace_id: str
+
+        class FULL(te.TypedDict):
+            content_type: str
+            accept: str
+            authorization: str
+            x_trace_id: str
+
+        async def one(name: str, headers: One) -> None:
+            ...
+
+        async def two(name: str, headers: Two) -> None:
+            ...
+
+        async def three(name: str, headers: Three) -> None:
+            ...
+
+        async def full(name: str, headers: FULL) -> None:
+            ...
+
+        operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
+        for fn in (one, two, three, full):
+            hdrl = handler._analyze(fn, operation)
+
+            assert hdrl.fn is fn
+            assert hdrl.header_params
+
+            if fn is one:
+                assert ('content-type', 'content_type') in hdrl.header_params
+                assert ('x-trace-id', 'x_trace_id') in hdrl.header_params
+
+                assert ('accept', 'accept') not in hdrl.header_params
+                assert ('authorization', 'authorization') not in hdrl.header_params
+            if fn is two:
+                assert ('authorization', 'authorization') in hdrl.header_params
+                assert ('x-trace-id', 'x_trace_id') in hdrl.header_params
+
+                assert ('accept', 'accept') not in hdrl.header_params
+                assert ('content-type', 'content_type') not in hdrl.header_params
+            if fn is three:
+                assert ('accept', 'accept') in hdrl.header_params
+                assert ('x-trace-id', 'x_trace_id') in hdrl.header_params
+
+                assert ('authorization', 'authorization') not in hdrl.header_params
+                assert ('content-type', 'content_type') not in hdrl.header_params
+            if fn is full:
+                assert ('accept', 'accept') in hdrl.header_params
+                assert ('x-trace-id', 'x_trace_id') in hdrl.header_params
+                assert ('authorization', 'authorization') in hdrl.header_params
+                assert ('content-type', 'content_type') in hdrl.header_params
+
+            assert '"headers" found both in signature and operation' in caplog.messages
+            caplog.clear()
+
+    def test_oas_headers_extra_header_typed_dict(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class Invalid(te.TypedDict):
+            user_agent: str
+            x_trace_id: str
+
+        async def goo(name: str, headers: Invalid) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                goo,
+                next(filter(lambda op: op.id == 'headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.user_agent' in err.value
+        assert err.value['headers.user_agent'] == 'unknown'
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            int,
+            bool,
+            float,
+            bytes,
+            t.Dict[str, str],
+            t.AbstractSet[str],
+            t.AbstractSet[bool],
+            t.Set[int],
+            t.Sequence[t.Any],
+        ),
+    )
+    def test_no_oas_headers_typed_dict_bad_type(
+            self,
+            the_type: t.Type[t.Any],
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        class Invalid(te.TypedDict):
+            x_trace_id: the_type  # type: ignore
+
+        async def goo(name: str, headers: Invalid) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                goo,
+                next(filter(lambda op: op.id == 'headers_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert 'headers.x_trace_id' in err.value
+        assert repr(
+            err.value['headers.x_trace_id'],
+        ) == f'expected [str], but got {handler._readable_t(the_type)}'
+
+
+class TestPathQuery:
     operation = list(
         parser._resolve_operations(
             components={},
@@ -188,7 +605,7 @@ class TestAnalysisParameters:
 
         assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
-        for key in ('id', 'limit', 'page', 'include_extra'):
+        for key in ('id', 'limit', 'page', 'includeExtra'):
             assert key in err.value
             assert err.value[key] == 'missing'
 
@@ -210,22 +627,8 @@ class TestAnalysisParameters:
         assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
-        assert repr(err.value['id']) == 'expected str, but got bool'
+        assert repr(err.value['id']) == 'expected [str], but got bool'
 
-    @pytest.mark.skipif(
-        sys.version_info < (3, 7),
-        reason=(
-            'This test case fails on 3.6 because typing signatures '
-            'look different in 3.6 than in 3.7. '
-            'This needs to be figured out in compatible way that '
-            'provides actual markup used by user without hiding types '
-            'carried in containers.'
-            ' '
-            'For example: '
-            'In 3.7 repr(typing.List[bool]) == "typing.List[bool]" '
-            'but in 3.6 that is "List"'
-        ),
-    )
     def test_signature_all_bad_type(self) -> None:
         async def foo(
                 id: float,
@@ -247,23 +650,24 @@ class TestAnalysisParameters:
             if mismatch.param_name == 'id':
                 assert repr(
                     err.value[mismatch.param_name],
-                ) == 'expected str, but got float'
+                ) == 'expected [str], but got float'
             elif mismatch.param_name == 'limit':
                 assert repr(
                     err.value[mismatch.param_name],
-                ) == 'expected typing.Optional[int], but got typing.Optional[float,int]'
+                ) == 'expected [typing.Optional[int]], but got typing.Optional[float,int]'
             elif mismatch.param_name == 'page':
-                assert repr(
-                    err.value[mismatch.param_name],
-                ) == (
-                    'expected typing.Optional[float], but got '
+                expected_msg = (
+                    'expected [typing.Optional[float]], but got '
                     'typing.Optional[typing.AbstractSet[bool]]'
                 )
+                assert repr(err.value[mismatch.param_name]) == expected_msg
             elif mismatch.param_name == 'include_extra':
                 assert repr(
                     err.value[mismatch.param_name],
-                ) == ('expected typing.Optional[bool], but got '
-                      'typing.Union[int,str]')
+                ) == (
+                    'expected [typing.Optional[bool]], but got '
+                    'typing.Union[int,str]'
+                )
 
     def test_signature_match(self) -> None:
         async def test_handler(
@@ -274,7 +678,10 @@ class TestAnalysisParameters:
         ) -> None:
             ...
 
-        handler._analyze(
+        hdrl = handler._analyze(
             handler=test_handler,
             operation=self.operation,
         )
+
+        assert len(hdrl.path_params) == 1
+        assert len(hdrl.query_params) == 3
