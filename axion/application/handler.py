@@ -75,18 +75,7 @@ class IncorrectTypeReason:
         return f'expected [{expected_str}], but got {actual_str}'
 
 
-class DuplicatedArgumentReason(t.NamedTuple):
-    first_found_in: specification.OASParameterLocation
-    duplicated_in: specification.OASParameterLocation
-
-    def __repr__(self) -> str:
-        return f'in {self.first_found_in} duplicated by {self.duplicated_in}'
-
-
-Reason = t.Union[te.Literal['missing', 'unknown'],
-                 DuplicatedArgumentReason,
-                 IncorrectTypeReason,
-                 ]
+Reason = t.Union[te.Literal['missing', 'unknown'], IncorrectTypeReason]
 
 
 class Error(t.NamedTuple):
@@ -529,23 +518,7 @@ def _analyze_path_query(
                     param_in=specification.parameter_in(op_param),
                     param_name=op_param.name,
                 )
-                if key not in param_mapping.values():
-                    param_mapping[key] = handler_param_name
-                else:
-                    errors.add(
-                        Error(
-                            param_name=op_param.name,
-                            reason=DuplicatedArgumentReason(
-                                first_found_in=next(
-                                    filter(
-                                        lambda pk: pk.param_name == op_param.name,
-                                        param_mapping.keys(),
-                                    ),
-                                ).param_in,
-                                duplicated_in=key.param_in,
-                            ),
-                        ),
-                    )
+                param_mapping[key] = handler_param_name
         except KeyError:
             errors.add(
                 Error(
