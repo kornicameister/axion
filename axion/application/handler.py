@@ -270,9 +270,6 @@ def _analyze_headers(
     See link bellow for information on reserved header
     https://swagger.io/docs/specification/describing-parameters/#header-parameters
     """
-    errors: t.Set[Error] = set()
-    param_mapping: t.Dict[OAS_Param, F_Param] = {}
-
     headers_arg = signature.get('headers')
     has_param_headers = len(parameters) > 0
 
@@ -281,7 +278,7 @@ def _analyze_headers(
         # must be either TypedDict, Mapping or a subclass of those
         is_mapping, is_any = _is_headers_arg_dict_like(headers_arg)
         if not (is_mapping or is_any):
-            errors.add(
+            return {
                 Error(
                     param_name='headers',
                     reason=IncorrectTypeReason(
@@ -293,8 +290,7 @@ def _analyze_headers(
                         ],
                     ),
                 ),
-            )
-            return errors, param_mapping
+            }, {}
         elif is_any:
             logger.opt(record=True).warning(
                 'Detected usage of "headers" declared as typing.Any. '
