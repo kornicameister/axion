@@ -2,7 +2,6 @@ import asyncio
 import collections
 import functools
 import importlib
-import inspect
 import re
 import sys
 import typing as t
@@ -469,17 +468,20 @@ def _analyze_headers_signature_set_oas_set(
 
 
 def _is_headers_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
-    maybe_name = getattr(sig_headers, '_name', None)
+    maybe_name = getattr(sig_headers, '_name', '')
+    if maybe_name.lower() == 'any':
+        return False, True
+
     maybe_supertype = getattr(sig_headers, '__supertype__', None)
     maybe_mro = getattr(sig_headers, '__mro__', None)
     if maybe_name:
         # raw typing.Dict or typing.Mapping
-        return maybe_name in ('Mapping', 'Dict'), maybe_name.lower() == 'any'
+        return maybe_name in ('Mapping', 'Dict'), False
     elif maybe_supertype:
         # typing.NewType
         return _is_headers_arg_dict_like(maybe_supertype)
     elif maybe_mro:
-        for mro in inspect.getmro(sig_headers):
+        for mro in maybe_mro:
             if issubclass(mro, (dict, collections.abc.Mapping)):
                 return True, False
     elif sys.version_info < (3, 7):
