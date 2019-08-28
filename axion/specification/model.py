@@ -2,10 +2,16 @@ import abc
 import enum
 import typing as t
 
+from multidict import istr
 import typing_extensions as te
 import yarl
 
 HTTPCode = t.NewType('HTTPCode', int)
+OASReservedHeaders = (
+    istr('Authorization'),
+    istr('Content-Type'),
+    istr('Accept'),
+)
 
 PTC = t.Type[t.Union[str,
                      float,
@@ -326,8 +332,8 @@ class OASFileType(OASType[None]):
         )
 
     @property
-    def python_type(self) -> t.Type[str]:
-        return str
+    def python_type(self) -> t.Type[bytes]:
+        return bytes
 
 
 @te.final
@@ -459,15 +465,32 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
             explode: t.Optional[bool],
             deprecated: t.Optional[bool],
     ) -> None:
+
+        if isinstance(schema, tuple):
+            _, style = schema
+            _explode = explode if explode is not None else style.name == 'form'
+        else:
+            _explode = False
+
         self.name = name
         self.schema = schema
         self.example = example
-        self.required = required
-        self.explode = explode
-        self.deprecated = deprecated
+        self.required = required if required is not None else False
+        self.explode = _explode
+        self.deprecated = deprecated if deprecated is not None else False
 
     def __hash__(self) -> int:
-        return hash(self.name)
+        # class name determines the location of the parameter
+        # i.e. path, header, query, cookie
+        # parameters are unique by that fact
+        return hash((self.name, self.__class__.name))
+
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, OASParameter):
+            return (
+                self.name == other.name and self.__class__.name == other.__class__.name
+            )
+        return False
 
     @property
     def python_type(self) -> t.Type[t.Any]:
@@ -484,6 +507,23 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 class OASPathParameter(OASParameter):
     default_style = 'simple'
     available_styles = {'simple', 'label', 'matrix'}
+
+    def __init__(
+            self,
+            name: str,
+            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+            example: t.Optional[t.Any],
+            explode: t.Optional[bool],
+            deprecated: t.Optional[bool],
+    ) -> None:
+        super().__init__(
+            name,
+            schema,
+            example,
+            required=True,
+            explode=explode,
+            deprecated=deprecated,
+        )
 
 
 @te.final
@@ -511,29 +551,24 @@ class OASQueryParameter(OASParameter):
             allow_empty_value: t.Optional[bool],
             allow_reserved: t.Optional[bool],
     ) -> None:
-        super().__init__(name, schema, example, required, explode, deprecated)
-        self.allow_empty_value = allow_empty_value
-        self.allow_reserved = allow_reserved
+        super().__init__(
+            name,
+            schema,
+            example,
+            required,
+            explode,
+            deprecated,
+        )
+        self.allow_empty_value = (
+            allow_empty_value if allow_empty_value is not None else False
+        )
+        self.allow_reserved = allow_reserved if allow_reserved is not None else False
 
 
 @te.final
 class OASCookieParameter(OASParameter):
-    __slots__ = ('allow_empty_value')
     default_style = 'form'
     available_styles = {'form'}
-
-    def __init__(
-            self,
-            name: str,
-            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
-            example: t.Optional[t.Any],
-            required: t.Optional[bool],
-            explode: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            allow_empty_value: t.Optional[bool],
-    ) -> None:
-        super().__init__(name, schema, example, required, explode, deprecated)
-        self.allow_empty_value = allow_empty_value
 
 
 @te.final
@@ -561,7 +596,8 @@ class OASParameterStyle:
         self.locations = locations
 
 
-ParameterStyles: t.Dict[str, OASParameterStyle] = {
+OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
+OASParameterStyles: t.Dict[str, OASParameterStyle] = {
     'form': OASParameterStyle(
         name='form',
         type={

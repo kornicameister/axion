@@ -9,11 +9,11 @@ from axion.specification import parser
 @pytest.mark.parametrize(
     'str_format,expected_cls',
     (
-        ('password', model.OASStringType),
+        ('', model.OASStringType),
         ('binary', model.OASFileType),
     ),
 )
-def test_oas_string_is_file(
+def test_oas_file(
         str_format: str,
         expected_cls: t.Type[t.Any],
 ) -> None:
@@ -21,3 +21,7 @@ def test_oas_string_is_file(
         parser._build_oas_string({'format': str_format}),
         expected_cls,
     )
+
+
+def test_oas_file_python_type() -> None:
+    assert bytes == parser._build_oas_string({'format': 'binary'}).python_type

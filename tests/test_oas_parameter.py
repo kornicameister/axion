@@ -6,35 +6,6 @@ from axion.specification import model
 from axion.specification import parser
 
 
-@pytest.mark.parametrize(
-    'param_name,param_in,expected_param_name',
-    (
-        ('appName', model.OASHeaderParameter, 'appName'),
-        ('appName', model.OASQueryParameter, 'app_name'),
-        ('appName', model.OASPathParameter, 'app_name'),
-        ('appName', model.OASCookieParameter, 'appName'),
-    ),
-)
-def test_param_snake_case(
-        param_name: str,
-        param_in: t.Type[t.Any],
-        expected_param_name: str,
-) -> None:
-    param_def = {
-        'required': True,
-        'schema': {
-            'type': 'string',
-        },
-    }
-    param = parser._resolve_parameter(
-        components={},
-        param_name=param_name,
-        param_def=param_def,
-        param_in=param_in,
-    )
-    assert param.name == expected_param_name
-
-
 def test_path_param_resolve() -> None:
     param_def = {
         'schema': {
@@ -55,12 +26,42 @@ def test_path_param_resolve() -> None:
     assert isinstance(path.schema, tuple)
 
     assert isinstance(path.schema[0], model.OASStringType)
-    assert path.schema[1] == model.ParameterStyles['simple']
+    assert path.schema[1] == model.OASParameterStyles['simple']
 
     assert path.explode
     assert path.deprecated
     assert path.required
     assert path.example == 'Test'
+
+    cmp_path = model.OASPathParameter(
+        name='app_id',
+        schema=(
+            model.OASStringType(
+                default=None,
+                example=None,
+                nullable=None,
+                deprecated=None,
+                read_only=None,
+                write_only=None,
+                min_length=None,
+                max_length=None,
+                pattern=None,
+                format=None,
+            ),
+            model.OASParameterStyles['simple'],
+        ),
+        example='Test',
+        explode=True,
+        deprecated=False,
+    )
+
+    assert cmp_path == path
+
+    cmp_path.name = 'other'
+    assert not cmp_path == path
+    assert cmp_path != path
+
+    assert cmp_path != 'other'
 
 
 def test_path_param_path_required_false() -> None:
@@ -104,7 +105,7 @@ def test_header_param_resolve() -> None:
     assert isinstance(header.schema, tuple)
 
     assert isinstance(header.schema[0], model.OASStringType)
-    assert header.schema[1] == model.ParameterStyles['simple']
+    assert header.schema[1] == model.OASParameterStyles['simple']
 
     assert header.explode
     assert header.deprecated
