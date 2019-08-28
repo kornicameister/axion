@@ -380,7 +380,7 @@ def _analyze_cookies_signature_set_oas_set(
                 else:
                     errors.add(
                         Error(
-                            param_name=f'headers.{cookie_param_name}',
+                            param_name=f'cookies.{cookie_param_name}',
                             reason='unknown',
                         ),
                     )
