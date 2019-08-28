@@ -293,7 +293,7 @@ class TestCookies:
             op_id: str,
             the_type: t.Type[t.Any],
     ) -> None:
-        async def foo(name: str, headers: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
