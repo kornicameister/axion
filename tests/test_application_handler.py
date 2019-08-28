@@ -304,9 +304,9 @@ class TestCookies:
 
         assert len(err.value) == 1
         assert 'cookies' in err.value
-        assert err.value['cookies'] == (
+        assert repr(err.value['cookies']) == (
             f'expected [typing.Mapping[str, typing.Any],'
-            f'typing.Dict[str,typing.Any],TypedDict] '
+            f'typing.Dict[str, typing.Any],TypedDict]'
             f', but got {handler._readable_t(the_type)}'
         )
 
