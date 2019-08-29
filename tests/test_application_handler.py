@@ -2,7 +2,6 @@ import typing as t
 
 from _pytest import logging
 import pytest
-import pytest_mock as ptm
 import typing_extensions as te
 
 from axion.application import handler
@@ -67,45 +66,85 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
-class TestNoParameters:
-    operation = list(
-        parser._resolve_operations(
-            components={},
-            paths={
-                '/{name}': {
-                    'post': {
-                        'operationId': 'TestAnalysisNoParameters',
-                        'responses': {
-                            'default': {
-                                'description': 'fake',
+def test_empty_handler_signature(caplog: logging.LogCaptureFixture) -> None:
+    async def foo() -> None:
+        ...
+
+    handler._build(
+        handler=foo,
+        operation=list(
+            parser._resolve_operations(
+                components={},
+                paths={
+                    '/{name}': {
+                        'post': {
+                            'operationId': 'TestAnalysisNoParameters',
+                            'responses': {
+                                'default': {
+                                    'description': 'fake',
+                                },
                             },
                         },
                     },
                 },
-            },
-        ),
-    )[0]
+            ),
+        )[0],
+    )
 
-    def test_empty_signature(
-            self,
-            mocker: ptm.MockFixture,
-            caplog: logging.LogCaptureFixture,
+    assert 'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
+
+
+def test_not_empty_signature(caplog: logging.LogCaptureFixture) -> None:
+    async def foo(
+            name: str,
+            foo: str,
+            bar: str,
+            lorem_ipsum: t.List[str],
     ) -> None:
-        async def foo() -> None:
-            ...
+        ...
 
-        spy = mocker.spy(handler, '_analyze_path_query')
-        mocker.Mock(handler, '_analyze_headers', return_value=(set(), False))
-
+    with pytest.raises(handler.InvalidHandlerError) as err:
         handler._build(
             handler=foo,
-            operation=self.operation,
+            operation=list(
+                parser._resolve_operations(
+                    components={},
+                    paths={
+                        '/{name}': {
+                            'parameters': [
+                                {
+                                    'name': 'name',
+                                    'in': 'path',
+                                    'required': True,
+                                    'schema': {
+                                        'type': 'string',
+                                    },
+                                },
+                            ],
+                            'post': {
+                                'operationId': 'Thor',
+                                'responses': {
+                                    'default': {
+                                        'description': 'fake',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ),
+            )[0],
         )
 
-        assert (
-            'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
-        )
-        assert not spy.called
+    assert len(err.value) == 3
+
+    assert err.value['foo'] == 'unexpected'
+    assert err.value['bar'] == 'unexpected'
+    assert err.value['lorem_ipsum'] == 'unexpected'
+
+    assert (
+        'Unconsumed arguments [foo, bar, lorem_ipsum] detected in Thor handler signature'
+        in caplog.messages
+    )
 
 
 class TestCookies:
