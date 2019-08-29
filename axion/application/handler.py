@@ -202,7 +202,7 @@ def _build(
         signature.pop('return')  # pragma: no cover
 
         if signature:
-            logger.debug(
+            logger.opt(record=True).error(
                 'Unconsumed arguments [{args}] detected in {op_id} handler signature',
                 op_id=operation.id,
                 args=', '.join(arg_key for arg_key in signature.keys()),
