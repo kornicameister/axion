@@ -17,3 +17,8 @@ def test_spec_mime_type_is_json(
         expected_json: bool,
 ) -> None:
     assert model.MimeType(raw_mime_type).is_json() == expected_json
+
+
+def test_mime_type_eq() -> None:
+    assert model.MimeType('application/json') == model.MimeType('application/json')
+    assert model.MimeType('application/json') != 'application/json'

@@ -242,6 +242,8 @@ def test_spec_render_complex_schema() -> None:
     assert not rings_make_one_op.deprecated
     assert rings_make_one_op.request_body
     assert rings_make_one_op.request_body.required
+    assert 'application/json' in rings_make_one_op.request_body
+    assert model.MimeType('application/json') in rings_make_one_op.request_body
     assert len(rings_make_one_op.responses) == 4
     assert 201 in rings_make_one_op.responses
     assert 404 in rings_make_one_op.responses
@@ -255,6 +257,8 @@ def test_spec_render_complex_schema() -> None:
     assert rings_put_one_op.deprecated
     assert rings_put_one_op.request_body
     assert rings_put_one_op.request_body.required
+    assert 'application/json' in rings_put_one_op.request_body
+    assert model.MimeType('application/json') in rings_put_one_op.request_body
     assert len(rings_put_one_op.responses) == 3
     assert 201 in rings_put_one_op.responses
     assert 204 in rings_put_one_op.responses
