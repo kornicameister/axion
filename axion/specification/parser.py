@@ -72,6 +72,10 @@ def _resolve_operations(
                     responses_dict=definition['responses'],
                     components=components,
                 ),
+                request_body=_resolve_request_body(
+                    request_body=definition.get('requestBody'),
+                    components=components,
+                ),
                 parameters=operation_parameters,
             )
             operations.add(operation)
@@ -82,6 +86,22 @@ def _resolve_operations(
             )
 
     return frozenset(operations)
+
+
+def _resolve_request_body(
+        request_body: t.Optional[t.Dict[str, t.Any]],
+        components: t.Dict[str, t.Any],
+) -> t.Optional[model.OASRequestBody]:
+    if not request_body:
+        return None
+
+    return model.OASRequestBody(
+        required=bool(request_body.get('required', False)),
+        content=_resolve_content(
+            components=components,
+            work_item=request_body,
+        ),
+    )
 
 
 def _resolve_responses(

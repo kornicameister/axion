@@ -74,6 +74,12 @@ OASParameters = t.FrozenSet['OASParameter']
 
 
 @te.final
+class OASRequestBody(t.NamedTuple):
+    content: OASContent
+    required: bool = False
+
+
+@te.final
 class OASResponse(t.NamedTuple):
     headers: t.FrozenSet['OASHeaderParameter']
     content: 'OASContent'
@@ -85,6 +91,7 @@ class OASOperation(t.NamedTuple):
     path: yarl.URL
     http_method: HTTPMethod
     deprecated: bool
+    request_body: t.Optional[OASRequestBody]
     responses: OASResponses
     parameters: OASParameters
 
