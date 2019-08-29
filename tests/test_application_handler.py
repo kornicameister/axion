@@ -97,7 +97,7 @@ class TestNoParameters:
         spy = mocker.spy(handler, '_analyze_path_query')
         mocker.Mock(handler, '_analyze_headers', return_value=(set(), False))
 
-        handler._analyze(
+        handler._build(
             handler=foo,
             operation=self.operation,
         )
@@ -168,7 +168,7 @@ class TestCookies:
         async def foo(name: str) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'no_cookies_op', self.operations)),
         )
@@ -199,7 +199,7 @@ class TestCookies:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 foo,
                 next(filter(lambda op: op.id == 'no_cookies_op', self.operations)),
             )
@@ -216,7 +216,7 @@ class TestCookies:
         async def foo(name: str) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'cookies_op', self.operations)),
         )
@@ -255,7 +255,7 @@ class TestCookies:
         async def foo(name: str, cookies: the_type) -> None:  # type: ignore
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'cookies_op', self.operations)),
         )
@@ -317,7 +317,7 @@ class TestCookies:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 foo,
                 next(filter(lambda op: op.id == 'cookies_op', self.operations)),
             )
@@ -350,7 +350,7 @@ class TestCookies:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 foo,
                 next(filter(lambda op: op.id == op_id, self.operations)),
             )
@@ -378,7 +378,7 @@ class TestCookies:
         async def foo(name: str, cookies: the_type) -> None:  # type: ignore
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'cookies_op', self.operations)),
         )
@@ -423,7 +423,7 @@ class TestCookies:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 foo,
                 next(filter(lambda op: op.id == 'cookies_op', self.operations)),
             )
@@ -496,7 +496,7 @@ class TestHeaders:
         async def foo(name: str, headers: the_type) -> None:  # type: ignore
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == op_id, self.operations)),
         )
@@ -537,7 +537,7 @@ class TestHeaders:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 foo,
                 next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
             )
@@ -551,7 +551,7 @@ class TestHeaders:
         async def foo(name: str) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'headers_op', self.operations)),
         )
@@ -576,7 +576,7 @@ class TestHeaders:
         async def foo(name: str) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
         )
@@ -592,7 +592,7 @@ class TestHeaders:
         async def foo(name: str, headers: t.Mapping[str, str]) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             foo,
             next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
         )
@@ -617,7 +617,7 @@ class TestHeaders:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 extra_invalid,
                 next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
             )
@@ -639,7 +639,7 @@ class TestHeaders:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 goo,
                 next(filter(lambda op: op.id == op_id, self.operations)),
             )
@@ -677,7 +677,7 @@ class TestHeaders:
             ...
 
         for fn in (accept, auth, content_type, full):
-            hdrl = handler._analyze(
+            hdrl = handler._build(
                 fn,
                 next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
             )
@@ -716,7 +716,7 @@ class TestHeaders:
             ...
 
         operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
-        hdrl = handler._analyze(foo, operation)
+        hdrl = handler._build(foo, operation)
 
         assert hdrl.fn is foo
         assert hdrl.header_params
@@ -763,7 +763,7 @@ class TestHeaders:
 
         operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
         for fn in (one, two, three, full):
-            hdrl = handler._analyze(fn, operation)
+            hdrl = handler._build(fn, operation)
 
             assert hdrl.fn is fn
             assert hdrl.header_params
@@ -807,7 +807,7 @@ class TestHeaders:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 goo,
                 next(filter(lambda op: op.id == 'headers_op', self.operations)),
             )
@@ -842,7 +842,7 @@ class TestHeaders:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 goo,
                 next(filter(lambda op: op.id == 'headers_op', self.operations)),
             )
@@ -914,7 +914,7 @@ class TestPathQuery:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 handler=foo,
                 operation=self.operation,
             )
@@ -929,7 +929,7 @@ class TestPathQuery:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 handler=foo,
                 operation=self.operation,
             )
@@ -950,7 +950,7 @@ class TestPathQuery:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 handler=foo,
                 operation=self.operation,
             )
@@ -970,7 +970,7 @@ class TestPathQuery:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._analyze(
+            handler._build(
                 handler=foo,
                 operation=self.operation,
             )
@@ -1009,7 +1009,7 @@ class TestPathQuery:
         ) -> None:
             ...
 
-        hdrl = handler._analyze(
+        hdrl = handler._build(
             handler=test_handler,
             operation=self.operation,
         )

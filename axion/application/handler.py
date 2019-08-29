@@ -136,7 +136,7 @@ class InvalidHandlerError(
 
 def make(operation: specification.OASOperation) -> Handler:
     logger.opt(record=True).info('Making user handler for op={op}', op=operation)
-    return _analyze(
+    return _build(
         _resolve(operation.id),
         operation,
     )
@@ -175,7 +175,7 @@ def _resolve(operation_id: specification.OASOperationId) -> F:
         return t.cast(F, function)
 
 
-def _analyze(
+def _build(
         handler: F,
         operation: specification.OASOperation,
 ) -> Handler:
