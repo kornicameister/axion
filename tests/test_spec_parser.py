@@ -229,6 +229,7 @@ def test_spec_render_complex_schema() -> None:
     assert rings_get_all_op.path == yarl.URL('/rings')
     assert rings_get_all_op.http_method == model.HTTPMethod.GET
     assert not rings_get_all_op.deprecated
+    assert not rings_get_all_op.request_body
     assert len(rings_get_all_op.responses) == 3
     assert 200 in rings_get_all_op.responses
     assert 400 in rings_get_all_op.responses
@@ -239,6 +240,10 @@ def test_spec_render_complex_schema() -> None:
     assert rings_make_one_op.path == yarl.URL('/rings')
     assert rings_make_one_op.http_method == model.HTTPMethod.POST
     assert not rings_make_one_op.deprecated
+    assert rings_make_one_op.request_body
+    assert rings_make_one_op.request_body.required
+    assert 'application/json' in rings_make_one_op.request_body
+    assert model.MimeType('application/json') in rings_make_one_op.request_body
     assert len(rings_make_one_op.responses) == 4
     assert 201 in rings_make_one_op.responses
     assert 404 in rings_make_one_op.responses
@@ -250,6 +255,10 @@ def test_spec_render_complex_schema() -> None:
     assert rings_put_one_op.path == yarl.URL('/rings/{ring_id}')
     assert rings_put_one_op.http_method == model.HTTPMethod.PUT
     assert rings_put_one_op.deprecated
+    assert rings_put_one_op.request_body
+    assert rings_put_one_op.request_body.required
+    assert 'application/json' in rings_put_one_op.request_body
+    assert model.MimeType('application/json') in rings_put_one_op.request_body
     assert len(rings_put_one_op.responses) == 3
     assert 201 in rings_put_one_op.responses
     assert 204 in rings_put_one_op.responses
@@ -260,6 +269,7 @@ def test_spec_render_complex_schema() -> None:
     assert rings_get_one_op.path == yarl.URL('/rings/{ring_id}')
     assert rings_get_one_op.http_method == model.HTTPMethod.GET
     assert not rings_get_one_op.deprecated
+    assert not rings_get_one_op.request_body
     assert len(rings_get_one_op.responses) == 7
     assert 200 in rings_get_one_op.responses
     assert 400 in rings_get_one_op.responses

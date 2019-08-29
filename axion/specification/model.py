@@ -62,7 +62,15 @@ class MimeType:
         return 'json' in self.subtype and self.type == 'application'
 
     def __hash__(self) -> int:
-        return hash(self.type + '/' + self.subtype)
+        return hash((self.type, self.subtype))
+
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, MimeType):
+            return (self.type, self.subtype) == (other.type, other.subtype)
+        return False
+
+    def __repr__(self) -> str:
+        return f'{self.type}/{self.subtype}'  # pragma: no cover
 
 
 OASContent = t.Mapping[MimeType, 'OASMediaType']
@@ -71,6 +79,32 @@ OASResponses = t.Mapping[OASResponseCode, 'OASResponse']
 OASOperationId = t.NewType('OASOperationId', str)
 OASOperations = t.FrozenSet['OASOperation']
 OASParameters = t.FrozenSet['OASParameter']
+
+
+@te.final
+class OASRequestBody(t.Mapping[t.Union[str, MimeType], 'OASMediaType']):
+    __slots__ = ('content', 'required')
+
+    def __init__(
+            self,
+            content: OASContent,
+            required: bool = False,
+    ) -> None:
+        self.content = content
+        self.required = required
+
+    def __getitem__(self, key: t.Union[str, MimeType]) -> 'OASMediaType':
+        if isinstance(key, str):
+            actual_key = MimeType(key)
+        else:
+            actual_key = key
+        return self.content[actual_key]
+
+    def __iter__(self) -> t.Iterator['OASMediaType']:  # type: ignore
+        return iter(mt for mt in self.content.values())  # pragma: no cover
+
+    def __len__(self) -> int:
+        return len(self.content)
 
 
 @te.final
@@ -85,6 +119,7 @@ class OASOperation(t.NamedTuple):
     path: yarl.URL
     http_method: HTTPMethod
     deprecated: bool
+    request_body: t.Optional[OASRequestBody]
     responses: OASResponses
     parameters: OASParameters
 
