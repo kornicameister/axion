@@ -365,7 +365,7 @@ def _analyze_cookies_signature_set_oas_set(
                                 param_name=f'cookies.{cookie_param_name}',
                                 reason=IncorrectTypeReason(
                                     actual=cookie_param_type,
-                                    expected=oas_param_type,
+                                    expected=[oas_param_type],
                                 ),
                             ),
                         )

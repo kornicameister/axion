@@ -269,6 +269,65 @@ class TestCookies:
         assert '"cookies" found both in signature and operation' in caplog.messages
 
     @pytest.mark.parametrize(
+        'the_type,expected_errors',
+        (
+            (
+                te.TypedDict('Cookies', csrftoken=bool, debug=bool),  # type: ignore
+                [
+                    (
+                        'csrftoken',
+                        'expected [str], but got bool',
+                    ),
+                ],
+            ),
+            (
+                te.TypedDict('Cookies', csrftoken=str, debug=int),  # type: ignore
+                [
+                    (
+                        'debug',
+                        'expected [bool], but got int',
+                    ),
+                ],
+            ),
+            (
+                te.TypedDict(  # type: ignore
+                    'Cookies',
+                    csrftoken=t.List[str],
+                    debug=t.List[int],
+                ),
+                [
+                    (
+                        'debug',
+                        'expected [bool], but got typing.List[int]',
+                    ),
+                    (
+                        'csrftoken',
+                        'expected [str], but got typing.List[str]',
+                    ),
+                ],
+            ),
+        ),
+    )
+    def test_signature_set_bad_oas_cookies_type_mismatch(
+            self,
+            the_type: t.Type[t.Any],
+            expected_errors: t.List[t.Tuple[str, str]],
+    ) -> None:
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                foo,
+                next(filter(lambda op: op.id == 'cookies_op', self.operations)),
+            )
+
+        assert len(err.value) == len(expected_errors)
+        for param_key, error_msg in expected_errors:
+            assert f'cookies.{param_key}' in err.value
+            assert repr(err.value[f'cookies.{param_key}']) == error_msg
+
+    @pytest.mark.parametrize(
         'the_type',
         (
             t.NamedTuple('Cookies', [('csrftoken', str), ('debug', bool)]),
@@ -281,13 +340,7 @@ class TestCookies:
             t.Set[str],
         ),
     )
-    @pytest.mark.parametrize(
-        'op_id',
-        (
-            'no_cookies_op',
-            'cookies_op',
-        ),
-    )
+    @pytest.mark.parametrize('op_id', ('no_cookies_op', 'cookies_op'))
     def test_invalid_cookies_type(
             self,
             op_id: str,
@@ -309,6 +362,75 @@ class TestCookies:
             f'typing.Dict[str, typing.Any],TypedDict]'
             f', but got {handler._readable_t(the_type)}'
         )
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Any,
+            t.NewType('Cookies', t.Any),  # type: ignore
+        ),
+    )
+    def test_valid_cookies_any_type(
+            self,
+            the_type: t.Type[t.Any],
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+            ...
+
+        hdrl = handler._analyze(
+            foo,
+            next(filter(lambda op: op.id == 'cookies_op', self.operations)),
+        )
+
+        assert hdrl.fn is foo
+        assert hdrl.cookie_params
+        assert len(hdrl.cookie_params) == 2
+        assert ('csrftoken', 'csrftoken') in hdrl.cookie_params
+        assert ('debug', 'debug') in hdrl.cookie_params
+        msg = (
+            'Detected usage of "cookies" declared as typing.Any. '
+            'axion will allow such declaration but be warned that '
+            'you will loose all the help linters (like mypy) offer.'
+        )
+        assert msg in caplog.messages
+
+    @pytest.mark.parametrize(
+        'the_type,extra_param',
+        (
+            (te.TypedDict(  # type: ignore
+                'Cookies', {
+                    'debug': bool,
+                    'csrftoken': str,
+                    'foo': int,
+                },
+            ), 'foo'),
+            (te.TypedDict(  # type: ignore
+                'Cookies', {
+                    'debug': bool,
+                    'csrftoken': str,
+                    'bar': int,
+                },
+            ), 'bar'),
+        ),
+    )
+    def test_signature_set_bad_oas_cookies_unkown(
+            self,
+            the_type: t.Type[t.Any],
+            extra_param: str,
+    ) -> None:
+        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._analyze(
+                foo,
+                next(filter(lambda op: op.id == 'cookies_op', self.operations)),
+            )
+
+        assert len(err.value) == 1
+        assert f'cookies.{extra_param}' in err.value
+        assert err.value[f'cookies.{extra_param}'] == 'unknown'
 
 
 class TestHeaders:
@@ -357,23 +479,26 @@ class TestHeaders:
         },
     )
 
-    @pytest.mark.parametrize('variation', (0, 1))
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Any,
+            t.NewType('Headers', t.Any),  # type: ignore
+        ),
+    )
+    @pytest.mark.parametrize('op_id', ('no_headers_op', 'headers_op'))
     def test_valid_headers_any_type(
             self,
-            variation: int,
+            the_type: t.Type[t.Any],
+            op_id: str,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        if variation == 0:
-            Headers = t.Any
-        else:
-            Headers = t.NewType('Headers', t.Any)  # type: ignore
-
-        async def foo(name: str, headers: Headers) -> None:  # type: ignore
+        async def foo(name: str, headers: the_type) -> None:  # type: ignore
             ...
 
         hdrl = handler._analyze(
             foo,
-            next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
+            next(filter(lambda op: op.id == op_id, self.operations)),
         )
 
         assert hdrl.fn is foo
