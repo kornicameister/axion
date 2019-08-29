@@ -186,18 +186,33 @@ def _build(
 
     if operation.parameters:
 
+        h_errors, h_params = _analyze_headers(
+            specification.operation_filter_parameters(operation, 'header'),
+            signature.pop('headers', None),
+        )
+        c_errors, c_params = _analyze_cookies(
+            specification.operation_filter_parameters(operation, 'cookie'),
+            signature.pop('cookies', None),
+        )
         pq_errors, pq_params = _analyze_path_query(
             specification.operation_filter_parameters(operation, 'path', 'query'),
             signature,
         )
-        h_errors, h_params = _analyze_headers(
-            specification.operation_filter_parameters(operation, 'header'),
-            signature,
-        )
-        c_errors, c_params = _analyze_cookies(
-            specification.operation_filter_parameters(operation, 'cookie'),
-            signature,
-        )
+
+        signature.pop('return')  # pragma: no cover
+
+        if signature:
+            logger.opt(record=True).error(
+                'Unconsumed arguments [{args}] detected in {op_id} handler signature',
+                op_id=operation.id,
+                args=', '.join(arg_key for arg_key in signature.keys()),
+            )
+            errors.update(
+                Error(
+                    param_name=arg_key,
+                    reason='unexpected',
+                ) for arg_key in signature.keys()
+            )
 
         errors.update(pq_errors, h_errors, c_errors)
         param_mapping.update(pq_params)
@@ -232,7 +247,7 @@ def _build(
 
 def _analyze_cookies(
         parameters: t.Sequence[specification.OASParameter],
-        signature: t.Dict[str, t.Any],
+        cookies_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     """Analyzes signature of the handler against the cookies.
 
@@ -259,7 +274,6 @@ def _analyze_cookies(
         - With Mapping/Dict all parameters go as they are defined in operation
         - With TypedDict allowed keys are only those defined in operation
     """
-    cookies_arg = signature.get('cookies')
     has_param_cookies = len(parameters) > 0
 
     if cookies_arg is not None:
@@ -401,7 +415,7 @@ def _analyze_cookies_signature_set_oas_set(
 
 def _analyze_headers(
         parameters: t.Sequence[specification.OASParameter],
-        signature: t.Dict[str, t.Any],
+        headers_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     """Analyzes signature of the handler against the headers.
 
@@ -437,7 +451,6 @@ def _analyze_headers(
     See link bellow for information on reserved header
     https://swagger.io/docs/specification/describing-parameters/#header-parameters
     """
-    headers_arg = signature.get('headers')
     has_param_headers = len(parameters) > 0
 
     if headers_arg is not None:
@@ -679,7 +692,7 @@ def _analyze_path_query(
     for op_param in parameters:
         try:
             handler_param_name = _get_f_param(op_param.name)
-            handler_param = signature[handler_param_name]
+            handler_param = signature.pop(handler_param_name)
 
             handler_param_args = getattr(handler_param, '__args__', handler_param)
             op_param_type_args = _build_annotation_args(op_param)
