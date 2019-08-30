@@ -87,3 +87,33 @@ def test_oas_mixed_type_build(
             mix_type.sub_schemas,
         ),
     ) == expected_schemas
+
+
+def test_oas_mixed_type_is_any() -> None:
+    mix_type = parse_type._build_oas_mix(
+        components={},
+        work_item={
+            'anyOf': [
+                {
+                    'type': 'string',
+                },
+                {
+                    'type': 'number',
+                },
+                {
+                    'type': 'integer',
+                },
+                {
+                    'type': 'boolean',
+                },
+                {
+                    'type': 'array',
+                    'items': {},
+                },
+                {
+                    'type': 'object',
+                },
+            ],
+        },
+    )
+    assert isinstance(mix_type, model.OASAnyType)

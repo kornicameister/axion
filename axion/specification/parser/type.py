@@ -60,7 +60,7 @@ def _build_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
 def _build_oas_mix(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-) -> model.OASMixedType[t.Any]:
+) -> t.Union[model.OASAnyType, model.OASMixedType[t.Any]]:
     def _handle_not(
             raw_mixed_schema_or_not: t.Dict[str, t.Any],
     ) -> t.Tuple[bool, model.OASType[t.Any]]:
@@ -70,25 +70,61 @@ def _build_oas_mix(
         else:
             return True, resolve(components, raw_mixed_schema_or_not)
 
-    mix_value: model.OASMixedType[t.Any]
-    for mix_key in ('allOf', 'anyOf', 'oneOf'):
-        maybe_mix_definition = work_item.get(mix_key, None)
-        if maybe_mix_definition is not None:
-            mix_kind = model.OASMixedType.Kind(mix_key)
-            mix_value = model.OASMixedType(
-                nullable=bool(work_item.get('nullable', False)),
-                read_only=bool(work_item.get('readOnly', False)),
-                write_only=bool(work_item.get('writeOnly', False)),
-                deprecated=bool(work_item.get('deprecated', False)),
-                default=work_item.get('default'),
-                example=work_item.get('example'),
-                kind=mix_kind,
-                sub_schemas=[
-                    _handle_not(mixed_type_schema)
-                    for mixed_type_schema in maybe_mix_definition
-                ],
-            )
-    return mix_value
+    def _resolve_common(
+            mix_kind: model.OASMixedType.Kind,
+            mix_definition: t.List[t.Dict[str, t.Any]],
+    ) -> model.OASMixedType[t.Any]:
+        return model.OASMixedType(
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
+            default=work_item.get('default'),
+            example=work_item.get('example'),
+            kind=mix_kind,
+            sub_schemas=[
+                _handle_not(mixed_type_schema) for mixed_type_schema in mix_definition
+            ],
+        )
+
+    def _resolve_any_of(
+            mix_kind: model.OASMixedType.Kind,
+            mix_definition: t.List[t.Dict[str, t.Any]],
+    ) -> t.Union[model.OASAnyType, model.OASMixedType[t.Any]]:
+        oas_types = set(
+            map(
+                lambda e: e['type'] if (len(e) <= 2 and 'type' in e) else None,
+                mix_definition,
+            ),
+        )
+        if oas_types == {
+                'string',
+                'number',
+                'integer',
+                'boolean',
+                'array',
+                'object',
+        }:
+            return _build_oas_any(work_item)
+        else:
+            return _resolve_common(mix_kind, mix_definition)
+
+    def _resolve_mix_key() -> str:
+        if 'anyOf' in work_item:
+            return 'anyOf'
+        elif 'oneOf' in work_item:
+            return 'oneOf'
+        return 'allOf'
+
+    resolvers = {
+        'anyOf': _resolve_any_of,
+        'oneOf': _resolve_common,
+        'allOf': _resolve_common,
+    }
+
+    mix_key = _resolve_mix_key()
+    mix_kind = model.OASMixedType.Kind(mix_key)
+    return resolvers[mix_key](mix_kind, work_item[mix_key])
 
 
 def _build_oas_array(
