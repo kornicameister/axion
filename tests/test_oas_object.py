@@ -3,7 +3,7 @@ import typing as t
 import pytest
 
 from axion.specification import model
-from axion.specification import parser
+from axion.specification.parser import type as parse_type
 
 
 @pytest.mark.parametrize(
@@ -34,14 +34,14 @@ def test_free_form(
         additional_properties: t.Union[bool, model.OASType[t.Any]],
         expected_result: bool,
 ) -> None:
-    assert parser._build_oas_object({}, {
+    assert parse_type._build_oas_object({}, {
         'additionalProperties': additional_properties,
         'properties': properties,
     }).is_free_form is expected_result
 
 
 def test_discriminator() -> None:
-    oas_object = parser._build_oas_object(
+    oas_object = parse_type._build_oas_object(
         {},
         {
             'discriminator': {
@@ -75,7 +75,7 @@ def test_discriminator_and__additional_properties(
         should_raise: bool,
 ) -> None:
     try:
-        parser._build_oas_object(
+        parse_type._build_oas_object(
             {},
             {
                 'discriminator': {
@@ -109,4 +109,4 @@ def test_discriminator_and__additional_properties(
 
 
 def test_correct_python_type() -> None:
-    assert issubclass(parser._build_oas_object({}, {}).python_type, dict)
+    assert issubclass(parse_type._build_oas_object({}, {}).python_type, dict)
