@@ -8,6 +8,7 @@ import yarl
 
 from axion.specification import exceptions
 from axion.specification import model
+from axion.specification.parser import ref
 
 
 def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
@@ -136,7 +137,7 @@ def _resolve_content(
     if '$ref' in work_item:
         return _resolve_content(
             components,
-            _follow_ref(components, work_item['$ref']),
+            ref.resolve(components, work_item['$ref']),
         )
     elif 'content' in work_item:
         work_item = work_item['content']
@@ -183,7 +184,7 @@ def _resolve_parameters(
                 'Parameter defined as $ref, following $ref={ref}',
                 ref=param['$ref'],
             )
-            param_def = _follow_ref(components, param['$ref'])
+            param_def = ref.resolve(components, param['$ref'])
         else:
             param_def = param
 
@@ -232,7 +233,7 @@ def _resolve_parameter(
         return _resolve_parameter(
             components=components,
             param_name=param_name,
-            param_def=_follow_ref(components, param_def['$ref']),
+            param_def=ref.resolve(components, param_def['$ref']),
             param_in=param_in,
         )
     else:
@@ -341,7 +342,7 @@ def _resolve_schema(
     if '$ref' in work_item:
         return _resolve_schema(
             components,
-            _follow_ref(components, work_item['$ref']),
+            ref.resolve(components, work_item['$ref']),
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
@@ -632,26 +633,6 @@ def _build_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
         default=default_value,
         example=example_value,
     )
-
-
-def _follow_ref(
-        components: t.Dict[str, t.Any],
-        ref: t.Optional[str] = None,
-) -> t.Dict[str, t.Any]:
-    raw_schema: t.Dict[str, t.Any] = {}
-    while ref is not None:
-        _, component, name = ref.replace('#/', '').split('/')
-        logger.opt(lazy=True).debug(
-            'Following ref component="{component}" with name="{name}"',
-            component=lambda: component,
-            name=lambda: name,
-        )
-        raw_schema = components[component][name]
-        if '$ref' in raw_schema:
-            ref = raw_schema['$ref']
-        elif isinstance(raw_schema, dict):
-            break
-    return raw_schema
 
 
 def _response_code(val: str) -> model.OASResponseCode:
