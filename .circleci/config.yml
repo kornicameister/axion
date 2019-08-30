@@ -58,6 +58,10 @@ jobs:
             eval "$(pyenv init -)"
             pyenv shell 3.6.8 3.7.4
             tox
+      - run:
+          name: Push annotations
+          command: |
+            curl -s https://report.ci/upload.py | python - --include='test-reports/*.xml' --framework=pytest
       - store_test_results:
           path: test-reports
       - store_artifacts:
