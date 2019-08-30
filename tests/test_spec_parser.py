@@ -1,12 +1,9 @@
 from pathlib import Path
-import typing as t
 
-import pytest
 import yarl
 
 from axion.specification import loader
 from axion.specification import model
-from axion.specification import parser
 
 
 def test_spec_render_complex_schema() -> None:
