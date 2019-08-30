@@ -3,7 +3,7 @@ import typing as t
 import pytest
 
 from axion.specification import model
-from axion.specification import parser
+from axion.specification.parser import type as parse_type
 
 
 @pytest.mark.parametrize(
@@ -72,7 +72,7 @@ def test_oas_mixed_type_build(
         in_mix: t.List[t.Dict[str, t.Any]],
         expected_schemas: t.List[t.Tuple[bool, t.Type[model.OASType[t.Any]]]],
 ) -> None:
-    mix_type = parser._build_oas_mix(
+    mix_type = parse_type._build_oas_mix(
         components={},
         work_item={
             mix_key: in_mix,

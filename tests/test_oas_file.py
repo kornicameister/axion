@@ -3,7 +3,7 @@ import typing as t
 import pytest
 
 from axion.specification import model
-from axion.specification import parser
+from axion.specification.parser import type as parse_type
 
 
 @pytest.mark.parametrize(
@@ -18,10 +18,10 @@ def test_oas_file(
         expected_cls: t.Type[t.Any],
 ) -> None:
     assert isinstance(
-        parser._build_oas_string({'format': str_format}),
+        parse_type._build_oas_string({'format': str_format}),
         expected_cls,
     )
 
 
 def test_oas_file_python_type() -> None:
-    assert bytes == parser._build_oas_string({'format': 'binary'}).python_type
+    assert bytes == parse_type._build_oas_string({'format': 'binary'}).python_type
