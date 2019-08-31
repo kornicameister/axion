@@ -210,17 +210,53 @@ class OASAnyType(OASType[t.Any]):
 
 
 @te.final
-class OASMixedType(OASType[V]):
-    __slots__ = (
-        'kind',
-        'sub_schemas',
-    )
+class OASOneOfType(PythonTypeCompatible):
+    __slots__ = 'schemas'
 
-    @enum.unique
-    class Kind(str, enum.Enum):
-        UNION = 'allOf'
-        EITHER = 'oneOf'
-        ANY = 'anyOf'
+    def __init__(
+            self,
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+    ) -> None:
+        self.schemas = schemas
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict  # pragma: no cover
+
+
+@te.final
+class OASAnyOfType(PythonTypeCompatible):
+    __slots__ = 'schemas'
+
+    def __init__(
+            self,
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+    ) -> None:
+        self.schemas = schemas
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict  # pragma: no cover
+
+
+@te.final
+class OASAllOfType(PythonTypeCompatible):
+    __slots__ = 'schemas'
+
+    def __init__(
+            self,
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+    ) -> None:
+        self.schemas = schemas
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict  # pragma: no cover
+
+
+@te.final
+class OASMixedType(OASType[V], PythonTypeCompatible):
+    __slots__ = ('mix', )
 
     def __init__(
             self,
@@ -230,8 +266,7 @@ class OASMixedType(OASType[V]):
             deprecated: t.Optional[bool],
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
-            kind: Kind,
-            sub_schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+            mix: t.Union[OASAllOfType, OASAnyOfType, OASOneOfType],
     ) -> None:
         super().__init__(
             default=default,
@@ -241,12 +276,15 @@ class OASMixedType(OASType[V]):
             read_only=read_only,
             write_only=write_only,
         )
-        self.kind = kind
-        self.sub_schemas = sub_schemas
+        self.mix = mix
 
     @property
-    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
-        return dict  # pragma: no cover
+    def schemas(self) -> t.List[t.Tuple[bool, OASType[t.Any]]]:
+        return self.mix.schemas
+
+    @property
+    def python_type(self) -> PTC:
+        return self.mix.python_type
 
 
 @te.final

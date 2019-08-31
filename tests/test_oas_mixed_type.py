@@ -2,6 +2,7 @@ import typing as t
 
 import pytest
 
+from axion.specification import exceptions
 from axion.specification import model
 from axion.specification.parser import type as parse_type
 
@@ -9,9 +10,9 @@ from axion.specification.parser import type as parse_type
 @pytest.mark.parametrize(
     'mix_key,mix_kind',
     (
-        ('oneOf', model.OASMixedType.Kind.EITHER),
-        ('allOf', model.OASMixedType.Kind.UNION),
-        ('anyOf', model.OASMixedType.Kind.ANY),
+        ('oneOf', model.OASOneOfType),
+        ('allOf', model.OASAllOfType),
+        ('anyOf', model.OASAnyOfType),
     ),
 )
 @pytest.mark.parametrize(
@@ -66,9 +67,13 @@ from axion.specification.parser import type as parse_type
     ),
     # yapf: enable
 )
-def test_oas_mixed_type_build(
+def test_build(
         mix_key: str,
-        mix_kind: model.OASMixedType.Kind,
+        mix_kind: t.Type[t.Union[model.OASAnyOfType,
+                                 model.OASAllOfType,
+                                 model.OASOneOfType,
+                                 ],
+                         ],
         in_mix: t.List[t.Dict[str, t.Any]],
         expected_schemas: t.List[t.Tuple[bool, t.Type[model.OASType[t.Any]]]],
 ) -> None:
@@ -79,17 +84,18 @@ def test_oas_mixed_type_build(
         },
     )
 
-    assert mix_type.kind == mix_kind
-    assert len(mix_type.sub_schemas) == len(in_mix)
+    assert isinstance(mix_type, model.OASMixedType)
+    assert isinstance(mix_type.mix, mix_kind)
+    assert len(mix_type.schemas) == len(in_mix)
     assert list(
         map(
             lambda v: (v[0], type(v[1])),
-            mix_type.sub_schemas,
+            mix_type.schemas,
         ),
     ) == expected_schemas
 
 
-def test_oas_mixed_type_is_any() -> None:
+def test_any_of_all_types_is_oas_any() -> None:
     mix_type = parse_type._build_oas_mix(
         components={},
         work_item={
@@ -117,3 +123,8 @@ def test_oas_mixed_type_is_any() -> None:
         },
     )
     assert isinstance(mix_type, model.OASAnyType)
+
+
+def test_all_of_impossible() -> None:
+    with pytest.raises(exceptions.OASConflict):
+        ...

@@ -17,7 +17,7 @@ def resolve(
         logger.opt(
             lazy=True,
             record=True,
-        ).debug(
+        ).trace(
             'Following reference {ref}',
             ref=lambda: work_item['$ref'],
         )
@@ -27,7 +27,10 @@ def resolve(
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
-        logger.opt(lazy=True).debug(
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).trace(
             'Resolving schema of type={type}',
             type=lambda: oas_type,
         )
@@ -61,54 +64,6 @@ def _build_oas_mix(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
 ) -> t.Union[model.OASAnyType, model.OASMixedType[t.Any]]:
-    def _handle_not(
-            raw_mixed_schema_or_not: t.Dict[str, t.Any],
-    ) -> t.Tuple[bool, model.OASType[t.Any]]:
-        negated = raw_mixed_schema_or_not.get('not', None)
-        if negated is not None:
-            return False, resolve(components, negated)
-        else:
-            return True, resolve(components, raw_mixed_schema_or_not)
-
-    def _resolve_common(
-            mix_kind: model.OASMixedType.Kind,
-            mix_definition: t.List[t.Dict[str, t.Any]],
-    ) -> model.OASMixedType[t.Any]:
-        return model.OASMixedType(
-            nullable=bool(work_item.get('nullable', False)),
-            read_only=bool(work_item.get('readOnly', False)),
-            write_only=bool(work_item.get('writeOnly', False)),
-            deprecated=bool(work_item.get('deprecated', False)),
-            default=work_item.get('default'),
-            example=work_item.get('example'),
-            kind=mix_kind,
-            sub_schemas=[
-                _handle_not(mixed_type_schema) for mixed_type_schema in mix_definition
-            ],
-        )
-
-    def _resolve_any_of(
-            mix_kind: model.OASMixedType.Kind,
-            mix_definition: t.List[t.Dict[str, t.Any]],
-    ) -> t.Union[model.OASAnyType, model.OASMixedType[t.Any]]:
-        oas_types = set(
-            map(
-                lambda e: e['type'] if (len(e) <= 2 and 'type' in e) else None,
-                mix_definition,
-            ),
-        )
-        if oas_types == {
-                'string',
-                'number',
-                'integer',
-                'boolean',
-                'array',
-                'object',
-        }:
-            return _build_oas_any(work_item)
-        else:
-            return _resolve_common(mix_kind, mix_definition)
-
     def _resolve_mix_key() -> str:
         if 'anyOf' in work_item:
             return 'anyOf'
@@ -118,13 +73,112 @@ def _build_oas_mix(
 
     resolvers = {
         'anyOf': _resolve_any_of,
-        'oneOf': _resolve_common,
-        'allOf': _resolve_common,
+        'oneOf': _resolve_one_of,
+        'allOf': _resolve_all_of,
     }
 
     mix_key = _resolve_mix_key()
-    mix_kind = model.OASMixedType.Kind(mix_key)
-    return resolvers[mix_key](mix_kind, work_item[mix_key])
+    return resolvers[mix_key](
+        components=components,
+        work_item=work_item,
+        mix_definition=work_item[mix_key],
+    )
+
+
+def _handle_any_one_all_of_not(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+) -> t.Tuple[bool, model.OASType[t.Any]]:
+    negated = work_item.get('not', None)
+    if negated is not None:
+        return False, resolve(components, negated)
+    else:
+        return True, resolve(components, work_item)
+
+
+def _resolve_one_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> model.OASMixedType[model.OASOneOfType]:
+    return model.OASMixedType(
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=work_item.get('default'),
+        example=work_item.get('example'),
+        mix=model.OASOneOfType(
+            schemas=[
+                _handle_any_one_all_of_not(
+                    components=components,
+                    work_item=mixed_type_schema,
+                ) for mixed_type_schema in mix_definition
+            ],
+        ),
+    )
+
+
+def _resolve_all_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> model.OASMixedType[model.OASAllOfType]:
+    return model.OASMixedType(
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=work_item.get('default'),
+        example=work_item.get('example'),
+        mix=model.OASAllOfType(
+            schemas=[
+                _handle_any_one_all_of_not(
+                    components=components,
+                    work_item=mixed_type_schema,
+                ) for mixed_type_schema in mix_definition
+            ],
+        ),
+    )
+
+
+def _resolve_any_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> t.Union[model.OASAnyType, model.OASMixedType[model.OASAnyOfType]]:
+    oas_types = set(
+        map(
+            lambda e: e['type'] if (len(e) <= 2 and 'type' in e) else None,
+            mix_definition,
+        ),
+    )
+    if oas_types == {
+            'string',
+            'number',
+            'integer',
+            'boolean',
+            'array',
+            'object',
+    }:
+        return _build_oas_any(work_item)
+    else:
+        return model.OASMixedType(
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
+            default=work_item.get('default'),
+            example=work_item.get('example'),
+            mix=model.OASAnyOfType(
+                schemas=[
+                    _handle_any_one_all_of_not(
+                        components=components,
+                        work_item=mixed_type_schema,
+                    ) for mixed_type_schema in mix_definition
+                ],
+            ),
+        )
 
 
 def _build_oas_array(
