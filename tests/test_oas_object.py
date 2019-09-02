@@ -63,7 +63,7 @@ def test_discriminator() -> None:
     )
     assert oas_object.discriminator
     assert oas_object.discriminator.property_name == 'petType'
-    assert oas_object.discriminator.mapping is None
+    assert not oas_object.discriminator.mapping
 
 
 @pytest.mark.parametrize(
