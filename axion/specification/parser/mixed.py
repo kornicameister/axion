@@ -186,10 +186,11 @@ def _merge_discriminator(
             )
         else:
             new_mapping: t.Dict[str, str] = {}
-            for prop_name in set(a.get('mapping', {}).keys()).union(b.get('mapping',
-                                                                          {}).keys()):
-                prop_a = a.get('mapping', {}).get(prop_name)
-                prop_b = b.get('mapping', {}).get(prop_name)
+            a_mapping = a.get('mapping', {})
+            b_mapping = b.get('mapping', {})
+            for prop_name in set(a_mapping.keys()).union(b_mapping.keys()):
+                prop_a = a_mapping.get(prop_name)
+                prop_b = b_mapping.get(prop_name)
 
                 if prop_a is not None and prop_b is not None:
                     if prop_a != prop_b:
