@@ -89,7 +89,6 @@ def _number(
         'deprecated': _get_value('deprecated', a.get('deprecated'), b.get('deprecated')),
         'readOnly': _get_value('readOnly', a.get('readOnly'), b.get('readOnly')),
         'writeOnly': _get_value('writeOnly', a.get('writeOnly'), b.get('writeOnly')),
-        'pattern': _get_value('pattern', a.get('pattern'), b.get('pattern')),
         'format': _get_value('format', a.get('format'), b.get('format')),
         'minimum': _get_value('minimum', a.get('minimum'), b.get('minimum')),
         'maximum': _get_value('maximum', a.get('maximum'), b.get('maximum')),

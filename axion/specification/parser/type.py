@@ -350,10 +350,10 @@ def _build_oas_string(
             pattern=pattern_value,
             min_length=min_length,
             max_length=max_length,
-            nullable=work_item.get('nullable'),
-            read_only=work_item.get('readOnly'),
-            write_only=work_item.get('writeOnly'),
-            deprecated=work_item.get('deprecated'),
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
             format=work_item.get('format'),
         )
 
@@ -366,8 +366,8 @@ def _build_oas_number(
 
     default_value: t.Optional[model.N] = None
     example_value: t.Optional[model.N] = None
-    minimum: t.Optional[model.N] = None
-    maximum: t.Optional[model.N] = None
+    minimum_value: t.Optional[model.N] = None
+    maximum_value: t.Optional[model.N] = None
 
     keys = ('default', 'example', 'minimum', 'maximum')
     for key in keys:
@@ -386,22 +386,22 @@ def _build_oas_number(
             elif key == 'example':
                 example_value = number_cls(key_value)
             elif key == 'minimum':
-                example_value = number_cls(key_value)
+                minimum_value = number_cls(key_value)
             elif key == 'maximum':
-                example_value = number_cls(key_value)
+                maximum_value = number_cls(key_value)
 
     if len(detected_types) == 2:
         raise exceptions.OASInvalidTypeValue(
-            f'type=number {", ".join(keys)} value must have the same type. '
-            f'Currently {len(keys)} distinct types were picked up',
+            f'type=number [{", ".join(keys)}] value must have the same type. '
+            f'Currently {len(detected_types)} distinct types were picked up',
         )
 
     return model.OASNumberType(
         number_cls=number_cls,
         default=default_value,
         example=example_value,
-        minimum=minimum,
-        maximum=maximum,
+        minimum=minimum_value,
+        maximum=maximum_value,
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
         write_only=bool(work_item.get('writeOnly', False)),

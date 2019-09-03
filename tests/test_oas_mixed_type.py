@@ -132,6 +132,44 @@ def test_all_of_more_than_one_type() -> None:
         )
 
 
+@pytest.mark.parametrize('oas_type', ('number', 'integer'))
+def test_all_of_integer(oas_type: str) -> None:
+    mix_type = parse_type.resolve(
+        components={},
+        work_item={
+            'default': 4 if oas_type == 'integer' else 4.0,
+            'allOf': [
+                {
+                    'minimum': 2 if oas_type == 'integer' else 2.0,
+                },
+                {
+                    'maximum': 10 if oas_type == 'integer' else 10.0,
+                },
+                {
+                    'multipleOf': 2 if oas_type == 'integer' else 2.0,
+                },
+                {
+                    'type': oas_type,
+                    'deprecated': False,
+                },
+            ],
+        },
+    )
+    assert isinstance(mix_type, model.OASNumberType)
+    assert issubclass(
+        mix_type.number_cls,
+        int if oas_type == 'integer' else float,
+    )
+
+    assert (2 if oas_type == 'integer' else 2.0) == mix_type.minimum
+    assert (10 if oas_type == 'integer' else 10.0) == mix_type.maximum
+
+    assert (4 if oas_type == 'integer' else 4.0) == mix_type.default
+    assert (2 if oas_type == 'integer' else 2.0) == mix_type.multiple_of
+
+    assert not mix_type.deprecated
+
+
 def test_all_of_object() -> None:
     mix_type = parse_type.resolve(
         components={},
@@ -198,7 +236,7 @@ def test_all_of_object() -> None:
 
     assert isinstance(mix_type.properties['fullName'], model.OASStringType)
     assert mix_type.properties['fullName'].write_only
-    assert mix_type.properties['fullName'].deprecated is None
+    assert not mix_type.properties['fullName'].deprecated
 
     assert isinstance(mix_type.properties['lastName'], model.OASStringType)
     assert mix_type.properties['lastName'].write_only
