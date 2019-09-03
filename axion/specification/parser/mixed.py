@@ -175,13 +175,7 @@ def _merge_discriminator(
         a: t.Optional[t.Dict[str, t.Any]] = None,
         b: t.Optional[t.Dict[str, t.Any]] = None,
 ) -> t.Optional[t.Dict[str, t.Any]]:
-    if a is None and b is None:
-        return None
-    elif a is None and b is not None:
-        return copy.deepcopy(b)
-    elif a is not None and b is None:
-        return copy.deepcopy(a)
-    elif a is not None and b is not None:
+    if a is not None and b is not None:
         if a['propertyName'] != b['propertyName']:
             raise exceptions.OASConflict(
                 f'discriminator.propertyName value differs between mixed schemas. '
@@ -220,8 +214,11 @@ def _merge_discriminator(
             'propertyName': copy.copy(a['propertyName']),
             'mapping': new_mapping,
         }
-    else:
-        raise Exception('Should not happen')  # pragma: no cover
+    elif a is None and b is not None:
+        return copy.deepcopy(b)
+    elif a is not None and b is None:
+        return copy.deepcopy(a)
+    return None
 
 
 def _merge_object_additional_properties(
@@ -267,13 +264,7 @@ def _merge_object_properties(
         a: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
         b: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
 ) -> t.Optional[t.Dict[str, t.Dict[str, t.Any]]]:
-    if a is None and b is None:
-        return None
-    elif a is None and b is not None:
-        return copy.deepcopy(b)
-    elif a is not None and b is None:
-        return copy.deepcopy(a)
-    elif a is not None and b is not None:
+    if a is not None and b is not None:
         new_properties: t.Dict[str, t.Dict[str, t.Any]] = {}
 
         for prop_name in set(a.keys()).union(b.keys()):
@@ -310,8 +301,11 @@ def _merge_object_properties(
                     raise Exception('Should not happen')  # pragma: no cover
 
         return new_properties
-    else:
-        raise Exception('Should not happen')  # pragma: no cover
+    elif a is None and b is not None:
+        return copy.deepcopy(b)
+    elif a is not None and b is None:
+        return copy.deepcopy(a)
+    return None
 
 
 def _get_value(
@@ -319,7 +313,7 @@ def _get_value(
         a: t.Optional[V],
         b: t.Optional[V],
 ) -> t.Optional[V]:
-    if (a, b) == (None, None):
+    if a is None and b is None:
         return None
     elif a is None and b is not None:
         return copy.deepcopy(b)
