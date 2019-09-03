@@ -138,7 +138,7 @@ def test_all_of_integer(oas_type: str) -> None:
         components={},
         work_item={
             'default': 4 if oas_type == 'integer' else 4.0,
-            'example': 2.0 if oas_type == 'integer' else 2.0,
+            'example': 2 if oas_type == 'integer' else 2.0,
             'allOf': [
                 {
                     'minimum': 2 if oas_type == 'integer' else 2.0,
