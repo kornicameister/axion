@@ -117,10 +117,12 @@ def _resolve_all_of(
     # - https://json-schema.org/understanding-json-schema/reference/combining.html#allof
     # pick the type and go with normal resolution along with
     # merging the resolved models
-    resolved_mix_def = list(map(
-        lambda mx: ref.resolve(components, mx['$ref']) if '$ref' in mx else mx,
-        mix_definition,
-    ))
+    resolved_mix_def = list(
+        map(
+            lambda mx: ref.resolve(components, mx['$ref']) if '$ref' in mx else mx,
+            mix_definition,
+        ),
+    )
     schema_types: t.Set[str] = set(
         filter(
             lambda mx: mx is not None,
@@ -139,27 +141,22 @@ def _resolve_all_of(
     logger.opt(
         record=True,
         lazy=True,
-    ).debug(
+    ).trace(
         'allOf resolves into type: {oas_type}',
         oas_type=lambda: oas_type,
     )
 
-    resolvers = {
-        'number': functools.partial(_build_oas_number, float),
-        'integer': functools.partial(_build_oas_number, int),
-        'boolean': _build_oas_boolean,
-        'string': _build_oas_string,
-        'array': functools.partial(_build_oas_array, components),
-        'object': functools.partial(_build_oas_object, components),
-    }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType[t.Any]]]
-
-    all_of = resolvers[oas_type](work_item)
+    all_of = mixed.merge(oas_type, {}, work_item)
     for sub_schema in resolved_mix_def:
         all_of = mixed.merge(
+            oas_type,
             all_of,
-            resolvers[oas_type](sub_schema),
+            sub_schema,
         )
-    return all_of
+    return resolve(
+        components=components,
+        work_item=all_of,
+    )
 
 
 def _resolve_any_of(
@@ -241,12 +238,13 @@ def _build_oas_object(
         raw_additional_properties = work_item.get(
             'additionalProperties',
             True,
-        )  # type: t.Union[bool, t.Dict[str, t.Any]]
-
-        if not isinstance(raw_additional_properties, bool):
+        )  # type: t.Optional[t.Union[bool, t.Dict[str, t.Any]]]
+        if raw_additional_properties is None:
+            value = True  # type: t.Union[bool, model.OASType[t.Any]]
+        elif not isinstance(raw_additional_properties, bool):
             # it may either be an empty dict or schema
             if len(raw_additional_properties) == 0:
-                value = True  # type: t.Union[bool, model.OASType[t.Any]]
+                value = True
             else:
                 value = resolve(
                     components,
