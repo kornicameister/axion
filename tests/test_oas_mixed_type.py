@@ -292,6 +292,59 @@ def test_all_of_object_with_ref() -> None:
     assert isinstance(mix_type.properties['isMighty'], model.OASBooleanType)
 
 
+def test_all_of_object_ref_properties() -> None:
+    mix_type = parse_type.resolve(
+        components={
+            'schemas': {
+                'Weight': {
+                    'type': 'number',
+                    'example': 15.0,
+                    'format': 'kilogram',
+                },
+                'Mighty': {
+                    'type': 'boolean',
+                    'example': True,
+                },
+                'Hammer': {
+                    'type': 'object',
+                    'required': ['weight'],
+                    'properties': {
+                        'weight': {
+                            '$ref': '#/components/schemas/Weight',
+                        },
+                    },
+                },
+            },
+        },
+        work_item={
+            'allOf': [
+                {
+                    '$ref': '#/components/schemas/Hammer',
+                },
+                {
+                    'properties': {
+                        'isMighty': {
+                            '$ref': '#/components/schemas/Mighty',
+                        },
+                        'weight': {
+                            '$ref': '#/components/schemas/Weight',
+                        },
+                    },
+                },
+            ],
+        },
+    )
+
+    assert isinstance(mix_type, model.OASObjectType)
+    assert 2 == len(mix_type.properties)
+
+    assert 'weight' in mix_type.properties
+    assert isinstance(mix_type.properties['weight'], model.OASNumberType)
+
+    assert 'isMighty' in mix_type.properties
+    assert isinstance(mix_type.properties['isMighty'], model.OASBooleanType)
+
+
 def test_all_of_array() -> None:
     mix_type = parse_type.resolve(
         components={
