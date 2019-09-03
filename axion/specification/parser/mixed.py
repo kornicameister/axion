@@ -190,13 +190,8 @@ def _merge_discriminator(
                                                                           {}).keys()):
                 prop_a = a.get('mapping', {}).get(prop_name)
                 prop_b = b.get('mapping', {}).get(prop_name)
-                if prop_a is None and prop_b is None:
-                    continue
-                elif prop_a is None and prop_b is not None:
-                    new_mapping[prop_name] = copy.deepcopy(prop_b)
-                elif prop_a is not None and prop_b is None:
-                    new_mapping[prop_name] = copy.deepcopy(prop_a)
-                elif prop_a is not None and prop_b is not None:
+
+                if prop_a is not None and prop_b is not None:
                     if prop_a != prop_b:
                         raise exceptions.OASConflict(
                             f'discriminator.mapping["{prop_name}"] value differs '
@@ -208,8 +203,11 @@ def _merge_discriminator(
                         )
                     else:
                         new_mapping[prop_name] = copy.deepcopy(prop_a)
-                else:
-                    raise Exception('Should not happen')  # pragma: no cover
+                elif prop_a is None and prop_b is not None:
+                    new_mapping[prop_name] = copy.deepcopy(prop_b)
+                elif prop_a is not None and prop_b is None:
+                    new_mapping[prop_name] = copy.deepcopy(prop_a)
+
         return {
             'propertyName': copy.copy(a['propertyName']),
             'mapping': new_mapping,
@@ -233,7 +231,7 @@ def _merge_object_additional_properties(
         return copy.deepcopy(b)
 
     if isinstance(a, bool) and isinstance(b, bool):
-        return t.cast(bool, _get_value('additionalProperties', a, b))
+        return _get_value('additionalProperties', a, b)
     elif isinstance(a, dict) and isinstance(b, dict):
         oas_type_ref = _get_value(
             'additionalProperties.$ref',
