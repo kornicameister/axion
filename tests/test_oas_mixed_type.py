@@ -883,6 +883,30 @@ def test_all_of_object_discriminator_prop_name(
             assert mix_type.discriminator is None
 
 
+@pytest.mark.parametrize(
+    'm_1,m_2,should_raise',
+    (
+        (None, None, False),
+        (
+            {},
+            {},
+            False,
+        ),
+        (
+            {},
+            None,
+            False,
+        ),
+    ),
+)
+def test_all_of_object_discriminator_mapping(
+        m_1: t.Optional[t.Dict[str, t.Any]],
+        m_2: t.Optional[t.Dict[str, t.Any]],
+        should_raise: bool,
+) -> None:
+    ...
+
+
 def test_all_of_array() -> None:
     mix_type = parse_type.resolve(
         components={
