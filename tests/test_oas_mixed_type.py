@@ -739,6 +739,150 @@ def test_all_of_object_additional_properties(
             raise AssertionError('This should not happen')
 
 
+@pytest.mark.parametrize(
+    'p_1,p_2,should_raise',
+    (
+        (
+            {
+                'discriminator': {
+                    'propertyName': 'petType',
+                },
+            },
+            {
+                'discriminator': {
+                    'propertyName': 'petType',
+                },
+            },
+            False,
+        ),
+        (
+            {
+                'discriminator': {
+                    'propertyName': 'petType',
+                },
+            },
+            {
+                'discriminator': {
+                    'propertyName': 'somethingElse',
+                },
+            },
+            True,
+        ),
+        (
+            {
+                'discriminator': {
+                    'propertyName': 'petType',
+                },
+            },
+            None,
+            False,
+        ),
+        (
+            None,
+            {
+                'discriminator': {
+                    'propertyName': 'petType',
+                },
+            },
+            False,
+        ),
+        (
+            None,
+            None,
+            False,
+        ),
+    ),
+)
+def test_all_of_object_discriminator_prop_name(
+        p_1: t.Optional[t.Dict[str, t.Any]],
+        p_2: t.Optional[t.Dict[str, t.Any]],
+        should_raise: bool,
+) -> None:
+    def _do() -> t.Any:
+        return parse_type.resolve(
+            components={
+                'schemas': {
+                    'Pet': {
+                        **(p_1 or {}),
+                        **{
+                            'type': 'object',
+                            'properties': {
+                                'name': {
+                                    'type': 'string',
+                                },
+                                'petType': {
+                                    'type': 'string',
+                                },
+                            },
+                            'required': ['name', 'petType'],
+                        },
+                    },
+                },
+            },
+            work_item={
+                'allOf': [
+                    {
+                        '$ref': '#/components/schemas/Pet',
+                    },
+                    {
+                        **(p_2 or {}),
+                        **{
+                            'properties': {
+                                'packSize': {
+                                    'type': 'integer',
+                                    'format': 'int32',
+                                    'description': 'the size of the pack the dog is from',
+                                    'default': 0,
+                                    'minimum': 0,
+                                },
+                            },
+                            'required': [
+                                'packSize',
+                            ],
+                        },
+                    },
+                ],
+            },
+        )
+
+    if should_raise:
+        with pytest.raises(exceptions.OASConflict) as err:
+            _do()
+        if p_1 and p_2:
+            assert (
+                f'discriminator.propertyName value differs between mixed schemas. '
+                f'a={p_1["discriminator"]["propertyName"]} '
+                f'!= b={p_2["discriminator"]["propertyName"]}. '
+                f'When using "anyOf,oneOf,allOf" values in '
+                f'same location must be equal. '
+                f'Either make it so or remove one of the duplicating properties.'
+            ) == str(err.value)
+        else:
+            raise AssertionError('This should not happen')
+    else:
+        mix_type = _do()
+
+        assert isinstance(mix_type, model.OASObjectType)
+        assert 3 == len(mix_type.properties)
+
+        assert 'name' in mix_type.properties
+        assert isinstance(mix_type.properties['name'], model.OASStringType)
+
+        assert 'petType' in mix_type.properties
+        assert isinstance(mix_type.properties['petType'], model.OASStringType)
+
+        assert 'packSize' in mix_type.properties
+        assert isinstance(mix_type.properties['packSize'], model.OASNumberType)
+        assert issubclass(mix_type.properties['packSize'].number_cls, int)
+
+        discriminator = (p_1 or p_2) or {}
+        if discriminator:
+            assert mix_type.discriminator
+            assert mix_type.discriminator.property_name == 'petType'
+        else:
+            assert mix_type.discriminator is None
+
+
 def test_all_of_array() -> None:
     mix_type = parse_type.resolve(
         components={
