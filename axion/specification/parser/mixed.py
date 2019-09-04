@@ -244,7 +244,16 @@ def _merge_object_additional_properties(
             a.get('type'),
             b.get('type'),
         )  # type: t.Optional[str]
-        if oas_type_ref:
+        if oas_type_ref and oas_type:
+            raise exceptions.OASConflict(
+                f'additionalProperties value differs between mixed schemas. '
+                f'One defines inline schema with '
+                f'type={oas_type} and the other has $ref={oas_type_ref} '
+                f'When using "anyOf,oneOf,allOf" values in '
+                f'same location must be equal. '
+                f'Either make it so or remove one of the duplicating properties.',
+            )
+        elif oas_type_ref:
             return {'$ref': oas_type_ref}
         elif oas_type:
             return merge(oas_type, a, b)
@@ -253,7 +262,8 @@ def _merge_object_additional_properties(
     else:
         raise exceptions.OASConflict(
             f'additionalProperties value differs between mixed schemas. '
-            f'a={type(a)} != b={type(b)}. When using "anyOf,oneOf,allOf" values in '
+            f'a={type(a).__qualname__} != b={type(b).__qualname__}. '
+            f'When using "anyOf,oneOf,allOf" values in '
             f'same location must be equal. '
             f'Either make it so or remove one of the duplicating properties.',
         )
@@ -267,15 +277,15 @@ def _merge_object_properties(
         new_properties: t.Dict[str, t.Dict[str, t.Any]] = {}
 
         for prop_name in set(a.keys()).union(b.keys()):
+
             prop_a = a.get(prop_name)
             prop_b = b.get(prop_name)
-            if not (prop_a or prop_b):
-                continue
-            elif not prop_a and prop_b:
+
+            if prop_a is None and prop_b is not None:
                 new_properties[prop_name] = copy.deepcopy(prop_b)
-            elif prop_a and not prop_b:
+            elif prop_a is not None and prop_b is None:
                 new_properties[prop_name] = copy.deepcopy(prop_a)
-            elif prop_a and prop_b:
+            elif prop_a is not None and prop_b is not None:
                 oas_type_ref = _get_value(
                     f'properties.{prop_name}.$ref',
                     prop_a.get('$ref'),
@@ -296,8 +306,6 @@ def _merge_object_properties(
                         prop_a,
                         prop_b,
                     )
-                else:
-                    raise Exception('Should not happen')  # pragma: no cover
 
         return new_properties
     elif a is None and b is not None:

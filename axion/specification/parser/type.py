@@ -132,12 +132,17 @@ def _resolve_all_of(
             ),
         ),
     )
-    if len(schema_types) > 1:
+
+    if len(schema_types) == 0:
+        oas_type = 'any'
+    elif len(schema_types) > 1:
         raise exceptions.OASConflict(
             f'allOf cannot combine more then one OAS type. '
             f'Detected those types [{", ".join(iter(map(repr, schema_types)))}]',
         )
-    oas_type = list(schema_types)[0]
+    else:
+        oas_type = list(schema_types)[0]
+
     logger.opt(
         record=True,
         lazy=True,
