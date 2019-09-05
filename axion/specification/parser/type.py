@@ -6,7 +6,7 @@ from loguru import logger
 
 from axion.specification import exceptions
 from axion.specification import model
-from axion.specification.parser import mixed
+from axion.specification.parser import all_of
 from axion.specification.parser import ref
 
 
@@ -151,17 +151,10 @@ def _resolve_all_of(
         oas_type=lambda: oas_type,
     )
 
-    all_of = mixed.merge(oas_type, {}, work_item)
+    all_of_merged = all_of.merge(oas_type, {}, work_item)
     for sub_schema in resolved_mix_def:
-        all_of = mixed.merge(
-            oas_type,
-            all_of,
-            sub_schema,
-        )
-    return resolve(
-        components=components,
-        work_item=all_of,
-    )
+        all_of_merged = all_of.merge(oas_type, all_of_merged, sub_schema)
+    return resolve(components=components, work_item=all_of_merged)
 
 
 def _resolve_any_of(
