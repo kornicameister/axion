@@ -6,22 +6,35 @@ from axion.specification import exceptions
 from axion.specification.parser import type as parse_type
 
 
-@pytest.mark.parametrize('number_cls', (int, float))
-def test_python_type(number_cls: t.Type[t.Union[int, float]]) -> None:
+@pytest.mark.parametrize(
+    'oas_type,number_cls',
+    (('integer', int), ('number', float)),
+)
+def test_python_type(
+        oas_type: str,
+        number_cls: t.Type[t.Union[int, float]],
+) -> None:
     assert issubclass(
-        parse_type._resolve_oas_number(
-            number_cls=number_cls,
-            work_item={},
+        parse_type.resolve(
+            components={},
+            work_item={
+                'type': oas_type,
+            },
         ).python_type,
         number_cls,
     )
 
 
+@pytest.mark.parametrize('oas_type', ('number', 'integer'))
 @pytest.mark.parametrize('key', ('default', 'example', 'minimum', 'maximum'))
 @pytest.mark.parametrize('value', ['1', bool, {}, []])
-def test_wrong_value_type(key: str, value: t.Any) -> None:
+def test_wrong_value_type(
+        oas_type: str,
+        key: str,
+        value: t.Any,
+) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parse_type._resolve_oas_number(int, {key: value})
+        parse_type.resolve({}, {'type': oas_type, key: value})
 
 
 @pytest.mark.parametrize(
@@ -36,9 +49,10 @@ def test_mismatch_example_default(
         default: t.Any,
 ) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parse_type._resolve_oas_number(
-            int,
+        parse_type.resolve(
+            {},
             {
+                'type': 'integer',
                 'example': example,
                 'default': default,
             },

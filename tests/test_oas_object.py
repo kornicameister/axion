@@ -34,16 +34,24 @@ def test_free_form(
         additional_properties: t.Union[bool, model.OASType[t.Any]],
         expected_result: bool,
 ) -> None:
-    assert parse_type._resolve_oas_object({}, {
-        'additionalProperties': additional_properties,
-        'properties': properties,
-    }).is_free_form is expected_result
+    oas_object = parse_type.resolve(
+        {},
+        {
+            'type': 'object',
+            'additionalProperties': additional_properties,
+            'properties': properties,
+        },
+    )
+
+    assert isinstance(oas_object, model.OASObjectType)
+    assert oas_object.is_free_form is expected_result
 
 
 def test_discriminator() -> None:
-    oas_object = parse_type._resolve_oas_object(
+    oas_object = parse_type.resolve(
         {},
         {
+            'type': 'object',
             'discriminator': {
                 'propertyName': 'petType',
             },
@@ -61,6 +69,8 @@ def test_discriminator() -> None:
             ],
         },
     )
+    assert isinstance(oas_object, model.OASObjectType)
+
     assert oas_object.discriminator
     assert oas_object.discriminator.property_name == 'petType'
     assert not oas_object.discriminator.mapping
@@ -75,9 +85,10 @@ def test_discriminator_and__additional_properties(
         should_raise: bool,
 ) -> None:
     try:
-        parse_type._resolve_oas_object(
+        parse_type.resolve(
             {},
             {
+                'type': 'object',
                 'discriminator': {
                     'propertyName': 'petTypee',
                 },
@@ -109,4 +120,12 @@ def test_discriminator_and__additional_properties(
 
 
 def test_correct_python_type() -> None:
-    assert issubclass(parse_type._resolve_oas_object({}, {}).python_type, dict)
+    assert issubclass(
+        parse_type.resolve(
+            {},
+            {
+                'type': 'object',
+            },
+        ).python_type,
+        dict,
+    )
