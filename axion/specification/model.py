@@ -211,7 +211,10 @@ class OASAnyType(OASType[t.Any]):
 
 @te.final
 class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
-    __slots__ = 'schemas'
+    __slots__ = (
+        'schemas',
+        'discriminator',
+    )
 
     def __init__(
             self,
@@ -221,6 +224,7 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
             deprecated: t.Optional[bool],
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
+            discriminator: t.Optional['OASDiscriminator'],
             schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
@@ -232,6 +236,7 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
             write_only=write_only,
         )
         self.schemas = schemas
+        self.discriminator = discriminator
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -240,7 +245,10 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
 
 @te.final
 class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
-    __slots__ = 'schemas'
+    __slots__ = (
+        'schemas',
+        'discriminator',
+    )
 
     def __init__(
             self,
@@ -250,6 +258,7 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
             deprecated: t.Optional[bool],
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
+            discriminator: t.Optional['OASDiscriminator'],
             schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
@@ -261,6 +270,7 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
             write_only=write_only,
         )
         self.schemas = schemas
+        self.discriminator = discriminator
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -390,7 +400,7 @@ class OASFileType(OASType[None]):
 
 
 @te.final
-class OASObjectDiscriminator:
+class OASDiscriminator:
     __slots__ = (
         'property_name',
         'mapping',
@@ -429,7 +439,7 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
             properties: t.Optional[t.Dict[str, OASType[t.Any]]] = None,
             required: t.Optional[t.Set[str]] = None,
             additional_properties: t.Union[bool, OASType[t.Any]] = True,
-            discriminator: t.Optional[OASObjectDiscriminator] = None,
+            discriminator: t.Optional[OASDiscriminator] = None,
     ) -> None:
         super().__init__(
             default=default,

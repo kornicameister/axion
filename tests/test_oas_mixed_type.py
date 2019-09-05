@@ -115,6 +115,122 @@ def test_any_of_is_any() -> None:
     assert isinstance(mix_type, model.OASAnyType)
 
 
+@pytest.mark.parametrize('mix_key', ('oneOf', 'anyOf'))
+@pytest.mark.parametrize(
+    'weapon_discriminator,mix_discriminator',
+    (
+        (None, None),
+        (
+            None,
+            {
+                'discriminator': {
+                    'propertyName': 'kind',
+                    'mapping': {
+                        'hammer': 'Hammer',
+                        'gun': 'Gun',
+                    },
+                },
+            },
+        ),
+        (
+            {
+                'discriminator': {
+                    'propertyName': 'kind',
+                    'mapping': {
+                        'hammer': 'Hammer',
+                        'gun': 'Gun',
+                    },
+                },
+            },
+            None,
+        ),
+    ),
+)
+def test_one_any_of_discriminator(
+        mix_key: str,
+        weapon_discriminator: t.Optional[t.Dict[str, t.Any]],
+        mix_discriminator: t.Optional[t.Dict[str, t.Any]],
+) -> None:
+    mix_type = parse_type.resolve(
+        components={
+            'schemas': {
+                'Weapon': {
+                    **(weapon_discriminator or {}),
+                    **{
+                        'type': 'object',
+                        'required': ['weight', 'kind'],
+                        'properties': {
+                            'weight': {
+                                'type': 'number',
+                            },
+                            'kind': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+                'Gun': {
+                    'allOf': [
+                        {
+                            '$ref': '#/components/schemas/Weapon',
+                        },
+                        {
+                            'type': 'object',
+                            'required': ['ammoCount'],
+                            'properties': {
+                                'ammoCount': {
+                                    'type': 'integer',
+                                },
+                            },
+                        },
+                    ],
+                },
+                'Hammer': {
+                    'allOf': [
+                        {
+                            '$ref': '#/components/schemas/Weapon',
+                        },
+                        {
+                            'type': 'object',
+                            'required': ['material'],
+                            'properties': {
+                                'material': {
+                                    'type': 'string',
+                                    'enum': ['wood', 'steal', 'bronze', 'silver'],
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        work_item={
+            **(mix_discriminator or {}),
+            **{
+                mix_key: [
+                    {
+                        '$ref': '#/components/schemas/Hammer',
+                    },
+                    {
+                        '$ref': '#/components/schemas/Gun',
+                    },
+                ],
+            },
+        },
+    )
+
+    assert isinstance(mix_type, (model.OASAnyOfType, model.OASOneOfType))
+
+    discriminator_def = ((mix_discriminator or weapon_discriminator) or {})
+    if discriminator_def:
+        assert mix_type.discriminator
+        assert 'kind' == mix_type.discriminator.property_name
+        assert discriminator_def['discriminator']['mapping'
+                                                  ] == mix_type.discriminator.mapping
+    else:
+        assert not mix_type.discriminator
+
+
 def test_all_of_more_than_one_type() -> None:
     with pytest.raises(exceptions.OASConflict):
         parse_type.resolve(

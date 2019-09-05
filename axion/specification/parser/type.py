@@ -91,6 +91,32 @@ def _resolve_one_of(
         work_item: t.Dict[str, t.Any],
         mix_definition: t.List[t.Dict[str, t.Any]],
 ) -> model.OASOneOfType:
+    schemas = [
+        _handle_any_one_all_of_not(
+            components=components,
+            work_item=mixed_type_schema,
+        ) for mixed_type_schema in mix_definition
+    ]
+    discriminator = _resolve_discriminator(work_item)
+    if discriminator is None:
+        discriminator = next(
+            filter(
+                lambda sd: sd is not None,
+                map(
+                    lambda s: s[1].discriminator if isinstance(
+                        s[1],
+                        (
+                            model.OASObjectType,
+                            model.OASOneOfType,
+                            model.OASAnyOfType,
+                        ),
+                    ) else None,
+                    schemas,
+                ),
+            ),
+            None,
+        )
+
     return model.OASOneOfType(
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
@@ -98,12 +124,8 @@ def _resolve_one_of(
         deprecated=bool(work_item.get('deprecated', False)),
         default=work_item.get('default'),
         example=work_item.get('example'),
-        schemas=[
-            _handle_any_one_all_of_not(
-                components=components,
-                work_item=mixed_type_schema,
-            ) for mixed_type_schema in mix_definition
-        ],
+        schemas=schemas,
+        discriminator=discriminator,
     )
 
 
@@ -178,6 +200,32 @@ def _resolve_any_of(
     }:
         return _build_oas_any(work_item)
     else:
+        schemas = [
+            _handle_any_one_all_of_not(
+                components=components,
+                work_item=mixed_type_schema,
+            ) for mixed_type_schema in mix_definition
+        ]
+        discriminator = _resolve_discriminator(work_item)
+        if discriminator is None:
+            discriminator = next(
+                filter(
+                    lambda sd: sd is not None,
+                    map(
+                        lambda s: s[1].discriminator if isinstance(
+                            s[1],
+                            (
+                                model.OASObjectType,
+                                model.OASOneOfType,
+                                model.OASAnyOfType,
+                            ),
+                        ) else None,
+                        schemas,
+                    ),
+                ),
+                None,
+            )
+
         return model.OASAnyOfType(
             nullable=bool(work_item.get('nullable', False)),
             read_only=bool(work_item.get('readOnly', False)),
@@ -185,12 +233,8 @@ def _resolve_any_of(
             deprecated=bool(work_item.get('deprecated', False)),
             default=work_item.get('default'),
             example=work_item.get('example'),
-            schemas=[
-                _handle_any_one_all_of_not(
-                    components=components,
-                    work_item=mixed_type_schema,
-                ) for mixed_type_schema in mix_definition
-            ],
+            schemas=schemas,
+            discriminator=discriminator,
         )
 
 
@@ -262,22 +306,14 @@ def _build_oas_object(
     }
     additional_properties = _resolve_additional_properties()
 
-    raw_discriminator = work_item.get('discriminator')
-    if raw_discriminator is not None:
-        property_name = raw_discriminator['propertyName']
-
+    discriminator = _resolve_discriminator(work_item=work_item)
+    if discriminator is not None:
+        property_name = discriminator.property_name
         if property_name not in properties and not additional_properties:
             raise ValueError(
                 f'Discriminator {property_name} not found in '
                 f'object properties [{", ".join(properties.keys())}]',
             )
-
-        discriminator = model.OASObjectDiscriminator(
-            property_name=property_name,
-            mapping=raw_discriminator.get('mapping'),
-        )  # type: t.Optional[model.OASObjectDiscriminator]
-    else:
-        discriminator = None
 
     return model.OASObjectType(
         required=set(work_item.get('required', [])),
@@ -293,6 +329,21 @@ def _build_oas_object(
         min_properties=work_item.get('minProperties'),
         max_properties=work_item.get('maxProperties'),
     )
+
+
+def _resolve_discriminator(
+        work_item: t.Dict[str, t.Any],
+) -> t.Optional[model.OASDiscriminator]:
+    raw_discriminator = work_item.get('discriminator')
+    if raw_discriminator is not None:
+        property_name = raw_discriminator['propertyName']
+        discriminator = model.OASDiscriminator(
+            property_name=property_name,
+            mapping=raw_discriminator.get('mapping'),
+        )  # type: t.Optional[model.OASDiscriminator]
+    else:
+        discriminator = None
+    return discriminator
 
 
 def _build_oas_string(
