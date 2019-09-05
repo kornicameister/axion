@@ -36,21 +36,21 @@ def resolve(
             type=lambda: oas_type,
         )
         resolvers = {
-            'number': functools.partial(_build_oas_number, float),
-            'integer': functools.partial(_build_oas_number, int),
-            'boolean': _build_oas_boolean,
-            'string': _build_oas_string,
-            'array': functools.partial(_build_oas_array, components),
-            'object': functools.partial(_build_oas_object, components),
+            'number': functools.partial(_resolve_oas_number, float),
+            'integer': functools.partial(_resolve_oas_number, int),
+            'boolean': _resolve_oas_boolean,
+            'string': _resolve_oas_string,
+            'array': functools.partial(_resolve_oas_array, components),
+            'object': functools.partial(_resolve_oas_object, components),
         }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType[t.Any]]]
         return resolvers[oas_type](work_item)
     elif set(work_item.keys()).intersection(['anyOf', 'allOf', 'oneOf']):
         return _build_oas_mix(components, work_item)
     else:
-        return _build_oas_any(work_item)
+        return _resolve_oas_any(work_item)
 
 
-def _build_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
+def _resolve_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
     return model.OASAnyType(
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
@@ -198,7 +198,7 @@ def _resolve_any_of(
             'array',
             'object',
     }:
-        return _build_oas_any(work_item)
+        return _resolve_oas_any(work_item)
     else:
         schemas = [
             _handle_any_one_all_of_not(
@@ -249,7 +249,7 @@ def _handle_any_one_all_of_not(
         return True, resolve(components, work_item)
 
 
-def _build_oas_array(
+def _resolve_oas_array(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
 ) -> model.OASArrayType:
@@ -272,7 +272,7 @@ def _build_oas_array(
     )
 
 
-def _build_oas_object(
+def _resolve_oas_object(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
 ) -> model.OASObjectType:
@@ -346,7 +346,7 @@ def _resolve_discriminator(
     return discriminator
 
 
-def _build_oas_string(
+def _resolve_oas_string(
         work_item: t.Dict[str, t.Any],
 ) -> t.Union[model.OASFileType, model.OASStringType]:
     if work_item.get('format', '') == 'binary':
@@ -407,7 +407,7 @@ def _build_oas_string(
         )
 
 
-def _build_oas_number(
+def _resolve_oas_number(
         number_cls: t.Type[model.N],
         work_item: t.Dict[str, t.Any],
 ) -> model.OASNumberType:
@@ -462,7 +462,7 @@ def _build_oas_number(
     )
 
 
-def _build_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
+def _resolve_oas_boolean(work_item: t.Dict[str, t.Any]) -> model.OASBooleanType:
     default_value: t.Optional[bool] = None
     example_value: t.Optional[bool] = None
     keys = ('default', 'example')

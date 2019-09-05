@@ -18,10 +18,22 @@ def test_oas_file(
         expected_cls: t.Type[t.Any],
 ) -> None:
     assert isinstance(
-        parse_type._build_oas_string({'format': str_format}),
+        parse_type.resolve(
+            {},
+            {
+                'type': 'string',
+                'format': str_format,
+            },
+        ),
         expected_cls,
     )
 
 
 def test_oas_file_python_type() -> None:
-    assert bytes == parse_type._build_oas_string({'format': 'binary'}).python_type
+    assert bytes == parse_type.resolve(
+        {},
+        {
+            'type': 'string',
+            'format': 'binary',
+        },
+    ).python_type

@@ -9,7 +9,7 @@ from axion.specification.parser import type as parse_type
 @pytest.mark.parametrize('number_cls', (int, float))
 def test_python_type(number_cls: t.Type[t.Union[int, float]]) -> None:
     assert issubclass(
-        parse_type._build_oas_number(
+        parse_type._resolve_oas_number(
             number_cls=number_cls,
             work_item={},
         ).python_type,
@@ -21,7 +21,7 @@ def test_python_type(number_cls: t.Type[t.Union[int, float]]) -> None:
 @pytest.mark.parametrize('value', ['1', bool, {}, []])
 def test_wrong_value_type(key: str, value: t.Any) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parse_type._build_oas_number(int, {key: value})
+        parse_type._resolve_oas_number(int, {key: value})
 
 
 @pytest.mark.parametrize(
@@ -36,7 +36,7 @@ def test_mismatch_example_default(
         default: t.Any,
 ) -> None:
     with pytest.raises(exceptions.OASInvalidTypeValue):
-        parse_type._build_oas_number(
+        parse_type._resolve_oas_number(
             int,
             {
                 'example': example,
