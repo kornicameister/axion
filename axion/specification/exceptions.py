@@ -13,9 +13,14 @@ class OASInvalidTypeValue(OASInvalidSpec, TypeError):
 
 
 class OASInvalidConstraints(OASInvalidSpec, ValueError):
-    """OASInvalidConstrains refers to value constraints of the value.
+    """OASInvalidConstrains refers to constraints of the value.
 
     If, for example, the value's type is "string" and
     "minLength" > "maxLength", this exceptions is thrown.
     """
     ...
+
+
+class OASConflict(OASInvalidSpec, ValueError):
+    """OASConflict refers to any conflicting situation in specification.
+    """

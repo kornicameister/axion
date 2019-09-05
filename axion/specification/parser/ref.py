@@ -10,7 +10,10 @@ def resolve(
     raw_schema: t.Dict[str, t.Any] = {}
     while ref is not None:
         _, component, name = ref.replace('#/', '').split('/')
-        logger.opt(lazy=True).debug(
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).trace(
             'Following ref component="{component}" with name="{name}"',
             component=lambda: component,
             name=lambda: name,

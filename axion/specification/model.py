@@ -210,28 +210,22 @@ class OASAnyType(OASType[t.Any]):
 
 
 @te.final
-class OASMixedType(OASType[V]):
+class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
     __slots__ = (
-        'kind',
-        'sub_schemas',
+        'schemas',
+        'discriminator',
     )
-
-    @enum.unique
-    class Kind(str, enum.Enum):
-        UNION = 'allOf'
-        EITHER = 'oneOf'
-        ANY = 'anyOf'
 
     def __init__(
             self,
-            default: t.Optional[V],
-            example: t.Optional[V],
+            default: t.Optional[t.Any],
+            example: t.Optional[t.Any],
             nullable: t.Optional[bool],
             deprecated: t.Optional[bool],
             read_only: t.Optional[bool],
             write_only: t.Optional[bool],
-            kind: Kind,
-            sub_schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+            discriminator: t.Optional['OASDiscriminator'],
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
             default=default,
@@ -241,8 +235,42 @@ class OASMixedType(OASType[V]):
             read_only=read_only,
             write_only=write_only,
         )
-        self.kind = kind
-        self.sub_schemas = sub_schemas
+        self.schemas = schemas
+        self.discriminator = discriminator
+
+    @property
+    def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
+        return dict  # pragma: no cover
+
+
+@te.final
+class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
+    __slots__ = (
+        'schemas',
+        'discriminator',
+    )
+
+    def __init__(
+            self,
+            default: t.Optional[t.Any],
+            example: t.Optional[t.Any],
+            nullable: t.Optional[bool],
+            deprecated: t.Optional[bool],
+            read_only: t.Optional[bool],
+            write_only: t.Optional[bool],
+            discriminator: t.Optional['OASDiscriminator'],
+            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+    ) -> None:
+        super().__init__(
+            default=default,
+            example=example,
+            nullable=nullable,
+            deprecated=deprecated,
+            read_only=read_only,
+            write_only=write_only,
+        )
+        self.schemas = schemas
+        self.discriminator = discriminator
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -297,7 +325,7 @@ class OASNumberType(OASType[N]):
         )
         self.number_cls = number_cls
         self.format = format
-        self.minumum = minimum
+        self.minimum = minimum
         self.maximum = maximum
         self.multiple_of = multiple_of
         self.exclusive_maximum = exclusive_maximum
@@ -372,7 +400,7 @@ class OASFileType(OASType[None]):
 
 
 @te.final
-class OASObjectDiscriminator:
+class OASDiscriminator:
     __slots__ = (
         'property_name',
         'mapping',
@@ -384,7 +412,7 @@ class OASObjectDiscriminator:
             mapping: t.Optional[t.Dict[str, str]] = None,
     ) -> None:
         self.property_name = property_name
-        self.mapping = mapping
+        self.mapping = mapping or {}
 
 
 @te.final
@@ -411,7 +439,7 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
             properties: t.Optional[t.Dict[str, OASType[t.Any]]] = None,
             required: t.Optional[t.Set[str]] = None,
             additional_properties: t.Union[bool, OASType[t.Any]] = True,
-            discriminator: t.Optional[OASObjectDiscriminator] = None,
+            discriminator: t.Optional[OASDiscriminator] = None,
     ) -> None:
         super().__init__(
             default=default,
@@ -471,7 +499,7 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         )
         self.items_type = items_type
         self.min_length = min_length
-        self.max_lenght = max_length
+        self.max_length = max_length
         self.unique_items = unique_items
 
     @property

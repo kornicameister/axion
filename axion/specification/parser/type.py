@@ -6,6 +6,7 @@ from loguru import logger
 
 from axion.specification import exceptions
 from axion.specification import model
+from axion.specification.parser import all_of
 from axion.specification.parser import ref
 
 
@@ -17,7 +18,7 @@ def resolve(
         logger.opt(
             lazy=True,
             record=True,
-        ).debug(
+        ).trace(
             'Following reference {ref}',
             ref=lambda: work_item['$ref'],
         )
@@ -27,7 +28,10 @@ def resolve(
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
-        logger.opt(lazy=True).debug(
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).trace(
             'Resolving schema of type={type}',
             type=lambda: oas_type,
         )
@@ -60,35 +64,189 @@ def _build_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
 def _build_oas_mix(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-) -> model.OASMixedType[t.Any]:
-    def _handle_not(
-            raw_mixed_schema_or_not: t.Dict[str, t.Any],
-    ) -> t.Tuple[bool, model.OASType[t.Any]]:
-        negated = raw_mixed_schema_or_not.get('not', None)
-        if negated is not None:
-            return False, resolve(components, negated)
-        else:
-            return True, resolve(components, raw_mixed_schema_or_not)
+) -> model.OASType[t.Any]:
+    def _resolve_mix_key() -> str:
+        if 'anyOf' in work_item:
+            return 'anyOf'
+        elif 'oneOf' in work_item:
+            return 'oneOf'
+        return 'allOf'
 
-    mix_value: model.OASMixedType[t.Any]
-    for mix_key in ('allOf', 'anyOf', 'oneOf'):
-        maybe_mix_definition = work_item.get(mix_key, None)
-        if maybe_mix_definition is not None:
-            mix_kind = model.OASMixedType.Kind(mix_key)
-            mix_value = model.OASMixedType(
-                nullable=bool(work_item.get('nullable', False)),
-                read_only=bool(work_item.get('readOnly', False)),
-                write_only=bool(work_item.get('writeOnly', False)),
-                deprecated=bool(work_item.get('deprecated', False)),
-                default=work_item.get('default'),
-                example=work_item.get('example'),
-                kind=mix_kind,
-                sub_schemas=[
-                    _handle_not(mixed_type_schema)
-                    for mixed_type_schema in maybe_mix_definition
-                ],
+    resolvers = {
+        'anyOf': _resolve_any_of,
+        'oneOf': _resolve_one_of,
+        'allOf': _resolve_all_of,
+    }
+
+    mix_key = _resolve_mix_key()
+    return resolvers[mix_key](
+        components=components,
+        work_item=work_item,
+        mix_definition=work_item[mix_key],
+    )
+
+
+def _resolve_one_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> model.OASOneOfType:
+    schemas = [
+        _handle_any_one_all_of_not(
+            components=components,
+            work_item=mixed_type_schema,
+        ) for mixed_type_schema in mix_definition
+    ]
+    discriminator = _resolve_discriminator(work_item)
+    if discriminator is None:
+        discriminator = next(
+            filter(
+                lambda sd: sd is not None,
+                map(
+                    lambda s: s[1].discriminator if isinstance(
+                        s[1],
+                        (
+                            model.OASObjectType,
+                            model.OASOneOfType,
+                            model.OASAnyOfType,
+                        ),
+                    ) else None,
+                    schemas,
+                ),
+            ),
+            None,
+        )
+
+    return model.OASOneOfType(
+        nullable=bool(work_item.get('nullable', False)),
+        read_only=bool(work_item.get('readOnly', False)),
+        write_only=bool(work_item.get('writeOnly', False)),
+        deprecated=bool(work_item.get('deprecated', False)),
+        default=work_item.get('default'),
+        example=work_item.get('example'),
+        schemas=schemas,
+        discriminator=discriminator,
+    )
+
+
+def _resolve_all_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> model.OASType[t.Any]:
+    # check what allOf stuff we build
+    # - check if there is a conflict in definitions
+    # - https://json-schema.org/understanding-json-schema/reference/combining.html#allof
+    # pick the type and go with normal resolution along with
+    # merging the resolved models
+    resolved_mix_def = list(
+        map(
+            lambda mx: ref.resolve(components, mx['$ref']) if '$ref' in mx else mx,
+            mix_definition,
+        ),
+    )
+    schema_types: t.Set[str] = set(
+        filter(
+            lambda mx: mx is not None,
+            map(
+                lambda mx: mx.get('type', None),  # type: ignore
+                resolved_mix_def,
+            ),
+        ),
+    )
+
+    if len(schema_types) == 0:
+        oas_type = 'any'
+    elif len(schema_types) > 1:
+        raise exceptions.OASConflict(
+            f'allOf cannot combine more then one OAS type. '
+            f'Detected those types [{", ".join(iter(map(repr, schema_types)))}]',
+        )
+    else:
+        oas_type = list(schema_types)[0]
+
+    logger.opt(
+        record=True,
+        lazy=True,
+    ).trace(
+        'allOf resolves into type: {oas_type}',
+        oas_type=lambda: oas_type,
+    )
+
+    all_of_merged = all_of.merge(oas_type, {}, work_item)
+    for sub_schema in resolved_mix_def:
+        all_of_merged = all_of.merge(oas_type, all_of_merged, sub_schema)
+    return resolve(components=components, work_item=all_of_merged)
+
+
+def _resolve_any_of(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+        mix_definition: t.List[t.Dict[str, t.Any]],
+) -> t.Union[model.OASAnyType, model.OASAnyOfType]:
+    oas_types = set(
+        map(
+            lambda e: e['type'] if (len(e) <= 2 and 'type' in e) else None,
+            mix_definition,
+        ),
+    )
+    if oas_types == {
+            'string',
+            'number',
+            'integer',
+            'boolean',
+            'array',
+            'object',
+    }:
+        return _build_oas_any(work_item)
+    else:
+        schemas = [
+            _handle_any_one_all_of_not(
+                components=components,
+                work_item=mixed_type_schema,
+            ) for mixed_type_schema in mix_definition
+        ]
+        discriminator = _resolve_discriminator(work_item)
+        if discriminator is None:
+            discriminator = next(
+                filter(
+                    lambda sd: sd is not None,
+                    map(
+                        lambda s: s[1].discriminator if isinstance(
+                            s[1],
+                            (
+                                model.OASObjectType,
+                                model.OASOneOfType,
+                                model.OASAnyOfType,
+                            ),
+                        ) else None,
+                        schemas,
+                    ),
+                ),
+                None,
             )
-    return mix_value
+
+        return model.OASAnyOfType(
+            nullable=bool(work_item.get('nullable', False)),
+            read_only=bool(work_item.get('readOnly', False)),
+            write_only=bool(work_item.get('writeOnly', False)),
+            deprecated=bool(work_item.get('deprecated', False)),
+            default=work_item.get('default'),
+            example=work_item.get('example'),
+            schemas=schemas,
+            discriminator=discriminator,
+        )
+
+
+def _handle_any_one_all_of_not(
+        components: t.Dict[str, t.Dict[str, t.Any]],
+        work_item: t.Dict[str, t.Any],
+) -> t.Tuple[bool, model.OASType[t.Any]]:
+    negated = work_item.get('not', None)
+    if negated is not None:
+        return False, resolve(components, negated)
+    else:
+        return True, resolve(components, work_item)
 
 
 def _build_oas_array(
@@ -122,12 +280,13 @@ def _build_oas_object(
         raw_additional_properties = work_item.get(
             'additionalProperties',
             True,
-        )  # type: t.Union[bool, t.Dict[str, t.Any]]
-
-        if not isinstance(raw_additional_properties, bool):
+        )  # type: t.Optional[t.Union[bool, t.Dict[str, t.Any]]]
+        if raw_additional_properties is None:
+            value = True  # type: t.Union[bool, model.OASType[t.Any]]
+        elif not isinstance(raw_additional_properties, bool):
             # it may either be an empty dict or schema
             if len(raw_additional_properties) == 0:
-                value = True  # type: t.Union[bool, model.OASType[t.Any]]
+                value = True
             else:
                 value = resolve(
                     components,
@@ -147,37 +306,44 @@ def _build_oas_object(
     }
     additional_properties = _resolve_additional_properties()
 
-    raw_discriminator = work_item.get('discriminator')
-    if raw_discriminator is not None:
-        property_name = raw_discriminator['propertyName']
-
+    discriminator = _resolve_discriminator(work_item=work_item)
+    if discriminator is not None:
+        property_name = discriminator.property_name
         if property_name not in properties and not additional_properties:
             raise ValueError(
                 f'Discriminator {property_name} not found in '
                 f'object properties [{", ".join(properties.keys())}]',
             )
 
-        discriminator = model.OASObjectDiscriminator(
-            property_name=property_name,
-            mapping=raw_discriminator.get('mapping'),
-        )  # type: t.Optional[model.OASObjectDiscriminator]
-    else:
-        discriminator = None
-
     return model.OASObjectType(
         required=set(work_item.get('required', [])),
         additional_properties=additional_properties,
         properties=properties,
         discriminator=discriminator,
-        nullable=bool(work_item.get('nullable', False)),
-        read_only=bool(work_item.get('readOnly', False)),
-        write_only=bool(work_item.get('writeOnly', False)),
-        deprecated=bool(work_item.get('deprecated', False)),
+        nullable=work_item.get('nullable'),
+        read_only=work_item.get('readOnly'),
+        write_only=work_item.get('writeOnly'),
+        deprecated=work_item.get('deprecated'),
         default=work_item.get('default'),
         example=work_item.get('example'),
         min_properties=work_item.get('minProperties'),
         max_properties=work_item.get('maxProperties'),
     )
+
+
+def _resolve_discriminator(
+        work_item: t.Dict[str, t.Any],
+) -> t.Optional[model.OASDiscriminator]:
+    raw_discriminator = work_item.get('discriminator')
+    if raw_discriminator is not None:
+        property_name = raw_discriminator['propertyName']
+        discriminator = model.OASDiscriminator(
+            property_name=property_name,
+            mapping=raw_discriminator.get('mapping'),
+        )  # type: t.Optional[model.OASDiscriminator]
+    else:
+        discriminator = None
+    return discriminator
 
 
 def _build_oas_string(
@@ -249,8 +415,8 @@ def _build_oas_number(
 
     default_value: t.Optional[model.N] = None
     example_value: t.Optional[model.N] = None
-    minimum: t.Optional[model.N] = None
-    maximum: t.Optional[model.N] = None
+    minimum_value: t.Optional[model.N] = None
+    maximum_value: t.Optional[model.N] = None
 
     keys = ('default', 'example', 'minimum', 'maximum')
     for key in keys:
@@ -269,22 +435,22 @@ def _build_oas_number(
             elif key == 'example':
                 example_value = number_cls(key_value)
             elif key == 'minimum':
-                example_value = number_cls(key_value)
+                minimum_value = number_cls(key_value)
             elif key == 'maximum':
-                example_value = number_cls(key_value)
+                maximum_value = number_cls(key_value)
 
     if len(detected_types) == 2:
         raise exceptions.OASInvalidTypeValue(
-            f'type=number {", ".join(keys)} value must have the same type. '
-            f'Currently {len(keys)} distinct types were picked up',
+            f'type=number [{", ".join(keys)}] value must have the same type. '
+            f'Currently {len(detected_types)} distinct types were picked up',
         )
 
     return model.OASNumberType(
         number_cls=number_cls,
         default=default_value,
         example=example_value,
-        minimum=minimum,
-        maximum=maximum,
+        minimum=minimum_value,
+        maximum=maximum_value,
         nullable=bool(work_item.get('nullable', False)),
         read_only=bool(work_item.get('readOnly', False)),
         write_only=bool(work_item.get('writeOnly', False)),
