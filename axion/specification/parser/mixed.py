@@ -183,29 +183,20 @@ def _merge_discriminator(
         )
         new_mapping: t.Dict[str, str] = {}
 
-        a_mapping = a.get('mapping', {})
-        b_mapping = b.get('mapping', {})
+        a_mapping = a.get('mapping', {}) or {}
+        b_mapping = b.get('mapping', {}) or {}
 
         for prop_name in set(a_mapping.keys()).union(b_mapping.keys()):
             prop_a = a_mapping.get(prop_name)
             prop_b = b_mapping.get(prop_name)
-
-            if prop_a is not None and prop_b is not None:
-                if prop_a != prop_b:
-                    raise exceptions.OASConflict(
-                        f'discriminator.mapping["{prop_name}"] value differs '
-                        f'between mixed schemas. '
-                        f'a={prop_a} != b={prop_b}. When using "anyOf,oneOf,allOf" '
-                        f'values in same location must be equal. '
-                        f'Either make it so or remove one of the '
-                        f'duplicating properties.',
-                    )
-                else:
-                    new_mapping[prop_name] = copy.deepcopy(prop_a)
-            elif prop_a is None and prop_b is not None:
-                new_mapping[prop_name] = copy.deepcopy(prop_b)
-            elif prop_a is not None and prop_b is None:
-                new_mapping[prop_name] = copy.deepcopy(prop_a)
+            new_mapping[prop_name] = t.cast(
+                str,
+                _get_value(
+                    f'discriminator.mapping["{prop_name}"]',
+                    prop_a,
+                    prop_b,
+                ),
+            )
 
         return {
             'propertyName': property_name,

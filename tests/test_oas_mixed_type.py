@@ -887,15 +887,70 @@ def test_all_of_object_discriminator_prop_name(
     'm_1,m_2,should_raise',
     (
         (None, None, False),
+        ({}, {}, False),
+        ({}, None, False),
+        (None, {}, False),
         (
-            {},
-            {},
+            {
+                'dog': 'Dog',
+            },
+            None,
             False,
         ),
         (
-            {},
             None,
+            {
+                'dog': 'Dog',
+            },
             False,
+        ),
+        (
+            {
+                'dog': 'Dog',
+            },
+            {
+                'dog': 'Dog',
+            },
+            False,
+        ),
+        (
+            {
+                'dog': 'Dog',
+                'cat': 'Cat',
+            },
+            {
+                'dog': 'Dog',
+                'cat': 'Cat',
+            },
+            False,
+        ),
+        (
+            {
+                'dog': '#/components/schemas/Dog',
+            },
+            {
+                'dog': '#/components/schemas/Dog',
+            },
+            False,
+        ),
+        (
+            {
+                'dog': '#/components/schemas/Dog',
+            },
+            {
+                'dog': '#/components/schemas/Dog',
+                'cat': '#/components/schemas/Cat',
+            },
+            False,
+        ),
+        (
+            {
+                'dog': '#/components/schemas/Dog',
+            },
+            {
+                'dog': '#/components/schemas/Husky',
+            },
+            True,
         ),
     ),
 )
@@ -904,7 +959,99 @@ def test_all_of_object_discriminator_mapping(
         m_2: t.Optional[t.Dict[str, t.Any]],
         should_raise: bool,
 ) -> None:
-    ...
+    def _do() -> t.Any:
+        return parse_type.resolve(
+            components={
+                'schemas': {
+                    'Dog': {
+                        'type': 'object',
+                        'properties': {
+                            'bark': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                    'Cat': {
+                        'type': 'object',
+                        'properties': {
+                            'mew': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                    'Pet': {
+                        'type': 'object',
+                        'properties': {
+                            'name': {
+                                'type': 'string',
+                            },
+                            'petType': {
+                                'type': 'string',
+                            },
+                        },
+                        'required': ['name', 'petType'],
+                        'discriminator': {
+                            'propertyName': 'petType',
+                            'mapping': m_1,
+                        },
+                    },
+                },
+            },
+            work_item={
+                'allOf': [
+                    {
+                        '$ref': '#/components/schemas/Pet',
+                    },
+                    {
+                        'properties': {
+                            'bark': {
+                                'type': 'string',
+                            },
+                        },
+                        'discriminator': {
+                            'propertyName': 'petType',
+                            'mapping': m_2,
+                        },
+                    },
+                ],
+            },
+        )
+
+    if should_raise:
+        with pytest.raises(exceptions.OASConflict) as err:
+            _do()
+        assert (
+            'discriminator.mapping["dog"] value differs between mixed schemas. '
+            'a=#/components/schemas/Dog != b=#/components/schemas/Husky. '
+            'When using "anyOf,oneOf,allOf" values in same location must '
+            'be equal. Either make it so or remove one of the duplicating properties.'
+        ) == str(err.value)
+    else:
+        mix_type = _do()
+
+        assert isinstance(mix_type, model.OASObjectType)
+        assert 3 == len(mix_type.properties)
+
+        assert 'name' in mix_type.properties
+        assert isinstance(mix_type.properties['name'], model.OASStringType)
+
+        assert 'petType' in mix_type.properties
+        assert isinstance(mix_type.properties['petType'], model.OASStringType)
+
+        assert 'bark' in mix_type.properties
+        assert isinstance(mix_type.properties['bark'], model.OASStringType)
+
+        assert mix_type.discriminator
+        assert mix_type.discriminator.property_name == 'petType'
+
+        mapping = {}
+        mapping.update(m_1 or {})
+        mapping.update(m_2 or {})
+
+        if mapping:
+            assert mapping == mix_type.discriminator.mapping
+        else:
+            assert not mix_type.discriminator.mapping
 
 
 def test_all_of_array() -> None:
