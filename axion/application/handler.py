@@ -255,44 +255,72 @@ def _analyze_request_body(
 ) -> t.Tuple[t.Set[Error], bool]:
     if body_arg is None:
         if request_body is None:
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).trace(
-                'Operation does not define a request body',
-            )
-            return set(), False
+            return _analyze_body_signature_gone_oas_gone()
         else:
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation defines a request body, but it is not specified in '
-                'handler signature',
-            )
-            return {
-                Error(
-                    param_name='body',
-                    reason='missing',
-                ),
-            }, True
+            return _analyze_body_signature_gone_oas_set()
     else:
         if request_body is None:
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation does not define a request body, but it is '
-                'specified in handler signature.',
-            )
-            return {
-                Error(
-                    param_name='body',
-                    reason='unexpected',
-                ),
-            }, True
+            return _analyze_body_signature_set_oas_gone()
         else:
-            return set(), False
+            return _analyze_body_signature_set_oas_set(
+                request_body=request_body,
+                body_arg=body_arg,
+            )
+
+
+def _analyze_body_signature_set_oas_set(
+        request_body: specification.OASRequestBody,
+        body_arg: t.Type[t.Any],
+) -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).trace(
+        'Operation defines both request body and argument handler',
+    )
+    return set(), False
+
+
+def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).error(
+        'Operation does not define a request body, but it is '
+        'specified in handler signature.',
+    )
+    return {
+        Error(
+            param_name='body',
+            reason='unexpected',
+        ),
+    }, True
+
+
+def _analyze_body_signature_gone_oas_gone() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).trace(
+        'Operation does not define a request body',
+    )
+    return set(), False
+
+
+def _analyze_body_signature_gone_oas_set() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).error(
+        'Operation defines a request body, but it is not specified in '
+        'handler signature',
+    )
+    return {
+        Error(
+            param_name='body',
+            reason='missing',
+        ),
+    }, True
 
 
 def _analyze_cookies(
