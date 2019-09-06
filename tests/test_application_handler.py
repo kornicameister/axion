@@ -1069,6 +1069,65 @@ class TestBody:
 
         assert not hdrl.has_body
 
+    def test_no_request_body_signature_set(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestBody._make_operation(None),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert 'unexpected' == err.value['body']
+
+        assert (
+            'Operation does not define a request body, but it is '
+            'specified in handler signature.'
+        ) in caplog.messages
+
+    @pytest.mark.parametrize('required', (True, False))
+    def test_request_body_empty_signature(
+            self,
+            required: bool,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo() -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=foo,
+                operation=TestBody._make_operation({
+                    'requestBody': {
+                        'required': required,
+                        'content': {
+                            'text/plain': {
+                                'schema': {
+                                    'type': 'string',
+                                },
+                            },
+                        },
+                    },
+                }),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert 'missing' == err.value['body']
+
+        assert (
+            'Operation defines a request body, but it is not specified in '
+            'handler signature'
+        ) in caplog.messages
+
     @staticmethod
     def _make_operation(
             request_body_def: t.Optional[t.Dict[str, t.Any]] = None,

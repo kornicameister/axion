@@ -83,8 +83,8 @@ Reason = t.Union[te.Literal['missing', 'unexpected', 'unknown'], IncorrectTypeRe
 
 
 class Error(t.NamedTuple):
-    param_name: str
     reason: Reason
+    param_name: str
 
 
 class InvalidHandlerError(
@@ -182,16 +182,13 @@ def _build(
 ) -> Handler:
     signature = t.get_type_hints(handler)
 
-    errors: t.Set[Error] = set()
+    errors, has_body = _analyze_request_body(
+        operation.request_body,
+        signature.pop('body', None),
+    )
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
-    has_body = False
 
     if operation.parameters:
-
-        b_errors, has_body = _analyze_request_body(
-            operation.request_body,
-            signature.get('body', None),
-        )
         h_errors, h_params = _analyze_headers(
             specification.operation_filter_parameters(operation, 'header'),
             signature.pop('headers', None),
@@ -220,7 +217,7 @@ def _build(
                 ) for arg_key in signature.keys()
             )
 
-        errors.update(pq_errors, h_errors, c_errors, b_errors)
+        errors.update(pq_errors, h_errors, c_errors)
         param_mapping.update(pq_params)
         param_mapping.update(h_params)
         param_mapping.update(c_params)
@@ -256,9 +253,46 @@ def _analyze_request_body(
         request_body: t.Optional[specification.OASRequestBody],
         body_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], bool]:
-    if request_body is None and body_arg is None:
-        return set(), False
-    return set(), False
+    if body_arg is None:
+        if request_body is None:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).trace(
+                'Operation does not define a request body',
+            )
+            return set(), False
+        else:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation defines a request body, but it is not specified in '
+                'handler signature',
+            )
+            return {
+                Error(
+                    param_name='body',
+                    reason='missing',
+                ),
+            }, True
+    else:
+        if request_body is None:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation does not define a request body, but it is '
+                'specified in handler signature.',
+            )
+            return {
+                Error(
+                    param_name='body',
+                    reason='unexpected',
+                ),
+            }, True
+        else:
+            return set(), False
 
 
 def _analyze_cookies(
