@@ -9,5 +9,5 @@ from axion.specification.parser import type as parse_type
 def test_python_type(python_type: t.Type[t.Any]) -> None:
     assert issubclass(
         python_type,
-        parse_type._build_oas_any({}).python_type,
+        parse_type.resolve({}, {}).python_type,
     )

@@ -13,14 +13,18 @@ def test_python_type(
         unique_items: bool,
         python_type: t.Type[t.Any],
 ) -> None:
-    arr_python_type = parse_type._build_oas_array({}, {
-        'uniqueItems': unique_items,
-        'items': {
-            'schema': {
-                'type': 'string',
+    arr_python_type = parse_type.resolve(
+        {},
+        {
+            'type': 'array',
+            'uniqueItems': unique_items,
+            'items': {
+                'schema': {
+                    'type': 'string',
+                },
             },
         },
-    }).python_type
+    ).python_type
 
     assert issubclass(
         arr_python_type,
