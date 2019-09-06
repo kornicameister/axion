@@ -9,6 +9,8 @@ from axion.specification import model
 from axion.specification.parser import all_of
 from axion.specification.parser import ref
 
+__all__ = ('resolve', )
+
 
 def resolve(
         components: t.Dict[str, t.Dict[str, t.Any]],

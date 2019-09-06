@@ -2,6 +2,8 @@ import typing as t
 
 from loguru import logger
 
+__all__ = ('resolve', )
+
 
 def resolve(
         components: t.Dict[str, t.Any],

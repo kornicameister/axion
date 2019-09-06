@@ -8,6 +8,8 @@ from axion.specification import model
 M = t.TypeVar('M', bound=model.OASType[t.Any])
 V = t.TypeVar('V', bound=object)
 
+__all__ = ('merge', )
+
 
 def merge(
         oas_type: str,
