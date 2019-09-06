@@ -44,8 +44,21 @@ def resolve(
             'object': functools.partial(_resolve_oas_object, components),
         }  # type:  t.Dict[str, t.Callable[[t.Dict[str, t.Any]], model.OASType[t.Any]]]
         return resolvers[oas_type](work_item)
-    elif set(work_item.keys()).intersection(['anyOf', 'allOf', 'oneOf']):
-        return _build_oas_mix(components, work_item)
+    elif 'anyOf' in work_item:
+        return _resolve_any_of(
+            components=components,
+            work_item=work_item,
+        )
+    elif 'oneOf' in work_item:
+        return _resolve_one_of(
+            components=components,
+            work_item=work_item,
+        )
+    elif 'allOf' in work_item:
+        return _resolve_all_of(
+            components=components,
+            work_item=work_item,
+        )
     else:
         return _resolve_oas_any(work_item)
 
@@ -61,36 +74,12 @@ def _resolve_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
     )
 
 
-def _build_oas_mix(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
-) -> model.OASType[t.Any]:
-    def _resolve_mix_key() -> str:
-        if 'anyOf' in work_item:
-            return 'anyOf'
-        elif 'oneOf' in work_item:
-            return 'oneOf'
-        return 'allOf'
-
-    resolvers = {
-        'anyOf': _resolve_any_of,
-        'oneOf': _resolve_one_of,
-        'allOf': _resolve_all_of,
-    }
-
-    mix_key = _resolve_mix_key()
-    return resolvers[mix_key](
-        components=components,
-        work_item=work_item,
-        mix_definition=work_item[mix_key],
-    )
-
-
 def _resolve_one_of(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-        mix_definition: t.List[t.Dict[str, t.Any]],
 ) -> model.OASOneOfType:
+    mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('oneOf', [])
+
     schemas = [
         _handle_any_one_all_of_not(
             components=components,
@@ -132,13 +121,14 @@ def _resolve_one_of(
 def _resolve_all_of(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-        mix_definition: t.List[t.Dict[str, t.Any]],
 ) -> model.OASType[t.Any]:
     # check what allOf stuff we build
     # - check if there is a conflict in definitions
     # - https://json-schema.org/understanding-json-schema/reference/combining.html#allof
     # pick the type and go with normal resolution along with
     # merging the resolved models
+    mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('allOf', [])
+
     resolved_mix_def = list(
         map(
             lambda mx: ref.resolve(components, mx['$ref']) if '$ref' in mx else mx,
@@ -182,8 +172,9 @@ def _resolve_all_of(
 def _resolve_any_of(
         components: t.Dict[str, t.Dict[str, t.Any]],
         work_item: t.Dict[str, t.Any],
-        mix_definition: t.List[t.Dict[str, t.Any]],
 ) -> t.Union[model.OASAnyType, model.OASAnyOfType]:
+    mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('anyOf', [])
+
     oas_types = set(
         map(
             lambda e: e['type'] if (len(e) <= 2 and 'type' in e) else None,
