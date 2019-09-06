@@ -1055,3 +1055,41 @@ class TestPathQuery:
 
         assert len(hdrl.path_params) == 1
         assert len(hdrl.query_params) == 3
+
+
+class TestBody:
+    def test_no_request_body_empty_signature(self) -> None:
+        async def test() -> None:
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation(None),
+        )
+
+        assert not hdrl.has_body
+
+    @staticmethod
+    def _make_operation(
+            request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
+    ) -> model.OASOperation:
+        return list(
+            parser._resolve_operations(
+                components={},
+                paths={
+                    '/one': {
+                        'post': {
+                            **(request_body_def or {}),
+                            **{
+                                'operationId': 'empty_response_body',
+                                'responses': {
+                                    '204': {
+                                        'description': 'fake',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+        )[0]

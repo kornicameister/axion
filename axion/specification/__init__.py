@@ -10,6 +10,7 @@ from axion.specification.model import (
     OASOperationId,
     OASParameter,
     OASParameterLocation,
+    OASRequestBody,
     OASReservedHeaders,
     OASServer,
     OASSpecification,
@@ -32,6 +33,7 @@ __all__ = [
     'OASParameterLocation',
     'OASMediaType',
     'OASReservedHeaders',
+    'OASRequestBody',
     # utils
     'operation_filter_parameters',
     'parameter_in',
