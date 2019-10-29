@@ -8,6 +8,12 @@ from axion.specification import model
 from axion.specification.parser import ref as parse_ref
 from axion.specification.parser import type as parse_type
 
+P = t.Union[model.OASHeaderParameter,
+            model.OASPathParameter,
+            model.OASCookieParameter,
+            model.OASQueryParameter,
+            ]
+
 
 def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
     try:
@@ -118,11 +124,14 @@ def _resolve_responses(
     for rp_code, rp_def in responses_dict.items():
         responses[_response_code(rp_code)] = model.OASResponse(
             headers=frozenset(
-                _resolve_parameter(
-                    components,
-                    header_name,
-                    header_def,
+                t.cast(
                     model.OASHeaderParameter,
+                    _resolve_parameter(
+                        components,
+                        header_name,
+                        header_def,
+                        model.OASHeaderParameter,
+                    ),
                 ) for header_name, header_def in rp_def.get('headers', {}).items()
             ),
             content=_resolve_content(
@@ -177,13 +186,13 @@ def _resolve_content(
 def _resolve_parameters(
         components: t.Dict[str, t.Any],
         parameters: t.List[t.Dict[str, t.Any]],
-) -> t.FrozenSet[model.OASParameter]:
+) -> model.OASParameters:
     logger.opt(lazy=True).trace(
         'Resolving {count} of parameters',
         count=lambda: len(parameters),
     )
 
-    resolved_parameters = []
+    resolved_parameters: t.List[model.OASParameter] = []
 
     for param in parameters:
         if '$ref' in param:
@@ -195,12 +204,12 @@ def _resolve_parameters(
         else:
             param_def = param
 
-        param_type_to_cls = {
+        param_type_to_cls: t.Mapping[str, t.Type[P]] = {
             'header': model.OASHeaderParameter,
             'path': model.OASPathParameter,
             'query': model.OASQueryParameter,
             'cookie': model.OASCookieParameter,
-        }  # type: t.Mapping[str, t.Type[model.OASParameter]]
+        }
         param_in = param_type_to_cls[param_def['in']]
         param_name = param_def['name']
 
@@ -226,8 +235,8 @@ def _resolve_parameter(
         components: t.Dict[str, t.Dict[str, t.Any]],
         param_name: str,
         param_def: t.Dict[str, t.Any],
-        param_in: t.Type[model.OASParameter],
-) -> model.OASParameter:
+        param_in: t.Type[P],
+) -> P:
     if '$ref' in param_def:
         return _resolve_parameter(
             components=components,
