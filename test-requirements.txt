@@ -1,5 +1,5 @@
 tox==3.14.0
-setupmeta==2.6.8
+setupmeta==2.6.9
 
 -r requirements/yapf.txt
 -r requirements/mypy.txt
