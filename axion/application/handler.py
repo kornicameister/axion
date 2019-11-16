@@ -9,6 +9,7 @@ import typing as t
 from loguru import logger
 from multidict import istr
 import typing_extensions as te
+import typing_inspect as ti
 
 from axion import specification
 
@@ -32,10 +33,16 @@ ParamMapping = t.Mapping[OAS_Param, F_Param]
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
 
+BODY_EXPECTED_TYPES = [
+    t.Mapping[str, t.Any],
+    t.Dict[str, t.Any],
+]
+
 
 @te.final
 class Handler(t.NamedTuple):
     fn: F
+    has_body: bool
     param_mapping: ParamMapping
 
     @property
@@ -82,8 +89,8 @@ Reason = t.Union[te.Literal['missing', 'unexpected', 'unknown'], IncorrectTypeRe
 
 
 class Error(t.NamedTuple):
-    param_name: str
     reason: Reason
+    param_name: str
 
 
 class InvalidHandlerError(
@@ -181,11 +188,13 @@ def _build(
 ) -> Handler:
     signature = t.get_type_hints(handler)
 
-    errors: t.Set[Error] = set()
+    errors, has_body = _analyze_request_body(
+        operation.request_body,
+        signature.pop('body', None),
+    )
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
     if operation.parameters:
-
         h_errors, h_params = _analyze_headers(
             specification.operation_filter_parameters(operation, 'header'),
             signature.pop('headers', None),
@@ -242,7 +251,95 @@ def _build(
     return Handler(
         fn=handler,
         param_mapping=param_mapping,
+        has_body=has_body,
     )
+
+
+def _analyze_request_body(
+        request_body: t.Optional[specification.OASRequestBody],
+        body_arg: t.Optional[t.Type[t.Any]],
+) -> t.Tuple[t.Set[Error], bool]:
+    if body_arg is None:
+        if request_body is None:
+            return _analyze_body_signature_gone_oas_gone()
+        else:
+            return _analyze_body_signature_gone_oas_set()
+    else:
+        if request_body is None:
+            return _analyze_body_signature_set_oas_gone()
+        else:
+            return _analyze_body_signature_set_oas_set(
+                request_body=request_body,
+                body_arg=body_arg,
+            )
+
+
+def _analyze_body_signature_set_oas_set(
+        request_body: specification.OASRequestBody,
+        body_arg: t.Type[t.Any],
+) -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).trace(
+        'Operation defines both request body and argument handler',
+    )
+    is_body_required = request_body.required
+    is_body_arg_required = not ti.is_optional_type(body_arg)
+
+    if is_body_required and not is_body_arg_required:
+        return {
+            Error(
+                param_name='body',
+                reason=IncorrectTypeReason(
+                    actual=body_arg,
+                    expected=BODY_EXPECTED_TYPES,
+                ),
+            ),
+        }, True
+    return set(), True
+
+
+def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).error(
+        'Operation does not define a request body, but it is '
+        'specified in handler signature.',
+    )
+    return {
+        Error(
+            param_name='body',
+            reason='unexpected',
+        ),
+    }, False
+
+
+def _analyze_body_signature_gone_oas_gone() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).trace(
+        'Operation does not define a request body',
+    )
+    return set(), False
+
+
+def _analyze_body_signature_gone_oas_set() -> t.Tuple[t.Set[Error], bool]:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).error(
+        'Operation defines a request body, but it is not specified in '
+        'handler signature',
+    )
+    return {
+        Error(
+            param_name='body',
+            reason='missing',
+        ),
+    }, True
 
 
 def _analyze_cookies(

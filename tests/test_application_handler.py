@@ -1055,3 +1055,191 @@ class TestPathQuery:
 
         assert len(hdrl.path_params) == 1
         assert len(hdrl.query_params) == 3
+
+
+class TestBody:
+    def test_no_request_body_empty_signature(self) -> None:
+        async def test() -> None:
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation(None),
+        )
+
+        assert not hdrl.has_body
+
+    @pytest.mark.parametrize('required', (True, False))
+    def test_request_body_signature_set(self, required: bool) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> None:
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation({
+                'requestBody': {
+                    'required': required,
+                    'content': {
+                        'text/plain': {
+                            'schema': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+            }),
+        )
+
+        assert hdrl.has_body
+
+    def test_request_body_required_signature_optional(self) -> None:
+        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestBody._make_operation({
+                    'requestBody': {
+                        'required': True,
+                        'content': {
+                            'text/plain': {
+                                'schema': {
+                                    'type': 'string',
+                                },
+                            },
+                        },
+                    },
+                }),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert (
+            'expected ['
+            'typing.Mapping[str, typing.Any],'
+            'typing.Dict[str, typing.Any]], '
+            'but got '
+            'typing.Union[typing.Dict[str, typing.Any], NoneType]'
+        ) == repr(err.value['body'])
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Dict[str, t.Any],
+            t.Mapping[str, t.Any],
+            t.NewType('Body', t.Dict[str, t.Any]),
+            t.NewType('Body', t.Dict[str, str]),
+            t.NewType('Body', t.Mapping[str, t.Any]),  # type: ignore
+            t.NewType('Body', t.Mapping[str, str]),  # type: ignore
+        ),
+    )
+    def test_request_body_different_types(
+            self,
+            the_type: t.Any,
+    ) -> None:
+        async def test(body: the_type) -> None:  # type: ignore
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation({
+                'requestBody': {
+                    'required': True,
+                    'content': {
+                        'text/plain': {
+                            'schema': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+            }),
+        )
+
+        assert hdrl.has_body
+
+    def test_no_request_body_signature_set(
+            self,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestBody._make_operation(None),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert 'unexpected' == err.value['body']
+
+        assert (
+            'Operation does not define a request body, but it is '
+            'specified in handler signature.'
+        ) in caplog.messages
+
+    @pytest.mark.parametrize('required', (True, False))
+    def test_request_body_empty_signature(
+            self,
+            required: bool,
+            caplog: logging.LogCaptureFixture,
+    ) -> None:
+        async def foo() -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=foo,
+                operation=TestBody._make_operation({
+                    'requestBody': {
+                        'required': required,
+                        'content': {
+                            'text/plain': {
+                                'schema': {
+                                    'type': 'string',
+                                },
+                            },
+                        },
+                    },
+                }),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert 'missing' == err.value['body']
+
+        assert (
+            'Operation defines a request body, but it is not specified in '
+            'handler signature'
+        ) in caplog.messages
+
+    @staticmethod
+    def _make_operation(
+            request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
+    ) -> model.OASOperation:
+        return list(
+            parser._resolve_operations(
+                components={},
+                paths={
+                    '/one': {
+                        'post': {
+                            **(request_body_def or {}),
+                            **{
+                                'operationId': 'empty_response_body',
+                                'responses': {
+                                    '204': {
+                                        'description': 'fake',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+        )[0]
