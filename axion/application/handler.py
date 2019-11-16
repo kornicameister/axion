@@ -838,12 +838,10 @@ def _readable_t(val: T) -> str:
             return the_name
         return t.cast(str, getattr(tt, '__qualname__', ''))
 
-    if isinstance(val, tuple):
-        last_type = val[-1]
-        if issubclass(last_type, type(None)):
-            return f'typing.Optional[{",".join(qualified_name(tt) for tt in val[:-1])}]'
-        else:
-            return f'typing.Union[{",".join(qualified_name(tt) for tt in val)}]'
+    if ti.is_union_type(val):
+        return f'typing.Union[{",".join(_readable_t(tt) for tt in val)}]'
+    elif ti.is_optional_type(val):
+        return f'typing.Optional[{",".join(_readable_t(tt) for tt in val[:-1])}]'
     else:
         return f'{qualified_name(val)}'
 
