@@ -1092,6 +1092,74 @@ class TestBody:
 
         assert hdrl.has_body
 
+    def test_request_body_required_signature_optional(self) -> None:
+        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> None:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestBody._make_operation({
+                    'requestBody': {
+                        'required': True,
+                        'content': {
+                            'text/plain': {
+                                'schema': {
+                                    'type': 'string',
+                                },
+                            },
+                        },
+                    },
+                }),
+            )
+
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'body' in err.value
+        assert (
+            'expected ['
+            'typing.Mapping[str, typing.Any],'
+            'typing.Dict[str, typing.Any]], '
+            'but got '
+            'typing.Union[typing.Dict[str, typing.Any], NoneType]'
+        ) == repr(err.value['body'])
+
+    @pytest.mark.parametrize(
+        'the_type',
+        (
+            t.Dict[str, t.Any],
+            t.Mapping[str, t.Any],
+            t.NewType('Body', t.Dict[str, t.Any]),
+            t.NewType('Body', t.Dict[str, str]),
+            t.NewType('Body', t.Mapping[str, t.Any]),  # type: ignore
+            t.NewType('Body', t.Mapping[str, str]),  # type: ignore
+        ),
+    )
+    def test_request_body_different_types(
+            self,
+            the_type: t.Any,
+    ) -> None:
+        async def test(body: the_type) -> None:  # type: ignore
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation({
+                'requestBody': {
+                    'required': True,
+                    'content': {
+                        'text/plain': {
+                            'schema': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+            }),
+        )
+
+        assert hdrl.has_body
+
     def test_no_request_body_signature_set(
             self,
             caplog: logging.LogCaptureFixture,

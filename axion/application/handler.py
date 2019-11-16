@@ -9,6 +9,7 @@ import typing as t
 from loguru import logger
 from multidict import istr
 import typing_extensions as te
+import typing_inspect as ti
 
 from axion import specification
 
@@ -31,6 +32,11 @@ F_Param = t.NewType('F_Param', str)
 ParamMapping = t.Mapping[OAS_Param, F_Param]
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
+
+BODY_EXPECTED_TYPES = [
+    t.Mapping[str, t.Any],
+    t.Dict[str, t.Any],
+]
 
 
 @te.final
@@ -278,6 +284,19 @@ def _analyze_body_signature_set_oas_set(
     ).trace(
         'Operation defines both request body and argument handler',
     )
+    is_body_required = request_body.required
+    is_body_arg_required = not ti.is_optional_type(body_arg)
+
+    if is_body_required and not is_body_arg_required:
+        return {
+            Error(
+                param_name='body',
+                reason=IncorrectTypeReason(
+                    actual=body_arg,
+                    expected=BODY_EXPECTED_TYPES,
+                ),
+            ),
+        }, True
     return set(), True
 
 
