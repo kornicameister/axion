@@ -278,7 +278,7 @@ def _analyze_body_signature_set_oas_set(
     ).trace(
         'Operation defines both request body and argument handler',
     )
-    return set(), False
+    return set(), True
 
 
 def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[Error], bool]:
@@ -294,7 +294,7 @@ def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[Error], bool]:
             param_name='body',
             reason='unexpected',
         ),
-    }, True
+    }, False
 
 
 def _analyze_body_signature_gone_oas_gone() -> t.Tuple[t.Set[Error], bool]:

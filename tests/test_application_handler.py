@@ -1069,6 +1069,29 @@ class TestBody:
 
         assert not hdrl.has_body
 
+    @pytest.mark.parametrize('required', (True, False))
+    def test_request_body_signature_set(self, required: bool) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> None:
+            ...
+
+        hdrl = handler._build(
+            handler=test,
+            operation=TestBody._make_operation({
+                'requestBody': {
+                    'required': required,
+                    'content': {
+                        'text/plain': {
+                            'schema': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+            }),
+        )
+
+        assert hdrl.has_body
+
     def test_no_request_body_signature_set(
             self,
             caplog: logging.LogCaptureFixture,
