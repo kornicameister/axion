@@ -364,7 +364,7 @@ class TestCookies:
         assert len(err.value) == len(expected_errors)
         for param_key, error_msg in expected_errors:
             assert f'cookies.{param_key}' in err.value
-            assert repr(err.value[f'cookies.{param_key}']) == error_msg
+            assert err.value[f'cookies.{param_key}'] == error_msg
 
     @pytest.mark.parametrize(
         'the_type',
@@ -396,7 +396,7 @@ class TestCookies:
 
         assert len(err.value) == 1
         assert 'cookies' in err.value
-        assert repr(err.value['cookies']) == (
+        assert err.value['cookies'] == (
             f'expected [typing.Mapping[str, typing.Any],'
             f'typing.Dict[str, typing.Any],TypedDict]'
             f', but got {handler._readable_t(the_type)}'
@@ -685,7 +685,7 @@ class TestHeaders:
 
         assert len(err.value) == 1
         assert 'headers.accept' in err.value
-        assert repr(err.value['headers.accept']) == 'expected [str], but got int'
+        assert err.value['headers.accept'] == 'expected [str], but got int'
 
     def test_no_oas_headers_typed_dict(
             self,
@@ -888,9 +888,8 @@ class TestHeaders:
 
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
-        assert repr(
-            err.value['headers.x_trace_id'],
-        ) == f'expected [str], but got {handler._readable_t(the_type)}'
+        assert err.value['headers.x_trace_id'
+                         ] == f'expected [str], but got {handler._readable_t(the_type)}'
 
 
 class TestPathQuery:
@@ -997,7 +996,7 @@ class TestPathQuery:
         assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 1
         assert 'id' in err.value
-        assert repr(err.value['id']) == 'expected [str], but got bool'
+        assert err.value['id'] == 'expected [str], but got bool'
 
     def test_signature_all_bad_type(self) -> None:
         async def foo(
@@ -1017,27 +1016,25 @@ class TestPathQuery:
         assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for mismatch in err.value:
+            expected_msg = None
+
             if mismatch.param_name == 'id':
-                assert repr(
-                    err.value[mismatch.param_name],
-                ) == 'expected [str], but got float'
+                expected_msg = 'expected [str], but got float'
             elif mismatch.param_name == 'limit':
-                assert repr(
-                    err.value[mismatch.param_name],
-                ) == 'expected [typing.Optional[int]], but got typing.Optional[float,int]'
+                expected_msg = 'expected [typing.Optional[int]], but got typing.Optional[float,int]'
             elif mismatch.param_name == 'page':
                 expected_msg = (
                     'expected [typing.Optional[float]], but got '
                     'typing.Optional[typing.AbstractSet[bool]]'
                 )
-                assert repr(err.value[mismatch.param_name]) == expected_msg
             elif mismatch.param_name == 'include_extra':
-                assert repr(
-                    err.value[mismatch.param_name],
-                ) == (
+                expected_msg = (
                     'expected [typing.Optional[bool]], but got '
                     'typing.Union[int,str]'
                 )
+            assert expected_msg is not None
+
+            assert err.value[mismatch.param_name] == expected_msg
 
     def test_signature_match(self) -> None:
         async def test_handler(
@@ -1122,7 +1119,7 @@ class TestBody:
             'typing.Dict[str, typing.Any]], '
             'but got '
             'typing.Union[typing.Dict[str, typing.Any], NoneType]'
-        ) == repr(err.value['body'])
+        ) == err.value['body']
 
     @pytest.mark.parametrize(
         'the_type',

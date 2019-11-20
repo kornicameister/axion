@@ -129,7 +129,11 @@ class InvalidHandlerError(
 
     @property
     def reasons(self) -> t.Mapping[str, Reason]:
-        return {e.param_name: e.reason for e in self._errors or []}
+        return {
+            e.param_name:
+            repr(e.reason) if isinstance(e.reason, IncorrectTypeReason) else e.reason
+            for e in self._errors or []
+        }
 
     def __iter__(self) -> t.Iterator[Error]:  # type: ignore
         return iter(e for e in self._errors or [])
@@ -838,10 +842,12 @@ def _readable_t(val: T) -> str:
             return the_name
         return t.cast(str, getattr(tt, '__qualname__', ''))
 
+    val_args = ti.get_args(val)
+
     if ti.is_union_type(val):
-        return f'typing.Union[{",".join(_readable_t(tt) for tt in val)}]'
+        return f'typing.Union[{",".join(_readable_t(tt) for tt in val_args)}]'
     elif ti.is_optional_type(val):
-        return f'typing.Optional[{",".join(_readable_t(tt) for tt in val[:-1])}]'
+        return f'typing.Optional[{",".join(_readable_t(tt) for tt in val_args[:-1])}]'
     else:
         return f'{qualified_name(val)}'
 
