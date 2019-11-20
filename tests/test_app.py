@@ -166,7 +166,7 @@ def test_app_add_with_custom_base_path(
     the_app.add_api(spec_one_path, base_path='/')
     spec_load.assert_called_once_with(spec_one_path)
 
-    router_resources = [r for r in the_app.root_app.router.resources()]
+    router_resources = list(the_app.root_app.router.resources())
 
     assert len(router_resources) == 0
     apply_spec.assert_any_call(
@@ -190,7 +190,7 @@ def test_app_add_with_relative_base_path(mocker: ptm.MockFixture) -> None:
     the_app.add_api(spec_one_path, base_path='/')
     spec_load.assert_called_once_with((Path.cwd() / spec_one_path).resolve())
 
-    router_resources = [r for r in the_app.root_app.router.resources()]
+    router_resources = list(the_app.root_app.router.resources())
 
     assert len(router_resources) == 0
     apply_spec.assert_any_call(
@@ -238,7 +238,7 @@ def test_app_add_api_different_base_path(
     spec_load.assert_any_call(spec_two_path)
     spec_load.assert_any_call(spec_two_path)
 
-    router_resources = [r for r in the_app.root_app.router.resources()]
+    router_resources = list(the_app.root_app.router.resources())
 
     assert len(router_resources) == 3
 
