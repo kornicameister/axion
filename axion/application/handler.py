@@ -80,8 +80,8 @@ class IncorrectTypeReason:
         self.actual = actual
 
     def __repr__(self) -> str:
-        expected_str = ','.join(_readable_t(rt) for rt in self.expected)
-        actual_str = _readable_t(self.actual)
+        expected_str = ','.join(get_type_string_repr(rt) for rt in self.expected)
+        actual_str = get_type_string_repr(self.actual)
         return f'expected [{expected_str}], but got {actual_str}'
 
 
@@ -128,12 +128,8 @@ class InvalidHandlerError(
         return self._operation_id
 
     @property
-    def reasons(self) -> t.Mapping[str, Reason]:
-        return {
-            e.param_name:
-            repr(e.reason) if isinstance(e.reason, IncorrectTypeReason) else e.reason
-            for e in self._errors or []
-        }
+    def reasons(self) -> t.Mapping[str, str]:
+        return {e.param_name: str(e.reason) for e in self._errors or []}
 
     def __iter__(self) -> t.Iterator[Error]:  # type: ignore
         return iter(e for e in self._errors or [])
@@ -835,21 +831,47 @@ def _build_annotation_args(param: specification.OASParameter) -> T:
 
 
 @functools.lru_cache(maxsize=10)
-def _readable_t(val: T) -> str:
-    def qualified_name(tt: t.Any) -> str:
+def get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
+    return _get_type_string_repr(val)
+
+
+def _get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
+    def qualified_name(tt: t.Type[T]) -> str:
         the_name = str(tt)
         if 'typing.' in the_name:
             return the_name
         return t.cast(str, getattr(tt, '__qualname__', ''))
 
-    val_args = ti.get_args(val)
+    assert val is not None
 
-    if ti.is_union_type(val):
-        return f'typing.Union[{",".join(_readable_t(tt) for tt in val_args)}]'
+    if ti.is_typevar(val):
+        tv_constraints = ti.get_constraints(val)
+        tv_bound = ti.get_bound(val)
+        if tv_constraints:
+            return f'typing.TypeVar(?, {", ".join(get_type_string_repr(tt) for tt in tv_constraints)})'
+        elif tv_bound:
+            return get_type_string_repr(tv_bound)
+        else:
+            return 'typing.Any'
     elif ti.is_optional_type(val):
-        return f'typing.Optional[{",".join(_readable_t(tt) for tt in val_args[:-1])}]'
+        return f'typing.Optional[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val)[:-1])}]'
+    elif ti.is_union_type(val):
+        return f'typing.Union[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val))}]'
+    elif ti.is_generic_type(val):
+        return f'typing.{getattr(val,"_name")}[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val))}]'
     else:
-        return f'{qualified_name(val)}'
+        val_name = qualified_name(val)
+        maybe_td_keys = getattr(val, '__annotations__', {}).copy()
+        if maybe_td_keys:
+            # we are dealing with typed dict
+            # that's quite lovely
+            internal_members_repr = ", ".join(
+                '{key}: {type}'.format(key=k, type=get_type_string_repr(v))
+                for k, v in maybe_td_keys.items()
+            )
+            return f'{val_name}{{{internal_members_repr}}}'
+        else:
+            return val_name
 
 
 @functools.lru_cache(maxsize=100)

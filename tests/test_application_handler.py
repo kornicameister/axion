@@ -9,6 +9,87 @@ from axion.specification import model
 from axion.specification import parser
 
 
+@pytest.mark.parametrize(
+    'the_type,str_repr',
+    (
+        (str, 'str'),
+        (bool, 'bool'),
+        (float, 'float'),
+        (list, 'list'),
+        (dict, 'dict'),
+        (set, 'set'),
+        (t.TypeVar('T'), 'typing.Any'),  # type: ignore
+        (t.TypeVar('T', int, float), 'typing.TypeVar(?, int, float)'),  # type: ignore
+        (t.TypeVar('T', int, float,  # type: ignore
+                   bool), 'typing.TypeVar(?, int, float, bool)'),
+        (t.TypeVar('T', bound=list), 'list'),  # type: ignore
+        (t.TypeVar('T', bound=set), 'set'),  # type: ignore
+        (t.Union[int, float], 'typing.Union[int, float]'),
+        (t.Union[int], 'int'),
+        (t.Optional[int], 'typing.Optional[int]'),
+        (t.Optional[float], 'typing.Optional[float]'),
+        (t.Optional[bool], 'typing.Optional[bool]'),
+        (t.Dict[str, str], 'typing.Dict[str, str]'),
+        (t.Optional[t.Dict[str, str]], 'typing.Optional[typing.Dict[str, str]]'),
+        (t.Optional[t.Dict[str, t.Any]], 'typing.Optional[typing.Dict[str, typing.Any]]'),
+        (t.Dict, 'typing.Dict[typing.Any, typing.Any]'),
+        (t.Set[str], 'typing.Set[str]'),
+        (t.Set, 'typing.Set[typing.Any]'),
+        (t.Mapping[str, str], 'typing.Mapping[str, str]'),
+        (t.Mapping[str, int], 'typing.Mapping[str, int]'),
+        (t.Mapping[int, str], 'typing.Mapping[int, str]'),
+        (t.AbstractSet[bool], 'typing.AbstractSet[bool]'),
+        (t.Optional[t.AbstractSet[bool]], 'typing.Optional[typing.AbstractSet[bool]]'),
+        (None, None),
+        (t.Any, 'typing.Any'),
+        (
+            te.TypedDict(  # type: ignore
+                'Cookies',
+                {
+                    'debug': bool,
+                    'csrftoken': str,
+                },
+            ),
+            'Cookies{debug: bool, csrftoken: str}',
+        ),
+        (
+            te.TypedDict(  # type: ignore
+                'Paging',
+                {
+                    'page': t.Optional[int],
+                    'hasNext': bool,
+                    'hasPrev': bool,
+                },
+            ),
+            'Paging{page: typing.Optional[int], hasNext: bool, hasPrev: bool}',
+        ),
+        (
+            te.TypedDict(  # type: ignore
+                'Complex',
+                {
+                    'page': t.Optional[int],
+                    'foo': t.Union[t.List[str], t.Set[float]],
+                    'bar': te.TypedDict('Bar', {'little': bool}),  # type: ignore
+                },
+            ),
+            (
+                'Complex{'
+                'page: typing.Optional[int], '
+                'foo: typing.Union[typing.List[str], typing.Set[float]],'
+                ' bar: Bar{little: bool}'
+                '}'
+            ),
+        ),
+    ),
+)
+def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
+    if the_type is None:
+        with pytest.raises(AssertionError):
+            handler._get_type_string_repr(the_type)
+    else:
+        assert handler._get_type_string_repr(the_type) == str_repr
+
+
 def normal_f() -> None:
     ...
 
@@ -399,7 +480,7 @@ class TestCookies:
         assert err.value['cookies'] == (
             f'expected [typing.Mapping[str, typing.Any],'
             f'typing.Dict[str, typing.Any],TypedDict]'
-            f', but got {handler._readable_t(the_type)}'
+            f', but got {handler.get_type_string_repr(the_type)}'
         )
 
     @pytest.mark.parametrize(
@@ -888,8 +969,8 @@ class TestHeaders:
 
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
-        assert err.value['headers.x_trace_id'
-                         ] == f'expected [str], but got {handler._readable_t(the_type)}'
+        assert f'expected [str], but got {handler.get_type_string_repr(the_type)}' == err.value[
+            'headers.x_trace_id']
 
 
 class TestPathQuery:
@@ -1016,25 +1097,25 @@ class TestPathQuery:
         assert err.value.operation_id == 'TestAnalysisParameters'
         assert len(err.value) == 4
         for mismatch in err.value:
-            expected_msg = None
+            actual_msg = err.value[mismatch.param_name]
 
             if mismatch.param_name == 'id':
                 expected_msg = 'expected [str], but got float'
+                assert expected_msg == actual_msg
             elif mismatch.param_name == 'limit':
-                expected_msg = 'expected [typing.Optional[int]], but got typing.Optional[float,int]'
+                expected_msg = 'expected [typing.Optional[int]], but got typing.Optional[t.Union[int, float]]'
+                assert expected_msg == actual_msg
             elif mismatch.param_name == 'page':
                 expected_msg = (
-                    'expected [typing.Optional[float]], but got '
-                    'typing.Optional[typing.AbstractSet[bool]]'
+                    'expected [typing.Optional[float]], but got typing.Optional[typing.AbstractSet[bool]]'
                 )
+                assert expected_msg == actual_msg
             elif mismatch.param_name == 'include_extra':
                 expected_msg = (
                     'expected [typing.Optional[bool]], but got '
-                    'typing.Union[int,str]'
+                    'typing.Union[int, str]'
                 )
-            assert expected_msg is not None
-
-            assert err.value[mismatch.param_name] == expected_msg
+                assert expected_msg == actual_msg
 
     def test_signature_match(self) -> None:
         async def test_handler(
@@ -1113,13 +1194,12 @@ class TestBody:
         assert err.value
         assert 1 == len(err.value)
         assert 'body' in err.value
-        assert (
-            'expected ['
-            'typing.Mapping[str, typing.Any],'
-            'typing.Dict[str, typing.Any]], '
-            'but got '
-            'typing.Union[typing.Dict[str, typing.Any], NoneType]'
-        ) == err.value['body']
+        assert err.value['body'] == (
+            'expected '
+            '[typing.Mapping[str, typing.Any],typing.Dict[str, typing.Any]]'
+            ', but got '
+            'typing.Optional[typing.Dict[str, typing.Any]]'
+        )
 
     @pytest.mark.parametrize(
         'the_type',
