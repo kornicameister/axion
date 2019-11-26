@@ -969,8 +969,9 @@ class TestHeaders:
 
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
-        assert f'expected [str], but got {handler.get_type_string_repr(the_type)}' == err.value[
-            'headers.x_trace_id']
+        assert (f'expected [str], '
+                f'but got {handler.get_type_string_repr(the_type)}'
+                ) == err.value['headers.x_trace_id']
 
 
 class TestPathQuery:
@@ -1103,11 +1104,15 @@ class TestPathQuery:
                 expected_msg = 'expected [str], but got float'
                 assert expected_msg == actual_msg
             elif mismatch.param_name == 'limit':
-                expected_msg = 'expected [typing.Optional[int]], but got typing.Optional[t.Union[int, float]]'
+                expected_msg = (
+                    'expected [typing.Optional[int]], but got '
+                    'typing.Optional[t.Union[int, float]]'
+                )
                 assert expected_msg == actual_msg
             elif mismatch.param_name == 'page':
                 expected_msg = (
-                    'expected [typing.Optional[float]], but got typing.Optional[typing.AbstractSet[bool]]'
+                    'expected [typing.Optional[float]], but got '
+                    'typing.Optional[typing.AbstractSet[bool]]'
                 )
                 assert expected_msg == actual_msg
             elif mismatch.param_name == 'include_extra':

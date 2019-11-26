@@ -95,7 +95,7 @@ class Error(t.NamedTuple):
 
 class InvalidHandlerError(
         ValueError,
-        t.Mapping[str, Reason],
+        t.Mapping[str, str],
 ):
     __slots__ = (
         '_operation_id',
@@ -137,7 +137,7 @@ class InvalidHandlerError(
     def __len__(self) -> int:
         return len(self._errors or [])
 
-    def __getitem__(self, key: str) -> Reason:
+    def __getitem__(self, key: str) -> str:
         return self.reasons[key]
 
 
@@ -848,24 +848,28 @@ def _get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
         tv_constraints = ti.get_constraints(val)
         tv_bound = ti.get_bound(val)
         if tv_constraints:
-            return f'typing.TypeVar(?, {", ".join(get_type_string_repr(tt) for tt in tv_constraints)})'
+            constraints_repr = (get_type_string_repr(tt) for tt in tv_constraints)
+            return f'typing.TypeVar(?, {", ".join(constraints_repr)})'
         elif tv_bound:
             return get_type_string_repr(tv_bound)
         else:
             return 'typing.Any'
     elif ti.is_optional_type(val):
-        return f'typing.Optional[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val)[:-1])}]'
+        optional_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val)[:-1])
+        return f'typing.Optional[{", ".join(optional_reprs)}]'
     elif ti.is_union_type(val):
-        return f'typing.Union[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val))}]'
+        union_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val))
+        return f'typing.Union[{", ".join(union_reprs)}]'
     elif ti.is_generic_type(val):
-        return f'typing.{getattr(val,"_name")}[{", ".join(get_type_string_repr(tt) for tt in ti.get_args(val))}]'
+        generic_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val))
+        return f'typing.{val._name}[{", ".join(generic_reprs)}]'
     else:
         val_name = qualified_name(val)
         maybe_td_keys = getattr(val, '__annotations__', {}).copy()
         if maybe_td_keys:
             # we are dealing with typed dict
             # that's quite lovely
-            internal_members_repr = ", ".join(
+            internal_members_repr = ', '.join(
                 '{key}: {type}'.format(key=k, type=get_type_string_repr(v))
                 for k, v in maybe_td_keys.items()
             )
