@@ -1303,7 +1303,7 @@ class TestBody:
 
     @staticmethod
     def _make_operation(
-            request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
+        request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
     ) -> model.OASOperation:
         return list(
             parser._resolve_operations(

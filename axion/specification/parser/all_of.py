@@ -212,8 +212,8 @@ def _merge_discriminator(
 
 
 def _merge_object_additional_properties(
-        a: t.Optional[t.Union[bool, t.Dict[str, t.Any]]] = None,
-        b: t.Optional[t.Union[bool, t.Dict[str, t.Any]]] = None,
+    a: t.Optional[t.Union[bool, t.Dict[str, t.Any]]] = None,
+    b: t.Optional[t.Union[bool, t.Dict[str, t.Any]]] = None,
 ) -> t.Optional[t.Union[bool, t.Dict[str, t.Any]]]:
     if a is None and b is None:
         return None
@@ -261,8 +261,8 @@ def _merge_object_additional_properties(
 
 
 def _merge_object_properties(
-        a: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
-        b: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
+    a: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
+    b: t.Optional[t.Dict[str, t.Dict[str, t.Any]]] = None,
 ) -> t.Optional[t.Dict[str, t.Dict[str, t.Any]]]:
     if a is not None and b is not None:
         new_properties: t.Dict[str, t.Dict[str, t.Any]] = {}
