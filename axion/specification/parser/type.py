@@ -340,7 +340,7 @@ def _resolve_discriminator(
 
 
 def _resolve_oas_string(
-        work_item: t.Dict[str, t.Any],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Union[model.OASFileType, model.OASStringType]:
     if work_item.get('format', '') == 'binary':
         return model.OASFileType(
