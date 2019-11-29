@@ -62,8 +62,8 @@ class Handler(t.NamedTuple):
         return self._params('cookie')
 
     def _params(
-            self,
-            param_in: specification.OASParameterLocation,
+        self,
+        param_in: specification.OASParameterLocation,
     ) -> t.FrozenSet[t.Tuple[str, str]]:
         gen = ((oas_param.param_name, fn_param)
                for oas_param, fn_param in self.param_mapping.items()
@@ -451,10 +451,9 @@ def _analyze_cookies_signature_set_oas_set(
     errors: t.Set[Error] = set()
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
-    param_cookies: t.Dict[F_Param, str] = {
-        _get_f_param(rh.name): rh.name
-        for rh in parameters
-    }
+    param_cookies: t.Dict[F_Param,
+                          str] = {_get_f_param(rh.name): rh.name
+                                  for rh in parameters}
 
     try:
         entries = t.get_type_hints(cookies_arg).items()
@@ -678,10 +677,9 @@ def _analyze_headers_signature_set_oas_set(
     errors: t.Set[Error] = set()
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
-    param_headers: t.Dict[F_Param, str] = {
-        _get_f_param(rh.name): rh.name
-        for rh in parameters
-    }
+    param_headers: t.Dict[F_Param,
+                          str] = {_get_f_param(rh.name): rh.name
+                                  for rh in parameters}
     reserved_headers: t.Dict[F_Param, str] = {
         _get_f_param(rh): rh
         for rh in specification.OASReservedHeaders
