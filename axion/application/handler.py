@@ -72,10 +72,10 @@ class Handler(t.NamedTuple):
 
 
 class IncorrectTypeReason:
-    expected: t.List[T]
+    expected: t.Sequence[T]
     actual: T
 
-    def __init__(self, expected: t.List[T], actual: T) -> None:
+    def __init__(self, expected: t.Sequence[T], actual: T) -> None:
         self.expected = expected
         self.actual = actual
 
@@ -109,17 +109,18 @@ class InvalidHandlerError(
             message: t.Optional[str] = None,
     ) -> None:
         header_msg = f'\n{operation_id} handler mismatch signature:'
+
         if errors and not message:
             error_str = '\n'.join(
                 f'argument {m.param_name} :: {m.reason}' for m in errors
             )
-            message = '\n'.join([
+            super().__init__('\n'.join([
                 header_msg,
                 error_str,
-            ])
+            ]))
+        else:
             super().__init__(message)
 
-        super().__init__(message)
         self._errors = errors
         self._operation_id = operation_id
 
@@ -468,7 +469,7 @@ def _analyze_cookies_signature_set_oas_set(
                             parameters,
                         ),
                     )
-                    oas_param_type = _build_annotation_args(oas_param)
+                    oas_param_type = _build_type_from_oas_param(oas_param)
                     if oas_param_type != cookie_param_type:
                         errors.add(
                             Error(
@@ -712,7 +713,7 @@ def _analyze_headers_signature_set_oas_set(
                                 parameters,
                             ),
                         )
-                        oas_param_type = _build_annotation_args(oas_param)
+                        oas_param_type = _build_type_from_oas_param(oas_param)
                         if oas_param_type != hdr_param_type:
                             errors.add(
                                 Error(
@@ -787,18 +788,17 @@ def _analyze_path_query(
     for op_param in parameters:
         try:
             handler_param_name = _get_f_param(op_param.name)
-            handler_param = signature.pop(handler_param_name)
 
-            handler_param_args = getattr(handler_param, '__args__', handler_param)
-            op_param_type_args = _build_annotation_args(op_param)
+            handler_param_type = signature.pop(handler_param_name)
+            op_param_type = _build_type_from_oas_param(op_param)
 
-            if handler_param_args != op_param_type_args:
+            if handler_param_type != op_param_type:
                 errors.add(
                     Error(
                         param_name=op_param.name,
                         reason=IncorrectTypeReason(
-                            actual=handler_param_args,
-                            expected=[op_param_type_args],
+                            actual=handler_param_type,
+                            expected=[op_param_type],
                         ),
                     ),
                 )
@@ -819,21 +819,21 @@ def _analyze_path_query(
     return errors, param_mapping
 
 
-def _build_annotation_args(param: specification.OASParameter) -> T:
+def _build_type_from_oas_param(param: specification.OASParameter) -> t.Any:
     p_type = param.python_type
     p_required = param.required
     if not p_required:
-        return p_type, type(None)
+        return t.Optional[p_type]
     else:
         return p_type
 
 
-@functools.lru_cache(maxsize=10)
-def get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
+@functools.lru_cache(maxsize=100)
+def get_type_string_repr(val: t.Type[T]) -> str:
     return _get_type_string_repr(val)
 
 
-def _get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
+def _get_type_string_repr(val: t.Type[T]) -> str:
     def qualified_name(tt: t.Type[T]) -> str:
         the_name = str(tt)
         if 'typing.' in the_name:
@@ -853,8 +853,13 @@ def _get_type_string_repr(val: t.Optional[t.Type[T]]) -> str:
         else:
             return 'typing.Any'
     elif ti.is_optional_type(val):
-        optional_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val)[:-1])
-        return f'typing.Optional[{", ".join(optional_reprs)}]'
+        optional_args = ti.get_args(val)[:-1]
+        nested_union = len(optional_args) > 1
+        optional_reprs = (get_type_string_repr(tt) for tt in optional_args)
+        if nested_union:
+            return f'typing.Optional[typing.Union[{", ".join(optional_reprs)}]]'
+        else:
+            return f'typing.Optional[{", ".join(optional_reprs)}]'
     elif ti.is_union_type(val):
         union_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val))
         return f'typing.Union[{", ".join(union_reprs)}]'

@@ -517,6 +517,7 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
         'deprecated',
     )
     default_style: t.ClassVar[str] = ''
+    location: t.ClassVar[str] = ''
     available_styles: t.ClassVar[t.AbstractSet[str]] = set()
 
     def __init__(
@@ -565,11 +566,20 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
                 'No idea yet how to build python type here',
             )  # pragma: no cover
 
+    def __repr__(self) -> str:
+        return (
+            f'Param '
+            'name={self.name} '
+            'in={self.location} '
+            'required={"yes" if self.required else "no"}'
+        )
+
 
 @te.final
 class OASPathParameter(OASParameter):
     default_style = 'simple'
     available_styles = {'simple', 'label', 'matrix'}
+    location = 'path'
 
     def __init__(
             self,
@@ -602,6 +612,7 @@ class OASQueryParameter(OASParameter):
         'pipeDelimited',
         'deepObject',
     }
+    location = 'query'
 
     def __init__(
             self,
@@ -632,12 +643,14 @@ class OASQueryParameter(OASParameter):
 class OASCookieParameter(OASParameter):
     default_style = 'form'
     available_styles = {'form'}
+    location = 'cookie'
 
 
 @te.final
 class OASHeaderParameter(OASParameter):
     default_style = 'simple'
     available_styles = {'form'}
+    location = 'header'
 
 
 @te.final

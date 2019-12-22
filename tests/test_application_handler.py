@@ -24,11 +24,28 @@ from axion.specification import parser
                    bool), 'typing.TypeVar(?, int, float, bool)'),
         (t.TypeVar('T', bound=list), 'list'),  # type: ignore
         (t.TypeVar('T', bound=set), 'set'),  # type: ignore
+        (t.AnyStr, 'typing.TypeVar(?, bytes, str)'),
         (t.Union[int, float], 'typing.Union[int, float]'),
         (t.Union[int], 'int'),
         (t.Optional[int], 'typing.Optional[int]'),
         (t.Optional[float], 'typing.Optional[float]'),
         (t.Optional[bool], 'typing.Optional[bool]'),
+        (
+            t.Optional[t.Union[float, int]],
+            'typing.Optional[typing.Union[float, int]]',
+        ),
+        (
+            t.Optional[t.Union[int, float]],
+            'typing.Optional[typing.Union[float, int]]',
+        ),
+        (
+            t.Optional[t.Union[dict, set, list]],
+            'typing.Optional[typing.Union[dict, set, list]]',
+        ),
+        (
+            t.Optional[t.Union[t.AnyStr, int, float]],
+            'typing.Optional[typing.Union[typing.TypeVar(?, bytes, str), int, float]]',
+        ),
         (t.Dict[str, str], 'typing.Dict[str, str]'),
         (t.Optional[t.Dict[str, str]], 'typing.Optional[typing.Dict[str, str]]'),
         (t.Optional[t.Dict[str, t.Any]], 'typing.Optional[typing.Dict[str, typing.Any]]'),
@@ -85,7 +102,7 @@ from axion.specification import parser
 def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            handler._get_type_string_repr(the_type)
+            handler._get_type_string_repr(the_type)  # type: ignore
     else:
         assert handler._get_type_string_repr(the_type) == str_repr
 
@@ -1099,28 +1116,28 @@ class TestPathQuery:
         assert len(err.value) == 4
         for mismatch in err.value:
             actual_msg = err.value[mismatch.param_name]
+            expected_msg = None
 
             if mismatch.param_name == 'id':
                 expected_msg = 'expected [str], but got float'
-                assert expected_msg == actual_msg
             elif mismatch.param_name == 'limit':
                 expected_msg = (
                     'expected [typing.Optional[int]], but got '
-                    'typing.Optional[t.Union[int, float]]'
+                    'typing.Optional[typing.Union[float, int]]'
                 )
-                assert expected_msg == actual_msg
             elif mismatch.param_name == 'page':
                 expected_msg = (
                     'expected [typing.Optional[float]], but got '
                     'typing.Optional[typing.AbstractSet[bool]]'
                 )
-                assert expected_msg == actual_msg
-            elif mismatch.param_name == 'include_extra':
+            elif mismatch.param_name == 'includeExtra':
                 expected_msg = (
                     'expected [typing.Optional[bool]], but got '
                     'typing.Union[int, str]'
                 )
-                assert expected_msg == actual_msg
+
+            assert expected_msg is not None
+            assert actual_msg == expected_msg
 
     def test_signature_match(self) -> None:
         async def test_handler(
