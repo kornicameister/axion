@@ -830,15 +830,37 @@ def _build_type_from_oas_param(param: specification.OASParameter) -> t.Any:
 
 @functools.lru_cache(maxsize=100)
 def get_type_string_repr(val: t.Type[T]) -> str:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).debug(
+        'Getting string representation for val={val}',
+        val=lambda: val,
+    )
     return _get_type_string_repr(val)
 
 
+def _qualified_name(tt: t.Type[T]) -> str:
+    the_name = str(tt)
+
+    if 'typing' not in the_name:
+        the_name = tt.__name__ or tt.__qualname__
+
+    return the_name
+
+
+if sys.version_info < (3, 7):
+    logger.trace('python 3.6 detected, using typing_inspect.get_last_args')
+
+    def _ti_get_args(val: t.Any) -> t.Any:
+        return ti.get_last_args(val)
+else:
+
+    def _ti_get_args(val: t.Any) -> t.Any:
+        return ti.get_args(val, True)
+
+
 def _get_type_string_repr(val: t.Type[T]) -> str:
-    def qualified_name(tt: t.Type[T]) -> str:
-        the_name = str(tt)
-        if 'typing.' in the_name:
-            return the_name
-        return t.cast(str, getattr(tt, '__qualname__', ''))
 
     assert val is not None
 
@@ -853,7 +875,7 @@ def _get_type_string_repr(val: t.Type[T]) -> str:
         else:
             return 'typing.Any'
     elif ti.is_optional_type(val):
-        optional_args = ti.get_args(val)[:-1]
+        optional_args = _ti_get_args(val)[:-1]
         nested_union = len(optional_args) > 1
         optional_reprs = (get_type_string_repr(tt) for tt in optional_args)
         if nested_union:
@@ -861,13 +883,29 @@ def _get_type_string_repr(val: t.Type[T]) -> str:
         else:
             return f'typing.Optional[{", ".join(optional_reprs)}]'
     elif ti.is_union_type(val):
-        union_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val))
+        union_reprs = (get_type_string_repr(tt) for tt in _ti_get_args(val))
         return f'typing.Union[{", ".join(union_reprs)}]'
     elif ti.is_generic_type(val):
-        generic_reprs = (get_type_string_repr(tt) for tt in ti.get_args(val))
-        return f'typing.{val._name}[{", ".join(generic_reprs)}]'
+
+        if sys.version_info < (3, 7):
+            attr_name = val.__name__
+            generic_reprs = [get_type_string_repr(tt) for tt in ti.get_last_args(val)]
+            if not generic_reprs:
+                generic_reprs = (
+                    get_type_string_repr(tt) for tt in ti.get_parameters(val)
+                )
+        else:
+            attr_name = val._name
+            generic_reprs = (
+                get_type_string_repr(tt) for tt in ti.get_args(val, evaluate=True)
+            )
+
+        assert generic_reprs is not None
+        assert attr_name is not None
+
+        return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
-        val_name = qualified_name(val)
+        val_name = _qualified_name(val)
         maybe_td_keys = getattr(val, '__annotations__', {}).copy()
         if maybe_td_keys:
             # we are dealing with typed dict
