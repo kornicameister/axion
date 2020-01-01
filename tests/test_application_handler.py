@@ -18,6 +18,11 @@ from axion.specification import parser
         (list, 'list'),
         (dict, 'dict'),
         (set, 'set'),
+        (t.NewType('Cookies', int), 'Cookies[int]'),
+        (t.NewType('Cookies', bool), 'Cookies[bool]'),
+        (t.NewType('Cookies', str), 'Cookies[str]'),
+        (t.NewType('Cookies', float), 'Cookies[float]'),
+        (t.NewType('Cookies', t.List[str]), 'Cookies[typing.List[str]]'),
         (t.TypeVar('T'), 'typing.Any'),  # type: ignore
         (t.TypeVar('T', int, float), 'typing.TypeVar(?, int, float)'),  # type: ignore
         (t.TypeVar('T', int, float,  # type: ignore
