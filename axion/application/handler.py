@@ -849,6 +849,10 @@ def _qualified_name(tt: t.Type[T]) -> str:
     return the_name
 
 
+def _is_new_type(tt: t.Type[T]) -> bool:
+    return getattr(tt, '__supertype__', False)
+
+
 if sys.version_info < (3, 7):
     logger.trace('python 3.6 detected, using typing_inspect.get_last_args')
 
@@ -864,7 +868,10 @@ def _get_type_string_repr(val: t.Type[T]) -> str:
 
     assert val is not None
 
-    if ti.is_typevar(val):
+    if _is_new_type(val):
+        nested_type = val.__supertype__
+        return f'{_qualified_name(val)}[{get_type_string_repr(nested_type)}]'
+    elif ti.is_typevar(val):
         tv_constraints = ti.get_constraints(val)
         tv_bound = ti.get_bound(val)
         if tv_constraints:
