@@ -62,8 +62,8 @@ class Handler(t.NamedTuple):
         return self._params('cookie')
 
     def _params(
-            self,
-            param_in: specification.OASParameterLocation,
+        self,
+        param_in: specification.OASParameterLocation,
     ) -> t.FrozenSet[t.Tuple[str, str]]:
         gen = ((oas_param.param_name, fn_param)
                for oas_param, fn_param in self.param_mapping.items()
@@ -72,16 +72,16 @@ class Handler(t.NamedTuple):
 
 
 class IncorrectTypeReason:
-    expected: t.List[T]
+    expected: t.Sequence[T]
     actual: T
 
-    def __init__(self, expected: t.List[T], actual: T) -> None:
+    def __init__(self, expected: t.Sequence[T], actual: T) -> None:
         self.expected = expected
         self.actual = actual
 
     def __repr__(self) -> str:
-        expected_str = ','.join(_readable_t(rt) for rt in self.expected)
-        actual_str = _readable_t(self.actual)
+        expected_str = ','.join(get_type_string_repr(rt) for rt in self.expected)
+        actual_str = get_type_string_repr(self.actual)
         return f'expected [{expected_str}], but got {actual_str}'
 
 
@@ -95,7 +95,7 @@ class Error(t.NamedTuple):
 
 class InvalidHandlerError(
         ValueError,
-        t.Mapping[str, Reason],
+        t.Mapping[str, str],
 ):
     __slots__ = (
         '_operation_id',
@@ -109,17 +109,18 @@ class InvalidHandlerError(
             message: t.Optional[str] = None,
     ) -> None:
         header_msg = f'\n{operation_id} handler mismatch signature:'
+
         if errors and not message:
             error_str = '\n'.join(
                 f'argument {m.param_name} :: {m.reason}' for m in errors
             )
-            message = '\n'.join([
+            super().__init__('\n'.join([
                 header_msg,
                 error_str,
-            ])
+            ]))
+        else:
             super().__init__(message)
 
-        super().__init__(message)
         self._errors = errors
         self._operation_id = operation_id
 
@@ -128,8 +129,8 @@ class InvalidHandlerError(
         return self._operation_id
 
     @property
-    def reasons(self) -> t.Mapping[str, Reason]:
-        return {e.param_name: e.reason for e in self._errors or []}
+    def reasons(self) -> t.Mapping[str, str]:
+        return {e.param_name: str(e.reason) for e in self._errors or []}
 
     def __iter__(self) -> t.Iterator[Error]:  # type: ignore
         return iter(e for e in self._errors or [])
@@ -137,7 +138,7 @@ class InvalidHandlerError(
     def __len__(self) -> int:
         return len(self._errors or [])
 
-    def __getitem__(self, key: str) -> Reason:
+    def __getitem__(self, key: str) -> str:
         return self.reasons[key]
 
 
@@ -451,10 +452,9 @@ def _analyze_cookies_signature_set_oas_set(
     errors: t.Set[Error] = set()
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
-    param_cookies: t.Dict[F_Param, str] = {
-        _get_f_param(rh.name): rh.name
-        for rh in parameters
-    }
+    param_cookies: t.Dict[F_Param,
+                          str] = {_get_f_param(rh.name): rh.name
+                                  for rh in parameters}
 
     try:
         entries = t.get_type_hints(cookies_arg).items()
@@ -469,7 +469,7 @@ def _analyze_cookies_signature_set_oas_set(
                             parameters,
                         ),
                     )
-                    oas_param_type = _build_annotation_args(oas_param)
+                    oas_param_type = _build_type_from_oas_param(oas_param)
                     if oas_param_type != cookie_param_type:
                         errors.add(
                             Error(
@@ -678,10 +678,9 @@ def _analyze_headers_signature_set_oas_set(
     errors: t.Set[Error] = set()
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
-    param_headers: t.Dict[F_Param, str] = {
-        _get_f_param(rh.name): rh.name
-        for rh in parameters
-    }
+    param_headers: t.Dict[F_Param,
+                          str] = {_get_f_param(rh.name): rh.name
+                                  for rh in parameters}
     reserved_headers: t.Dict[F_Param, str] = {
         _get_f_param(rh): rh
         for rh in specification.OASReservedHeaders
@@ -714,7 +713,7 @@ def _analyze_headers_signature_set_oas_set(
                                 parameters,
                             ),
                         )
-                        oas_param_type = _build_annotation_args(oas_param)
+                        oas_param_type = _build_type_from_oas_param(oas_param)
                         if oas_param_type != hdr_param_type:
                             errors.add(
                                 Error(
@@ -789,18 +788,17 @@ def _analyze_path_query(
     for op_param in parameters:
         try:
             handler_param_name = _get_f_param(op_param.name)
-            handler_param = signature.pop(handler_param_name)
 
-            handler_param_args = getattr(handler_param, '__args__', handler_param)
-            op_param_type_args = _build_annotation_args(op_param)
+            handler_param_type = signature.pop(handler_param_name)
+            op_param_type = _build_type_from_oas_param(op_param)
 
-            if handler_param_args != op_param_type_args:
+            if handler_param_type != op_param_type:
                 errors.add(
                     Error(
                         param_name=op_param.name,
                         reason=IncorrectTypeReason(
-                            actual=handler_param_args,
-                            expected=[op_param_type_args],
+                            actual=handler_param_type,
+                            expected=[op_param_type],
                         ),
                     ),
                 )
@@ -821,31 +819,113 @@ def _analyze_path_query(
     return errors, param_mapping
 
 
-def _build_annotation_args(param: specification.OASParameter) -> T:
+def _build_type_from_oas_param(param: specification.OASParameter) -> t.Any:
     p_type = param.python_type
     p_required = param.required
     if not p_required:
-        return p_type, type(None)
+        return t.Optional[p_type]
     else:
         return p_type
 
 
-@functools.lru_cache(maxsize=10)
-def _readable_t(val: T) -> str:
-    def qualified_name(tt: t.Any) -> str:
-        the_name = str(tt)
-        if 'typing.' in the_name:
-            return the_name
-        return t.cast(str, getattr(tt, '__qualname__', ''))
+@functools.lru_cache(maxsize=100)
+def get_type_string_repr(val: t.Type[T]) -> str:
+    logger.opt(
+        lazy=True,
+        record=True,
+    ).debug(
+        'Getting string representation for val={val}',
+        val=lambda: val,
+    )
+    return _get_type_string_repr(val)
 
-    if isinstance(val, tuple):
-        last_type = val[-1]
-        if issubclass(last_type, type(None)):
-            return f'typing.Optional[{",".join(qualified_name(tt) for tt in val[:-1])}]'
+
+def _qualified_name(tt: t.Type[T]) -> str:
+    the_name = str(tt)
+
+    if 'typing' not in the_name:
+        the_name = tt.__name__ or tt.__qualname__
+
+    return the_name
+
+
+def _is_new_type(tt: t.Type[T]) -> bool:
+    return getattr(tt, '__supertype__', None) is not None
+
+
+if sys.version_info < (3, 7):
+    logger.trace('python 3.6 detected, using typing_inspect.get_last_args')
+
+    def _ti_get_args(val: t.Any) -> t.Any:
+        return ti.get_last_args(val)
+else:
+
+    def _ti_get_args(val: t.Any) -> t.Any:
+        return ti.get_args(val, True)
+
+
+def _get_type_string_repr(val: t.Type[T]) -> str:
+
+    assert val is not None
+
+    if _is_new_type(val):
+        nested_type = val.__supertype__
+        return f'{_qualified_name(val)}[{get_type_string_repr(nested_type)}]'
+    elif ti.is_typevar(val):
+        tv_constraints = ti.get_constraints(val)
+        tv_bound = ti.get_bound(val)
+        if tv_constraints:
+            constraints_repr = (get_type_string_repr(tt) for tt in tv_constraints)
+            return f'typing.TypeVar(?, {", ".join(constraints_repr)})'
+        elif tv_bound:
+            return get_type_string_repr(tv_bound)
         else:
-            return f'typing.Union[{",".join(qualified_name(tt) for tt in val)}]'
+            return 'typing.Any'
+    elif ti.is_optional_type(val):
+        optional_args = _ti_get_args(val)[:-1]
+        nested_union = len(optional_args) > 1
+        optional_reprs = (get_type_string_repr(tt) for tt in optional_args)
+        if nested_union:
+            return f'typing.Optional[typing.Union[{", ".join(optional_reprs)}]]'
+        else:
+            return f'typing.Optional[{", ".join(optional_reprs)}]'
+    elif ti.is_union_type(val):
+        union_reprs = (get_type_string_repr(tt) for tt in _ti_get_args(val))
+        return f'typing.Union[{", ".join(union_reprs)}]'
+    elif ti.is_generic_type(val):
+
+        if sys.version_info < (3, 7):
+            attr_name = val.__name__
+            generic_reprs = [get_type_string_repr(tt) for tt in ti.get_last_args(val)]
+            if not generic_reprs:
+                generic_reprs = (
+                    get_type_string_repr(tt) for tt in ti.get_parameters(val)
+                )
+        else:
+            attr_name = val._name
+            generic_reprs = (
+                get_type_string_repr(tt) for tt in ti.get_args(val, evaluate=True)
+            )
+
+        assert generic_reprs is not None
+        assert attr_name is not None
+
+        return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
-        return f'{qualified_name(val)}'
+        val_name = _qualified_name(val)
+        maybe_td_keys = getattr(val, '__annotations__', {}).copy()
+        if maybe_td_keys:
+            # we are dealing with typed dict
+            # that's quite lovely
+            internal_members_repr = ', '.join(
+                '{key}: {type}'.format(key=k, type=get_type_string_repr(v))
+                for k, v in maybe_td_keys.items()
+            )
+            return f'{val_name}{{{internal_members_repr}}}'
+        elif 'TypedDict' == getattr(val, '__name__', ''):
+            return 'typing_extensions.TypedDict'
+        else:
+            return val_name
 
 
 @functools.lru_cache(maxsize=100)
