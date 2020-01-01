@@ -850,7 +850,7 @@ def _qualified_name(tt: t.Type[T]) -> str:
 
 
 def _is_new_type(tt: t.Type[T]) -> bool:
-    return getattr(tt, '__supertype__', False)
+    return getattr(tt, '__supertype__', None) is not None
 
 
 if sys.version_info < (3, 7):
@@ -922,6 +922,8 @@ def _get_type_string_repr(val: t.Type[T]) -> str:
                 for k, v in maybe_td_keys.items()
             )
             return f'{val_name}{{{internal_members_repr}}}'
+        elif 'TypedDict' == getattr(val, '__name__', ''):
+            return 'typing_extensions.TypedDict'
         else:
             return val_name
 

@@ -71,6 +71,7 @@ from axion.specification import parser
         (t.Optional[t.AbstractSet[bool]], 'typing.Optional[typing.AbstractSet[bool]]'),
         (None, None),
         (t.Any, 'typing.Any'),
+        (te.TypedDict, 'typing_extensions.TypedDict'),
         (
             te.TypedDict(  # type: ignore
                 'Cookies',
@@ -508,7 +509,7 @@ class TestCookies:
         assert 'cookies' in err.value
         assert err.value['cookies'] == (
             f'expected [typing.Mapping[str, typing.Any],'
-            f'typing.Dict[str, typing.Any],TypedDict]'
+            f'typing.Dict[str, typing.Any],typing_extensions.TypedDict]'
             f', but got {handler.get_type_string_repr(the_type)}'
         )
 
