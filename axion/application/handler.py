@@ -39,25 +39,31 @@ BODY_EXPECTED_TYPES = [
 ]
 
 
+is sys.version_info >= (3, 8):
+    cached_property = functools.cached_property
+else:
+    from cached_property import cached_property
+    
+
 @te.final
 class Handler(t.NamedTuple):
     fn: F
     has_body: bool
     param_mapping: ParamMapping
 
-    @functools.cached_property
+    @cached_property
     def path_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('path')
 
-    @functools.cached_property
+    @cached_property
     def header_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('header')
 
-    @functools.cached_property
+    @cached_property
     def query_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('query')
 
-    @functools.cached_property
+    @cached_property
     def cookie_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('cookie')
 
