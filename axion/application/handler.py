@@ -1,5 +1,6 @@
 import asyncio
 import collections
+from dataclasses import dataclass
 import functools
 import importlib
 import re
@@ -45,7 +46,8 @@ else:
 
 
 @te.final
-class Handler(te.TypedDict):
+@dataclass(frozen=True)
+class Handler:
     fn: F
     has_body: bool
     param_mapping: ParamMapping
