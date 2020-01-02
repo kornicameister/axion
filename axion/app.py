@@ -111,7 +111,7 @@ def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
     user_handler = application.resolve_handler(operation)
 
     async def handler(request: web.Request) -> web.StreamResponse:
-        await user_handler.fn()  # pragma: no cover
+        await user_handler.fn  # pragma: no cover
         return web.Response()  # pragma: no cover
 
     return handler
