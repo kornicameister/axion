@@ -45,7 +45,7 @@ else:
 
 
 @te.final
-class Handler(t.NamedTuple):
+class Handler(te.TypedDict):
     fn: F
     has_body: bool
     param_mapping: ParamMapping
