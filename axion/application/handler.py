@@ -19,7 +19,7 @@ __all__ = (
     'make',
 )
 
-F = t.Callable[..., t.Awaitable[t.Any]]
+F = t.Callable[..., t.Coroutine[t.Any, t.Any, t.Any]]
 T = t.Any
 
 OAS_Param = t.NamedTuple(
