@@ -38,12 +38,11 @@ BODY_EXPECTED_TYPES = [
     t.Dict[str, t.Any],
 ]
 
-
 if sys.version_info >= (3, 8):
     cached_property = functools.cached_property
 else:
     from cached_property import cached_property
-    
+
 
 @te.final
 class Handler(t.NamedTuple):
