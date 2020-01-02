@@ -45,19 +45,19 @@ class Handler(t.NamedTuple):
     has_body: bool
     param_mapping: ParamMapping
 
-    @property
+    @functools.cached_property
     def path_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('path')
 
-    @property
+    @functools.cached_property
     def header_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('header')
 
-    @property
+    @functools.cached_property
     def query_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('query')
 
-    @property
+    @functools.cached_property
     def cookie_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('cookie')
 
