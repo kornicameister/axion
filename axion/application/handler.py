@@ -46,7 +46,7 @@ else:
 
 
 @te.final
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=True)
 class Handler:
     fn: F
     has_body: bool
