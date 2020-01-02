@@ -40,25 +40,25 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - pyenv-v2-{{ arch }}
+            - pyenv-v3-{{ arch }}
       - run:
           name: Install Pythons
           command: |
             eval "$(pyenv init -)"
-            pyenv install 3.6.8 -s
-            pyenv install 3.7.4 -s
-            pyenv install 3.8.0 -s
+            pyenv install 3.6.9 -s
+            pyenv install 3.7.6 -s
+            pyenv install 3.8.1 -s
       - save_cache:
-          key: pyenv-v2-{{ arch }}
+          key: pyenv-v3-{{ arch }}
           paths:
-            - ~/.pyenv/versions/3.6.8
-            - ~/.pyenv/versions/3.7.4
-            - ~/.pyenv/versions/3.8.0
+            - ~/.pyenv/versions/3.6.9
+            - ~/.pyenv/versions/3.7.6
+            - ~/.pyenv/versions/3.8.1
       - run:
           name: Mighty test run
           command: |
             eval "$(pyenv init -)"
-            pyenv shell 3.6.8 3.7.4 3.8.0
+            pyenv shell 3.6.9 3.7.6 3.8.1
             tox
       - store_test_results:
           path: test-reports
