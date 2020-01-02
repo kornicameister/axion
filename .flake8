@@ -10,7 +10,7 @@ per-file-ignores =
     axion/handler/__init__.py:F811
 
 import-order-style=appnexus
-application-package-names=axion
+application-package-names=axion,tests
 
 format = pylint
 hang-closing = false

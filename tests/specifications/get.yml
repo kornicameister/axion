@@ -1,0 +1,29 @@
+---
+openapi: 3.0.1
+info:
+  title: Sample GET request
+  description: API to test various GET requests
+  version: 1.0.0
+servers:
+  - url: "/"
+paths:
+  /200:
+    get:
+      operationId: tests.test_it_get.handle_200
+      summary: Returns a list of axions.
+      description: |
+        Validates if request 200 is handled properly.
+        200 aims at being successful response while being
+        empty in the same time.
+      responses:
+        "200":
+          description: OK
+  /204:
+    get:
+      operationId: tests.test_it_get.handle_204
+      summary: Returns an empty response
+      description: |
+        Validates totally empty response. Nothing must be there in handler.
+      responses:
+        "204":
+          description: Empty
