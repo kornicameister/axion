@@ -13,6 +13,7 @@ import typing_extensions as te
 import typing_inspect as ti
 
 from axion import specification
+from axion import utils
 
 __all__ = (
     'InvalidHandlerError',
@@ -87,8 +88,8 @@ class IncorrectTypeReason:
         self.actual = actual
 
     def __repr__(self) -> str:
-        expected_str = ','.join(get_type_string_repr(rt) for rt in self.expected)
-        actual_str = get_type_string_repr(self.actual)
+        expected_str = ','.join(utils.get_type_repr(rt) for rt in self.expected)
+        actual_str = utils.get_type_repr(self.actual)
         return f'expected [{expected_str}], but got {actual_str}'
 
 
@@ -541,7 +542,7 @@ def _analyze_headers(
           handler. The warning is the only reliable thing to say.
     3. function has "headers" argument and there no custom OAS headers ->
         - OK
-        - User might want to get a hold with headers like "Content-Type"
+        - User might want to get_repr a hold with headers like "Content-Type"
         - With Mapping all reserved headers go in
         - With TypedDict we must see if users wants one of reserved headers
           Only reserved headers are allowed to be requested for.
@@ -833,106 +834,6 @@ def _build_type_from_oas_param(param: specification.OASParameter) -> t.Any:
         return t.Optional[p_type]
     else:
         return p_type
-
-
-@functools.lru_cache(maxsize=100)
-def get_type_string_repr(val: t.Type[T]) -> str:
-    logger.opt(
-        lazy=True,
-        record=True,
-    ).debug(
-        'Getting string representation for val={val}',
-        val=lambda: val,
-    )
-    return _get_type_string_repr(val)
-
-
-def _qualified_name(tt: t.Type[T]) -> str:
-    the_name = str(tt)
-
-    if 'typing' not in the_name:
-        the_name = tt.__name__ or tt.__qualname__
-
-    return the_name
-
-
-def _is_new_type(tt: t.Type[T]) -> bool:
-    return getattr(tt, '__supertype__', None) is not None
-
-
-if sys.version_info < (3, 7):
-    logger.trace('python 3.6 detected, using typing_inspect.get_last_args')
-
-    def _ti_get_args(val: t.Any) -> t.Any:
-        return ti.get_last_args(val)
-else:
-
-    def _ti_get_args(val: t.Any) -> t.Any:
-        return ti.get_args(val, True)
-
-
-def _get_type_string_repr(val: t.Type[T]) -> str:
-
-    assert val is not None
-
-    if _is_new_type(val):
-        nested_type = val.__supertype__
-        return f'{_qualified_name(val)}[{get_type_string_repr(nested_type)}]'
-    elif ti.is_typevar(val):
-        tv_constraints = ti.get_constraints(val)
-        tv_bound = ti.get_bound(val)
-        if tv_constraints:
-            constraints_repr = (get_type_string_repr(tt) for tt in tv_constraints)
-            return f'typing.TypeVar(?, {", ".join(constraints_repr)})'
-        elif tv_bound:
-            return get_type_string_repr(tv_bound)
-        else:
-            return 'typing.Any'
-    elif ti.is_optional_type(val):
-        optional_args = _ti_get_args(val)[:-1]
-        nested_union = len(optional_args) > 1
-        optional_reprs = (get_type_string_repr(tt) for tt in optional_args)
-        if nested_union:
-            return f'typing.Optional[typing.Union[{", ".join(optional_reprs)}]]'
-        else:
-            return f'typing.Optional[{", ".join(optional_reprs)}]'
-    elif ti.is_union_type(val):
-        union_reprs = (get_type_string_repr(tt) for tt in _ti_get_args(val))
-        return f'typing.Union[{", ".join(union_reprs)}]'
-    elif ti.is_generic_type(val):
-
-        if sys.version_info < (3, 7):
-            attr_name = val.__name__
-            generic_reprs = [get_type_string_repr(tt) for tt in ti.get_last_args(val)]
-            if not generic_reprs:
-                generic_reprs = (
-                    get_type_string_repr(tt) for tt in ti.get_parameters(val)
-                )
-        else:
-            attr_name = val._name
-            generic_reprs = (
-                get_type_string_repr(tt) for tt in ti.get_args(val, evaluate=True)
-            )
-
-        assert generic_reprs is not None
-        assert attr_name is not None
-
-        return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
-    else:
-        val_name = _qualified_name(val)
-        maybe_td_keys = getattr(val, '__annotations__', {}).copy()
-        if maybe_td_keys:
-            # we are dealing with typed dict
-            # that's quite lovely
-            internal_members_repr = ', '.join(
-                '{key}: {type}'.format(key=k, type=get_type_string_repr(v))
-                for k, v in maybe_td_keys.items()
-            )
-            return f'{val_name}{{{internal_members_repr}}}'
-        elif 'TypedDict' == getattr(val, '__name__', ''):
-            return 'typing_extensions.TypedDict'
-        else:
-            return val_name
 
 
 @functools.lru_cache(maxsize=100)
