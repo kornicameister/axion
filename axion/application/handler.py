@@ -39,7 +39,7 @@ BODY_EXPECTED_TYPES = [
 ]
 
 
-is sys.version_info >= (3, 8):
+if sys.version_info >= (3, 8):
     cached_property = functools.cached_property
 else:
     from cached_property import cached_property
