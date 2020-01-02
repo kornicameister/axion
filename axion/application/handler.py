@@ -1,5 +1,6 @@
 import asyncio
 import collections
+from dataclasses import dataclass
 import functools
 import importlib
 import re
@@ -18,7 +19,7 @@ __all__ = (
     'make',
 )
 
-F = t.Callable[..., t.Awaitable[t.Any]]
+F = t.Callable[..., t.Coroutine[t.Any, t.Any, t.Any]]
 T = t.Any
 
 OAS_Param = t.NamedTuple(
@@ -38,26 +39,32 @@ BODY_EXPECTED_TYPES = [
     t.Dict[str, t.Any],
 ]
 
+if sys.version_info >= (3, 8):
+    cached_property = functools.cached_property
+else:
+    from cached_property import cached_property
+
 
 @te.final
-class Handler(t.NamedTuple):
+@dataclass(frozen=True, repr=True)
+class Handler:
     fn: F
     has_body: bool
     param_mapping: ParamMapping
 
-    @property
+    @cached_property
     def path_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('path')
 
-    @property
+    @cached_property
     def header_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('header')
 
-    @property
+    @cached_property
     def query_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('query')
 
-    @property
+    @cached_property
     def cookie_params(self) -> t.FrozenSet[t.Tuple[str, str]]:
         return self._params('cookie')
 

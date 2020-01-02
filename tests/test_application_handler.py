@@ -323,7 +323,7 @@ class TestCookies:
             next(filter(lambda op: op.id == 'no_cookies_op', self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert not hdrl.cookie_params
         assert 'No "cookies" in signature and operation parameters' in caplog.messages
 
@@ -380,7 +380,7 @@ class TestCookies:
             'or typing_extensions.TypedDict[str, typing.Any].'
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert not hdrl.cookie_params
         assert msg in caplog.messages
 
@@ -410,7 +410,7 @@ class TestCookies:
             next(filter(lambda op: op.id == 'cookies_op', self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert hdrl.cookie_params
 
         assert ('csrftoken', 'csrftoken') in hdrl.cookie_params
@@ -533,7 +533,7 @@ class TestCookies:
             next(filter(lambda op: op.id == 'cookies_op', self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert hdrl.cookie_params
         assert len(hdrl.cookie_params) == 2
         assert ('csrftoken', 'csrftoken') in hdrl.cookie_params
@@ -651,7 +651,7 @@ class TestHeaders:
             next(filter(lambda op: op.id == op_id, self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert hdrl.header_params
         msg = (
             'Detected usage of "headers" declared as typing.Any. '
@@ -715,7 +715,7 @@ class TestHeaders:
             'or typing_extensions.TypedDict[str, typing.Any].'
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert not hdrl.header_params
         assert msg in caplog.messages
 
@@ -731,7 +731,7 @@ class TestHeaders:
             next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert not hdrl.header_params
         assert 'No "headers" in signature and operation parameters' in caplog.messages
 
@@ -747,7 +747,7 @@ class TestHeaders:
             next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
         )
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert hdrl.header_params
 
         assert ('accept', 'accept') in hdrl.header_params
@@ -832,7 +832,7 @@ class TestHeaders:
                 next(filter(lambda op: op.id == 'no_headers_op', self.operations)),
             )
 
-            assert hdrl.fn is fn
+            assert id(hdrl.fn) == id(fn)
             assert hdrl.header_params
 
             if fn is content_type:
@@ -868,7 +868,7 @@ class TestHeaders:
         operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
         hdrl = handler._build(foo, operation)
 
-        assert hdrl.fn is foo
+        assert id(hdrl.fn) == id(foo)
         assert hdrl.header_params
 
         assert ('accept', 'accept') in hdrl.header_params
@@ -915,7 +915,7 @@ class TestHeaders:
         for fn in (one, two, three, full):
             hdrl = handler._build(fn, operation)
 
-            assert hdrl.fn is fn
+            assert id(hdrl.fn) == id(fn)
             assert hdrl.header_params
 
             if fn is one:
