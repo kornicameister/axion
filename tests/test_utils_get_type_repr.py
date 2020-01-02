@@ -3,7 +3,7 @@ import typing as t
 import pytest
 import typing_extensions as te
 
-from axion.utils import type_str
+from axion.utils import get_type_repr
 
 
 @pytest.mark.parametrize(
@@ -112,6 +112,6 @@ from axion.utils import type_str
 def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            type_str.repr(the_type)
+            get_type_repr(the_type)
     else:
-        assert type_str.repr(the_type) == str_repr
+        assert get_type_repr(the_type) == str_repr

@@ -88,8 +88,8 @@ class IncorrectTypeReason:
         self.actual = actual
 
     def __repr__(self) -> str:
-        expected_str = ','.join(utils.type_str_repr(rt) for rt in self.expected)
-        actual_str = utils.type_str_repr(self.actual)
+        expected_str = ','.join(utils.get_type_repr(rt) for rt in self.expected)
+        actual_str = utils.get_type_repr(self.actual)
         return f'expected [{expected_str}], but got {actual_str}'
 
 
@@ -542,7 +542,7 @@ def _analyze_headers(
           handler. The warning is the only reliable thing to say.
     3. function has "headers" argument and there no custom OAS headers ->
         - OK
-        - User might want to get a hold with headers like "Content-Type"
+        - User might want to get_repr a hold with headers like "Content-Type"
         - With Mapping all reserved headers go in
         - With TypedDict we must see if users wants one of reserved headers
           Only reserved headers are allowed to be requested for.

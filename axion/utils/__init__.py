@@ -1,5 +1,5 @@
-from axion.utils import type_str
+from axion.utils import get_type_repr as gtr
 
-type_str_repr = type_str.repr
+get_type_repr = gtr.get_repr
 
-__all__ = ('type_str_repr', )
+__all__ = 'get_type_repr'
