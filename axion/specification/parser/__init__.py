@@ -140,7 +140,7 @@ def _resolve_responses(
             ),
         )
 
-    return responses
+    return model.OASResponses(responses)
 
 
 def _resolve_content(
