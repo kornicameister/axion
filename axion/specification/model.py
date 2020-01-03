@@ -75,7 +75,7 @@ class MimeType:
 
 OASContent = t.Mapping[MimeType, 'OASMediaType']
 OASResponseCode = t.Union[HTTPCode, te.Literal['default']]
-OASResponses = t.Mapping[OASResponseCode, 'OASResponse']
+OASResponses = t.NewType('OASResponses', t.Mapping[OASResponseCode, 'OASResponse'])
 OASOperationId = t.NewType('OASOperationId', str)
 OASOperations = t.FrozenSet['OASOperation']
 OASParameters = t.FrozenSet['OASParameter']
