@@ -12,6 +12,7 @@ import typing_extensions as te
 import typing_inspect as ti
 
 from axion import oas
+from axion import response
 from axion.utils import get_type_repr
 from axion.utils import types
 
@@ -39,6 +40,9 @@ BODY_EXPECTED_TYPES = [
     t.Mapping[str, t.Any],
     t.Dict[str, t.Any],
 ]
+
+AXION_RESPONSE_ENTRIES = getattr(response.Response, '__annotations__', {})
+AXION_RESPONSE_KEYS = frozenset(AXION_RESPONSE_ENTRIES.keys())
 
 if sys.version_info >= (3, 8):
     cached_property = functools.cached_property
@@ -206,6 +210,12 @@ def _build(
         operation.request_body,
         signature.pop('body', None),
     )
+    rt_errors = _analyze_return_type(
+        operation,
+        signature,
+    )
+
+    errors.update(rt_errors)
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
     if operation.parameters:
@@ -221,8 +231,6 @@ def _build(
             oas.operation_filter_parameters(operation, 'path', 'query'),
             signature,
         )
-
-        signature.pop('return')  # pragma: no cover
 
         if signature:
             logger.opt(record=True).error(
@@ -267,6 +275,215 @@ def _build(
         param_mapping=param_mapping,
         has_body=has_body,
     )
+
+
+def _analyze_return_type(
+        operation: oas.OASOperation,
+        signature: t.Dict[str, t.Any],
+) -> t.Set[Error]:
+
+    if 'return' not in signature:
+        logger.opt(
+            record=True,
+            lazy=True,
+        ).error(
+            'Operation {id} handler does not define return annotation',
+            id=lambda: operation.id,
+        )
+        return {Error(param_name='return', reason='missing')}
+    else:
+        return_type = signature.pop('return')
+        rt_entries = getattr(return_type, '__annotations__', {})
+
+        if AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys())):
+            # TODO(kornicameister) analyze other entries,
+            # like maybe body or headers/cookies?
+            return _analyze_return_type_http_code(
+                operation,
+                rt_entries.pop('http_code', None),
+            )
+        else:
+            logger.opt(
+                record=True,
+                lazy=True,
+            ).error(
+                'Operation {id} handler return type is incorrect, '
+                'expected {expected_type} but received {actual_type}',
+                id=lambda: operation.id,
+                expected_type=lambda: response.Response,
+                actual_type=lambda: return_type,
+            )
+            return {
+                Error(
+                    param_name='return_type',
+                    reason=IncorrectTypeReason(
+                        expected=[response.Response],
+                        actual=return_type,
+                    ),
+                ),
+            }
+
+
+def _analyze_return_type_http_code(
+        operation: oas.OASOperation,
+        rt_http_code: t.Optional[t.Any],
+) -> t.Set[Error]:
+    if rt_http_code is None:
+        # if there's no http_code in return Response
+        # this is permitted only if there's single response defined in
+        # OAS responses
+
+        if len(operation.responses) != 1:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler skips return.http_code but it is impossible '
+                ' with {count_of_ops} responses due to ambiguity.',
+                id=lambda: operation.id,
+                count_of_ops=lambda: len(operation.responses),
+            )
+            return {
+                Error(
+                    param_name='return.http_code',
+                    reason='missing',
+                ),
+            }
+        else:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).debug(
+                'Operation {id} handler skips return.http_code',
+                id=lambda: operation.id,
+            )
+            return set()
+    elif ti.is_literal_type(rt_http_code):
+        errors: t.Set[Error] = set()
+        rt_literal_args = frozenset(ti.get_args(rt_http_code, utils.IS_NEW_TYPING))
+        responses_codes = frozenset(operation.responses.keys())
+
+        assert responses_codes, 'there should be response codes in this place'
+        assert rt_literal_args, 'literal should have entries'
+
+        has_default_rt_code = 'default' in rt_literal_args
+        if has_default_rt_code:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler has return.http_code defined as {literal}. '
+                'One of the entries is "default". This is invalid because HTTP '
+                'response code must be `int`. Having "default" OAS response '
+                'means being able to return any `int` from [200, ...] range '
+                'that will match "default" OAS response.',
+                id=lambda: operation.id,
+                literal=lambda: repr(te.Literal),
+            )
+            errors.add(
+                Error(
+                    param_name='return.http_code[default]',
+                    reason='unexpected',
+                ),
+            )
+        elif len(responses_codes) == 1 and 'default' in responses_codes:
+            # if user is not tempted to return `default` as http_code and
+            # in the same time OAS has just one response and that response is
+            # `default` all that needs to be checked is if `rt_literal_args`
+            # are all subclasse of `int`,`float`
+            # TODO(kornicameister) think about it !
+            return errors
+
+        missing_rt_codes = responses_codes.difference(rt_literal_args)
+        extra_codes = frozenset(rt_literal_args - responses_codes)
+
+        if missing_rt_codes:
+            # case where OAS defines code like 200,201,203,default
+            # but Literal defines just 200 which makes 201,203 missing
+            # axion's idea is to aid with OAS services development by ensuring
+            # that implementation matches the specification. If specification
+            # says that 4 codes ought are possible and user defines http_code
+            # as Literal, it is better to make this reminder to him. Either
+            # codes ought to be accounted for or some of them are actually
+            # invalid
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler has return.http_code defined as {literal} '
+                'but http codes in it do not match http codes in OAS operation. '
+                'Following codes are not accounted for [{missing_rt_codes}]',
+                id=lambda: operation.id,
+                literal=lambda: repr(te.Literal),
+                missing_rt_codes=lambda: ','.join(map(str, missing_rt_codes)),
+            )
+            errors.update(
+                Error(
+                    param_name=f'return.http_code[{mc}]',
+                    reason='missing',
+                ) for mc in missing_rt_codes
+            )
+
+        if extra_codes:
+            # this has similar message as above. Imagine that your operation
+            # has respones likes 204, 404, 500 but your handler actually says
+            # that it is doable to return 301. Well welcome to kindgom of
+            # Literal. This is again for two-time checking of own back. axion
+            # is strict as much as it can but it does to prevent accidents from
+            # happening.
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler has return.http_code defined as {literal}. '
+                'Following codes are not part [{extra_codes}] are not defined '
+                'in operation response codes. ',
+                id=lambda: operation.id,
+                literal=lambda: repr(te.Literal),
+                extra_codes=lambda: ','.join(map(str, extra_codes)),
+            )
+            errors.update(
+                Error(
+                    param_name=f'return.http_code[{mc}]',
+                    reason='unexpected',
+                ) for mc in extra_codes
+            )
+
+        return errors
+    elif utils.is_new_type(rt_http_code):
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).debug(
+            'Operation {id} handler defines return.http_code as typing.NewType',
+            id=lambda: operation.id,
+        )
+        return _analyze_return_type_http_code(operation, rt_http_code.__supertype__)
+    elif issubclass(rt_http_code, (int, float)):
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).debug(
+            'Operation {id} handler defines return.http_code as "int" or "float"',
+            id=lambda: operation.id,
+        )
+        return set()
+    else:
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    actual=rt_http_code,
+                    expected=[
+                        int,
+                        float,
+                        t.NewType('HttpCode', int),
+                        t.NewType('HttpCode', float),
+                        te.Literal,
+                    ],
+                ),
+            ),
+        }
 
 
 def _analyze_request_body(
