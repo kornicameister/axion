@@ -119,9 +119,5 @@ workflows:
   verify:
     jobs:
       - verify
-      - test:
-          requires:
-            - verify
-      - install:
-          requires:
-            - verify
+      - test
+      - install
