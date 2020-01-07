@@ -80,5 +80,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# log files
+# logs
 *.log
