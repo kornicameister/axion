@@ -66,6 +66,7 @@ from axion.utils import get_type_repr
         (t.AbstractSet, 'typing.AbstractSet[typing.Any]'),
         (t.AbstractSet[bool], 'typing.AbstractSet[bool]'),
         (t.Optional[t.AbstractSet[bool]], 'typing.Optional[typing.AbstractSet[bool]]'),
+        (type(None), 'NoneType'),
         (None, None),
         (t.Any, 'typing.Any'),
         (te.TypedDict, 'typing_extensions.TypedDict'),

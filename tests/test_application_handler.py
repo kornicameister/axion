@@ -1477,6 +1477,40 @@ class TestReturnType:
         assert 'return' in err.value
         assert 'missing' == err.value['return']
 
+    @pytest.mark.parametrize(
+        'return_type',
+        (
+            int,
+            float,
+            t.Mapping[str, str],
+            t.Dict[str, str],
+            None,
+        ),
+    )
+    def test_incorrect_return_type(self, return_type: t.Type[t.Any]) -> None:
+        async def test() -> return_type:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return' in err.value
+        assert (
+            f'expected [Response{{body: typing.Any, headers: typing.Mapping[str, str], '
+            f'cookies: typing.Mapping[str, str]}}], but got '
+            f'{utils.get_type_repr(return_type if return_type else type(None))}'
+        ) == err.value['return']
+
     @staticmethod
     def _make_operation(responses_def: t.Dict[str, t.Any]) -> model.OASOperation:
         return list(

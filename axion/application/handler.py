@@ -315,7 +315,7 @@ def _analyze_return_type(
             )
             return {
                 Error(
-                    param_name='return_type',
+                    param_name='return',
                     reason=IncorrectTypeReason(
                         expected=[response.Response],
                         actual=return_type,
