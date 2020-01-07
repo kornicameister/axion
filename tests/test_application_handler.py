@@ -1477,6 +1477,56 @@ class TestReturnType:
         assert 'return' in err.value
         assert 'missing' == err.value['return']
 
+    @pytest.mark.parametrize('response_code', (200, 300, 400, 'default'))
+    def test_omitted_return_code_single_oas_resp(
+            self,
+            response_code: t.Union[str, te.Literal['default']],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'MissingHttpCode',
+            {'body': t.Dict[str, int]},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        handler._build(
+            handler=test,
+            operation=TestReturnType._make_operation({
+                f'{response_code}': {
+                    'description': 'I am alone',
+                },
+            }),
+        )
+
+    def test_omitted_return_code_couple_oas_resp(self) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'MissingHttpCode',
+            {'body': t.Dict[str, int]},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '200': {
+                        'description': 'I am alone',
+                    },
+                    '300': {
+                        'description': 'I am alone',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.http_code' in err.value
+        assert 'missing' == err.value['return.http_code']
+
     @pytest.mark.parametrize(
         'return_type',
         (

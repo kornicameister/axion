@@ -349,15 +349,8 @@ def _analyze_return_type_http_code(
                     reason='missing',
                 ),
             }
-        else:
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).debug(
-                'Operation {id} handler skips return.http_code',
-                id=lambda: operation.id,
-            )
-            return set()
+
+        return set()
     elif ti.is_literal_type(rt_http_code):
         errors: t.Set[Error] = set()
         rt_literal_args = frozenset(ti.get_args(rt_http_code, utils.IS_NEW_TYPING))
