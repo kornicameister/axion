@@ -1,6 +1,6 @@
 multidict==4.7.3
 openapi-spec-validator==0.2.8
-pyyaml==5.2
+pyyaml==5.3
 jinja2==2.10.3
 loguru==0.4.0
 dataclasses==0.6 ; python_version < '3.7'
