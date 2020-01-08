@@ -78,7 +78,7 @@ from axion.utils import get_type_repr
                     'csrftoken': str,
                 },
             ),
-            'Cookies{debug: bool, csrftoken: str}',
+            'Cookies{csrftoken: str, debug: bool}',
         ),
         (
             te.TypedDict(  # type: ignore
@@ -89,7 +89,7 @@ from axion.utils import get_type_repr
                     'hasPrev': bool,
                 },
             ),
-            'Paging{page: typing.Optional[int], hasNext: bool, hasPrev: bool}',
+            'Paging{hasNext: bool, hasPrev: bool, page: typing.Optional[int]}',
         ),
         (
             te.TypedDict(  # type: ignore
@@ -102,9 +102,9 @@ from axion.utils import get_type_repr
             ),
             (
                 'Complex{'
-                'page: typing.Optional[int], '
-                'foo: typing.Union[typing.List[str], typing.Set[float]],'
-                ' bar: Bar{little: bool}'
+                'bar: Bar{little: bool}, '
+                'foo: typing.Union[typing.List[str], typing.Set[float]], '
+                'page: typing.Optional[int]'
                 '}'
             ),
         ),
@@ -113,6 +113,22 @@ from axion.utils import get_type_repr
 def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr.get_repr(the_type)
+            get_type_repr(the_type)
     else:
-        assert get_type_repr.get_repr(the_type) == str_repr
+        assert get_type_repr(the_type) == str_repr
+
+
+def test_response_repr() -> None:
+    from axion import response
+
+    v1 = (
+        'Response{'
+        'body: typing.Any, '
+        'cookies: typing.Mapping[str, str], '
+        'headers: typing.Mapping[str, str], '
+        'http_code: int'
+        '}'
+    )
+    v2 = get_type_repr(response.Response)
+
+    assert v1 == v2

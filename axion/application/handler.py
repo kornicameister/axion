@@ -36,13 +36,14 @@ ParamMapping = t.Mapping[OAS_Param, F_Param]
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
 
-BODY_EXPECTED_TYPES = [
+BODY_EXPECTED_TYPES: te.Final = [
     t.Mapping[str, t.Any],
     t.Dict[str, t.Any],
 ]
+HTTP_CODE_TYPE: te.Final = int
 
-AXION_RESPONSE_ENTRIES = getattr(response.Response, '__annotations__', {})
-AXION_RESPONSE_KEYS = frozenset(AXION_RESPONSE_ENTRIES.keys())
+AXION_RESPONSE_ENTRIES: te.Final = getattr(response.Response, '__annotations__', {})
+AXION_RESPONSE_KEYS: te.Final = frozenset(AXION_RESPONSE_ENTRIES.keys())
 
 if sys.version_info >= (3, 8):
     cached_property = functools.cached_property
@@ -97,7 +98,9 @@ class IncorrectTypeReason:
         return f'expected [{expected_str}], but got {actual_str}'
 
 
-Reason = t.Union[te.Literal['missing', 'unexpected', 'unknown'], IncorrectTypeReason]
+CustomReason = t.NewType('CustomReason', str)
+CommonReasons = te.Literal['missing', 'unexpected', 'unknown']
+Reason = t.Union[CommonReasons, IncorrectTypeReason, CustomReason]
 
 
 class Error(t.NamedTuple):
@@ -353,41 +356,24 @@ def _analyze_return_type_http_code(
         return set()
     elif ti.is_literal_type(rt_http_code):
         errors: t.Set[Error] = set()
-        rt_literal_args = frozenset(ti.get_args(rt_http_code, utils.IS_NEW_TYPING))
+
+        rt_literal_args = frozenset(ti.get_args(rt_http_code, ti.NEW_TYPING))
         responses_codes = frozenset(operation.responses.keys())
+
+        literal_mro = utils.literal_mro(rt_http_code)
+        if not all(issubclass(lmt, HTTP_CODE_TYPE) for lmt in literal_mro):
+            errors.add(
+                Error(
+                    param_name='return.http_code',
+                    reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
+                ),
+            )
+            return errors
 
         assert responses_codes, 'there should be response codes in this place'
         assert rt_literal_args, 'literal should have entries'
 
-        has_default_rt_code = 'default' in rt_literal_args
-        if has_default_rt_code:
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation {id} handler has return.http_code defined as {literal}. '
-                'One of the entries is "default". This is invalid because HTTP '
-                'response code must be `int`. Having "default" OAS response '
-                'means being able to return any `int` from [200, ...] range '
-                'that will match "default" OAS response.',
-                id=lambda: operation.id,
-                literal=lambda: repr(te.Literal),
-            )
-            errors.add(
-                Error(
-                    param_name='return.http_code[default]',
-                    reason='unexpected',
-                ),
-            )
-        elif len(responses_codes) == 1 and 'default' in responses_codes:
-            # if user is not tempted to return `default` as http_code and
-            # in the same time OAS has just one response and that response is
-            # `default` all that needs to be checked is if `rt_literal_args`
-            # are all subclasse of `int`,`float`
-            # TODO(kornicameister) think about it !
-            return errors
-
-        missing_rt_codes = responses_codes.difference(rt_literal_args)
+        missing_rt_codes = responses_codes.difference(rt_literal_args) - {'default'}
         extra_codes = frozenset(rt_literal_args - responses_codes)
 
         if missing_rt_codes:
@@ -448,11 +434,23 @@ def _analyze_return_type_http_code(
             lazy=True,
             record=True,
         ).debug(
-            'Operation {id} handler defines return.http_code as typing.NewType',
+            'Operation {id} handler defines return.http_code as {nt}',
             id=lambda: operation.id,
+            nt=lambda: repr(rt_http_code),
         )
         return _analyze_return_type_http_code(operation, rt_http_code.__supertype__)
-    elif issubclass(rt_http_code, (int, float)):
+    elif issubclass(rt_http_code, bool):
+        # yeah, Python rocks -> bool is subclass of an int
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    expected=[int],
+                    actual=bool,
+                ),
+            ),
+        }
+    elif issubclass(rt_http_code, HTTP_CODE_TYPE):
         logger.opt(
             lazy=True,
             record=True,
@@ -468,10 +466,9 @@ def _analyze_return_type_http_code(
                 reason=IncorrectTypeReason(
                     actual=rt_http_code,
                     expected=[
-                        int,
-                        float,
-                        t.NewType('HttpCode', int),
-                        t.NewType('HttpCode', float),
+                        type(None),
+                        HTTP_CODE_TYPE,
+                        t.NewType('HttpCode', HTTP_CODE_TYPE),
                         te.Literal,
                     ],
                 ),

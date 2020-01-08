@@ -1271,6 +1271,10 @@ class TestReturnType:
                     {'http_code': int},
                 ),
                 te.TypedDict(  # type: ignore
+                    'JustHttpCodeIsAsNewType_1',
+                    {'http_code': t.NewType('HTTP_CODE', int)},
+                ),
+                te.TypedDict(  # type: ignore
                     'HttpCodeWithSomeJunkThatWillBeIgnored',
                     {
                         'http_code': int,
@@ -1281,6 +1285,10 @@ class TestReturnType:
                 te.TypedDict(  # type: ignore
                     f'HttpCodeDefinedAs_Literal[{response_code}]',
                     {'http_code': te.Literal[response_code]},
+                ),
+                te.TypedDict(  # type: ignore
+                    f'HttpCodeDefinedAs_Literal_&_NewType[{response_code}]',
+                    {'http_code': t.NewType('HttpCode', te.Literal[response_code])},
                 ),
                 te.TypedDict(  # type: ignore
                     'ResponsePartial_DifferentTypes_V1',
@@ -1321,19 +1329,20 @@ class TestReturnType:
     )
     def test_correct_handler(
             self,
-            response_code: t.Union[str, int],
+            response_code: int,
             return_type: t.Type[t.Any],
     ) -> None:
         async def test() -> return_type:  # type: ignore
             ...
 
+        operation = TestReturnType._make_operation({
+            f'{response_code}': {
+                'description': f'Returning {return_type}',
+            },
+        })
         handler._build(
             handler=test,
-            operation=TestReturnType._make_operation({
-                'f{response_code}': {
-                    'description': f'Returning {return_type}',
-                },
-            }),
+            operation=operation,
         )
 
     @pytest.mark.parametrize(
@@ -1454,8 +1463,8 @@ class TestReturnType:
         assert err
         assert err.value
         assert 1 == len(err.value)
-        assert 'return.http_code[default]' in err.value
-        assert 'unexpected' == err.value['return.http_code[default]']
+        assert 'return.http_code' in err.value
+        assert 'expected typing_extensions.Literal[int]' == err.value['return.http_code']
 
     def test_missing_return_annotation(self) -> None:
         async def test():  # type: ignore
@@ -1532,9 +1541,9 @@ class TestReturnType:
         (
             int,
             float,
+            None,
             t.Mapping[str, str],
             t.Dict[str, str],
-            None,
         ),
     )
     def test_incorrect_return_type(self, return_type: t.Type[t.Any]) -> None:
@@ -1555,11 +1564,48 @@ class TestReturnType:
         assert err.value
         assert 1 == len(err.value)
         assert 'return' in err.value
+
         assert (
-            f'expected [Response{{body: typing.Any, headers: typing.Mapping[str, str], '
-            f'cookies: typing.Mapping[str, str]}}], but got '
+            f'expected [{utils.get_type_repr(response.Response)}], but got '
             f'{utils.get_type_repr(return_type if return_type else type(None))}'
         ) == err.value['return']
+
+    @pytest.mark.parametrize(
+        'return_code',
+        (
+            str,
+            bool,
+            t.NewType('HttpCode', bool),
+            t.NewType('HTTP_CODE', float),
+            te.Literal['c', 'o', 'd', 'e'],
+            te.Literal[13.0],
+        ),
+    )
+    def test_incorrect_return_http_code(
+            self,
+            return_code: t.Type[t.Any],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            f'ReturnWithCodeAs_{return_code}',
+            {'http_code': return_code},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
 
     @staticmethod
     def _make_operation(responses_def: t.Dict[str, t.Any]) -> model.OASOperation:

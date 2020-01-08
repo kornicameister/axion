@@ -67,13 +67,14 @@ def _repr(val: t.Type[t.Any]) -> str:
         return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
         val_name = _qualified_name(val)
-        maybe_td_keys = getattr(val, '__annotations__', {}).copy()
-        if maybe_td_keys:
+        maybe_td_entries = getattr(val, '__annotations__', {}).copy()
+        if maybe_td_entries:
             # we are dealing with typed dict
             # that's quite lovely
+            td_keys = sorted(maybe_td_entries.keys())
             internal_members_repr = ', '.join(
-                '{key}: {type}'.format(key=k, type=get_repr(v))
-                for k, v in maybe_td_keys.items()
+                '{key}: {type}'.format(key=k, type=get_repr(maybe_td_entries.get(k)))
+                for k in td_keys
             )
             return f'{val_name}{{{internal_members_repr}}}'
         elif 'TypedDict' == getattr(val, '__name__', ''):

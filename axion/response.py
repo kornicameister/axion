@@ -45,6 +45,7 @@ class Response(te.TypedDict, total=False):
     cookies: t.Mapping[str, str]
 
 
+@te.final
 class AxionResponse(t.NamedTuple):
     """Internal representation of response.
 
