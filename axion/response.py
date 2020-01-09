@@ -13,16 +13,12 @@ __all__ = (
     'Response',
 )
 
-if t.TYPE_CHECKING:
-    Headers = t.NewType('Headers', md.CIMultiDict[str])
-    Cookies = t.NewType('Cookies', md.CIMultiDict[str])
-else:
-    Headers = None
-    Cookies = None
+Headers = t.NewType('Headers', t.Mapping[str, str])
+Cookies = t.NewType('Cookies', t.Mapping[str, str])
 
 Body = t.Any
 Collection = t.Sequence[Body]
-Stream = t.NewType('Stream', t.BinaryIO)
+Stream = t.NewType('Stream', t.IO[bytes])
 File = t.NewType('File', Path)
 
 HTTPCode = t.NewType('HTTPCode', int)

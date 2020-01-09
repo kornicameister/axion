@@ -1,3 +1,4 @@
+import sys
 import typing as t
 
 from _pytest import logging
@@ -1477,7 +1478,13 @@ class TestReturnType:
         assert err.value
         assert 1 == len(err.value)
         assert 'return.http_code' in err.value
-        assert 'expected typing_extensions.Literal[int]' == err.value['return.http_code']
+
+        if sys.version_info >= (3, 8):
+            typing_base = 'typing'
+        else:
+            typing_base = 'typing_extensions'
+
+        assert f'expected {typing_base}.Literal[int]' == err.value['return.http_code']
 
     def test_missing_return_annotation(self) -> None:
         async def test():  # type: ignore

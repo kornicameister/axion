@@ -1,3 +1,4 @@
+import sys
 import typing as t
 
 import pytest
@@ -5,9 +6,14 @@ import typing_extensions as te
 
 from axion.utils import get_type_repr
 
+if sys.version_info > (3, 8):
+    LITERAL_PKG = 'typing'
+else:
+    LITERAL_PKG = 'typing_extensions'
+
 
 @pytest.mark.parametrize(
-    'the_type,str_repr',
+    ['the_type', 'expected_type_repr'],
     (
         (str, 'str'),
         (bool, 'bool'),
@@ -15,6 +21,21 @@ from axion.utils import get_type_repr
         (list, 'list'),
         (dict, 'dict'),
         (set, 'set'),
+        (te.Literal[1], f'{LITERAL_PKG}.Literal[1]'),
+        (te.Literal[1, 2], f'{LITERAL_PKG}.Literal[1, 2]'),
+        (
+            te.Literal[True],
+            f'{LITERAL_PKG}.Literal[{1 if sys.version_info > (3, 8) else True}]',
+        ),
+        (te.Literal[False], f'{LITERAL_PKG}.Literal[False]'),
+        (te.Literal[True, False], f'{LITERAL_PKG}.Literal[True, False]'),
+        (te.Literal[False, True], f'{LITERAL_PKG}.Literal[False, True]'),
+        (te.Literal[None], f'{LITERAL_PKG}.Literal[None]'),
+        (te.Literal['test'], f"{LITERAL_PKG}.Literal['test']"),
+        (
+            te.Literal['a', 'x', 'i', 'o', 'n'],
+            f"{LITERAL_PKG}.Literal['a', 'x', 'i', 'o', 'n']",
+        ),
         (t.NewType('Cookies', int), 'Cookies[int]'),
         (t.NewType('Cookies', bool), 'Cookies[bool]'),
         (t.NewType('Cookies', str), 'Cookies[str]'),
@@ -110,12 +131,16 @@ from axion.utils import get_type_repr
         ),
     ),
 )
-def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
+def test_get_type_repr(
+        the_type: t.Optional[t.Type[t.Any]],
+        expected_type_repr: str,
+) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr(the_type)
+            get_type_repr(the_type)  # type: ignore
     else:
-        assert get_type_repr(the_type) == str_repr
+        actual_type_repr = get_type_repr(the_type)
+        assert actual_type_repr == expected_type_repr
 
 
 def test_response_repr() -> None:

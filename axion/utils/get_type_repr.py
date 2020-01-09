@@ -1,4 +1,3 @@
-import functools
 import sys
 import typing as t
 
@@ -8,7 +7,6 @@ import typing_inspect as ti
 from axion.utils import types
 
 
-@functools.lru_cache(maxsize=100)
 def get_repr(val: t.Type[t.Any]) -> str:
     logger.opt(
         lazy=True,
@@ -26,6 +24,8 @@ def _repr(val: t.Type[t.Any]) -> str:
 
     if types.is_none_type(val):
         return 'NoneType'
+    elif ti.is_literal_type(val):
+        return str(val)
     elif types.is_new_type(val):
         nested_type = val.__supertype__
         return f'{_qualified_name(val)}[{get_repr(nested_type)}]'
