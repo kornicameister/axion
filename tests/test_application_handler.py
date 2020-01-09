@@ -1,4 +1,3 @@
-import sys
 import typing as t
 
 from _pytest import logging
@@ -1272,7 +1271,7 @@ class TestReturnType:
                     {'http_code': int},
                 ),
                 te.TypedDict(  # type: ignore
-                    'JustHttpCodeIsAsNewType_1',
+                    'JustHttpCodeIsAsNewType_Int',
                     {'http_code': t.NewType('HTTP_CODE', int)},
                 ),
                 te.TypedDict(  # type: ignore
@@ -1345,146 +1344,6 @@ class TestReturnType:
             handler=test,
             operation=operation,
         )
-
-    @pytest.mark.parametrize(
-        'return_codes,unaccounted_response_codes',
-        (
-            ((200, 201), (204, 202)),
-            ((201, 204), (200, 500)),
-            ((200, 201, 300, 301), (500, 503)),
-        ),
-    )
-    def test_handler_http_code_literal_unaccounted(
-            self,
-            return_codes: t.Sequence[int],
-            unaccounted_response_codes: t.Sequence[int],
-    ) -> None:
-        test_returns = te.TypedDict(  # type: ignore
-            'NoMatch',
-            {'http_code': te.Literal[return_codes]},  # type: ignore
-        )
-
-        async def test() -> test_returns:
-            ...
-
-        with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._build(
-                handler=test,
-                operation=TestReturnType._make_operation({
-                    **{
-                        f'{rc}': {
-                            'description': f'Matching code {rc}',
-                        }
-                        for rc in return_codes
-                    },
-                    **{
-                        f'{rc}': {
-                            'description': f'Returning {rc} but '
-                            f'handler has {return_codes} :D',
-                        }
-                        for rc in unaccounted_response_codes
-                    },
-                }),
-            )
-
-        assert err
-        assert err.value
-        assert len(unaccounted_response_codes) == len(err.value)
-        for rc in unaccounted_response_codes:
-            assert f'return.http_code[{rc}]' in err.value
-            assert 'missing' == err.value[f'return.http_code[{rc}]']
-
-    @pytest.mark.parametrize(
-        'return_codes,extra_codes',
-        (
-            ((200, 201, 202), (204, )),
-            ((200, 201, 500), (303, )),
-            ((500, 503), (204, )),
-            ((201, 204, 404, 500), (401, )),
-            ((200, ), (204, 300, 500)),
-            ((200, 204), (300, 500)),
-        ),
-    )
-    def test_http_code_literal_extra_codes(
-            self,
-            return_codes: t.Sequence[int],
-            extra_codes: t.Sequence[int],
-    ) -> None:
-        """Tests http_code: typing_extensions.Literal with extra codes.
-
-        This is equivalent to veryfing that:
-
-        .. code-block: yml
-        responses:
-            200: ...
-            201: ...
-
-        where uses declares onto handler returning codes like 200, 201, 204.
-        204 is not among responses in OAS therefore is invalid.
-
-        """
-        rt_codes = list(return_codes)
-        rt_codes.extend(extra_codes)
-
-        test_returns = te.TypedDict(
-            'NoMatch',
-            {'http_code': te.Literal[tuple(rt_codes)]},  # type: ignore
-        )
-
-        async def test() -> test_returns:
-            ...
-
-        with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._build(
-                handler=test,
-                operation=TestReturnType._make_operation({
-                    **{
-                        f'{rc}': {
-                            'description': f'Returning {rc}',
-                        }
-                        for rc in return_codes
-                    },
-                }),
-            )
-
-        assert err
-        assert err.value
-        assert len(extra_codes) == len(err.value)
-        for rc in extra_codes:
-            assert f'return.http_code[{rc}]' in err.value
-            assert 'unexpected' == err.value[f'return.http_code[{rc}]']
-
-    def test_return_type_literal_with_default_entry(self) -> None:
-        async def test() -> te.TypedDict(  # type: ignore
-                'R',
-                http_code=te.Literal[204, 'default'],
-        ):
-            ...
-
-        with pytest.raises(handler.InvalidHandlerError) as err:
-            handler._build(
-                handler=test,
-                operation=TestReturnType._make_operation({
-                    '204': {
-                        'description': '1',
-                    },
-                    'default': {
-                        'description': '2',
-                    },
-                }),
-            )
-
-        assert err
-        assert err.value
-        assert 1 == len(err.value)
-        assert 'return.http_code' in err.value
-
-        if sys.version_info >= (3, 8):
-            typing_base = 'typing'
-        else:
-            typing_base = 'typing_extensions'
-
-        assert f'expected {typing_base}.Literal[int]' == err.value['return.http_code']
 
     def test_missing_return_annotation(self) -> None:
         async def test():  # type: ignore

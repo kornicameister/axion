@@ -11,7 +11,7 @@ def get_repr(val: t.Type[t.Any]) -> str:
     logger.opt(
         lazy=True,
         record=True,
-    ).debug(
+    ).trace(
         'Getting string representation for val={val}',
         val=lambda: val,
     )

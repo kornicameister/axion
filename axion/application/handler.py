@@ -301,10 +301,11 @@ def _analyze_return_type(
         if AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys())):
             # TODO(kornicameister) analyze other entries,
             # like maybe body or headers/cookies?
-            return _analyze_return_type_http_code(
+            http_code_err = _analyze_return_type_http_code(
                 operation,
                 rt_entries.pop('http_code', None),
             )
+            return {http_code_err} if http_code_err else set()
         else:
             logger.opt(
                 record=True,
@@ -329,13 +330,13 @@ def _analyze_return_type(
 
 def _analyze_return_type_http_code(
         operation: oas.OASOperation,
-        rt_http_code: t.Optional[t.Any],
-) -> t.Set[Error]:
+        rt_http_code: t.Optional[t.Type[t.Any]],
+) -> t.Optional[Error]:
     if rt_http_code is None:
         # if there's no http_code in return Response
         # this is permitted only if there's single response defined in
-        # OAS responses
-
+        # OAS responses. User needs to set it otherwise how can we tell if
+        # everything is correct
         if len(operation.responses) != 1:
             logger.opt(
                 lazy=True,
@@ -346,134 +347,58 @@ def _analyze_return_type_http_code(
                 id=lambda: operation.id,
                 count_of_ops=lambda: len(operation.responses),
             )
-            return {
-                Error(
-                    param_name='return.http_code',
-                    reason='missing',
-                ),
-            }
-
-        return set()
+            return Error(
+                param_name='return.http_code',
+                reason='missing',
+            )
+        return None
     elif ti.is_literal_type(rt_http_code):
-        errors: t.Set[Error] = set()
-
-        rt_literal_args = frozenset(ti.get_args(rt_http_code, ti.NEW_TYPING))
-        responses_codes = frozenset(operation.responses.keys())
-
-        literal_mro = utils.literal_mro(rt_http_code)
-        if not all(issubclass(lmt, HTTP_CODE_TYPE) for lmt in literal_mro):
-            errors.add(
-                Error(
-                    param_name='return.http_code',
-                    reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
-                ),
+        # this is acceptable. Literals hold particular values inside of them
+        # if user wants to have it that way -> go ahead.
+        # axion however will not validate a specific values in Literal.
+        # this is by design and due to:
+        # - error responses that axion implements via exceptions
+        literal_types = utils.literal_types(rt_http_code)
+        if not all(issubclass(lmt, HTTP_CODE_TYPE) for lmt in literal_types):
+            return Error(
+                param_name='return.http_code',
+                reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
             )
-            return errors
-
-        assert responses_codes, 'there should be response codes in this place'
-        assert rt_literal_args, 'literal should have entries'
-
-        missing_rt_codes = responses_codes.difference(rt_literal_args) - {'default'}
-        extra_codes = frozenset(rt_literal_args - responses_codes)
-
-        if missing_rt_codes:
-            # case where OAS defines code like 200,201,203,default
-            # but Literal defines just 200 which makes 201,203 missing
-            # axion's idea is to aid with OAS services development by ensuring
-            # that implementation matches the specification. If specification
-            # says that 4 codes ought are possible and user defines http_code
-            # as Literal, it is better to make this reminder to him. Either
-            # codes ought to be accounted for or some of them are actually
-            # invalid
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation {id} handler has return.http_code defined as {literal} '
-                'but http codes in it do not match http codes in OAS operation. '
-                'Following codes are not accounted for [{missing_rt_codes}]',
-                id=lambda: operation.id,
-                literal=lambda: repr(te.Literal),
-                missing_rt_codes=lambda: ','.join(map(str, missing_rt_codes)),
-            )
-            errors.update(
-                Error(
-                    param_name=f'return.http_code[{mc}]',
-                    reason='missing',
-                ) for mc in missing_rt_codes
-            )
-
-        if extra_codes:
-            # this has similar message as above. Imagine that your operation
-            # has respones likes 204, 404, 500 but your handler actually says
-            # that it is doable to return 301. Well welcome to kindgom of
-            # Literal. This is again for two-time checking of own back. axion
-            # is strict as much as it can but it does to prevent accidents from
-            # happening.
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation {id} handler has return.http_code defined as {literal}. '
-                'Following codes are not part [{extra_codes}] are not defined '
-                'in operation response codes. ',
-                id=lambda: operation.id,
-                literal=lambda: repr(te.Literal),
-                extra_codes=lambda: ','.join(map(str, extra_codes)),
-            )
-            errors.update(
-                Error(
-                    param_name=f'return.http_code[{mc}]',
-                    reason='unexpected',
-                ) for mc in extra_codes
-            )
-
-        return errors
+        return None
     elif utils.is_new_type(rt_http_code):
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).debug(
-            'Operation {id} handler defines return.http_code as {nt}',
-            id=lambda: operation.id,
-            nt=lambda: repr(rt_http_code),
-        )
+        # not quite sure why user would like to alias that
+        # but it is not a problem for axion as long `NewType` embedded type
+        # is fine
         return _analyze_return_type_http_code(operation, rt_http_code.__supertype__)
     elif issubclass(rt_http_code, bool):
         # yeah, Python rocks -> bool is subclass of an int
-        return {
-            Error(
-                param_name='return.http_code',
-                reason=IncorrectTypeReason(
-                    expected=[int],
-                    actual=bool,
-                ),
+        # not quite sure wh that happens, perhaps someone sometime
+        # will answer that question
+        return Error(
+            param_name='return.http_code',
+            reason=IncorrectTypeReason(
+                expected=[HTTP_CODE_TYPE],
+                actual=bool,
             ),
-        }
-    elif issubclass(rt_http_code, HTTP_CODE_TYPE):
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).debug(
-            'Operation {id} handler defines return.http_code as "int" or "float"',
-            id=lambda: operation.id,
         )
-        return set()
     else:
-        return {
-            Error(
-                param_name='return.http_code',
-                reason=IncorrectTypeReason(
-                    actual=rt_http_code,
-                    expected=[
-                        type(None),
-                        HTTP_CODE_TYPE,
-                        t.NewType('HttpCode', HTTP_CODE_TYPE),
-                        te.Literal,
-                    ],
-                ),
+        try:
+            assert issubclass(rt_http_code, HTTP_CODE_TYPE)
+            return None
+        except (AssertionError, TypeError):
+            ...
+        return Error(
+            param_name='return.http_code',
+            reason=IncorrectTypeReason(
+                actual=rt_http_code,
+                expected=[
+                    type(None),
+                    HTTP_CODE_TYPE,
+                    t.NewType('HttpCode', HTTP_CODE_TYPE),
+                    te.Literal,
+                ],
             ),
-        }
+        )
 
 
 def _analyze_request_body(

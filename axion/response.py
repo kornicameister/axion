@@ -1,7 +1,6 @@
 from pathlib import Path
 import typing as t
 
-import multidict as md
 import pydantic as pd
 import typing_extensions as te
 
