@@ -1404,11 +1404,24 @@ class TestReturnType:
             ((200, 204), (300, 500)),
         ),
     )
-    def test_handler_http_code_literal_extra_codes(
+    def test_http_code_literal_extra_codes(
             self,
             return_codes: t.Sequence[int],
             extra_codes: t.Sequence[int],
     ) -> None:
+        """Tests http_code: typing_extensions.Literal with extra codes.
+
+        This is equivalent to veryfing that:
+
+        .. code-block: yml
+        responses:
+            200: ...
+            201: ...
+
+        where uses declares onto handler returning codes like 200, 201, 204.
+        204 is not among responses in OAS therefore is invalid.
+
+        """
         rt_codes = list(return_codes)
         rt_codes.extend(extra_codes)
 
