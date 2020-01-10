@@ -73,8 +73,7 @@ def is_dict_like(tt: t.Any) -> bool:
         return issubclass(maybe_origin, DICT_LIKE_TYPES)
     elif maybe_mro:
         return any(issubclass(mro, DICT_LIKE_TYPES) for mro in maybe_mro)
-    else:
-        return False
+    return False  # pragma: no cover
 
 
 @functools.lru_cache(maxsize=30, typed=True)

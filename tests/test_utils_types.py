@@ -39,6 +39,7 @@ def test_is_not_any_type(the_type: t.Any) -> None:
         (int, False),
         (bool, False),
         (complex, False),
+        (t.Set[int], False),
         (t.Dict[str, complex], True),
         (
             types.new_class('C1', (t.Dict[str, str], )),
