@@ -4,7 +4,18 @@ import typing as t
 import more_itertools
 import typing_inspect as ti
 
-P_TYPES = (int, float, complex, bool, str, bytes, frozenset, set, list, dict)
+P_TYPES = (
+    int,
+    float,
+    complex,
+    bool,
+    str,
+    bytes,
+    frozenset,
+    set,
+    list,
+    dict,
+)
 PP = t.Type[t.Union[None,
                     int,
                     float,
