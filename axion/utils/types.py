@@ -1,6 +1,5 @@
 import collections
 import functools
-import types
 import typing as t
 
 import more_itertools
@@ -67,7 +66,6 @@ def is_dict_like(tt: t.Any) -> bool:
     else:
         maybe_mro = getattr(tt, '__mro__', None)
         maybe_origin = ti.get_origin(tt)
-        maybe_bases = types.resolve_bases((tt, ))
 
     if is_new_type(tt):
         return is_dict_like(tt.__supertype__)
@@ -75,8 +73,6 @@ def is_dict_like(tt: t.Any) -> bool:
         return issubclass(maybe_origin, DICT_LIKE_TYPES)
     elif maybe_mro:
         return any(issubclass(mro, DICT_LIKE_TYPES) for mro in maybe_mro)
-    elif maybe_bases:
-        return any(issubclass(base, DICT_LIKE_TYPES) for base in maybe_bases)
     else:
         return False
 
