@@ -7,4 +7,4 @@ An OpenAPI3 framework built on top of asyncio with love and need.
 [![License](https://img.shields.io/github/license/kornicameister/axion.svg)](https://github.com/kornicameister/axion/blob/master/LICENSE)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/kornicameister/axion.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/kornicameister/axion/context:python)
 [![codecov](https://codecov.io/gh/kornicameister/axion/branch/master/graph/badge.svg)](https://codecov.io/gh/kornicameister/axion)
-
+[![time tracker](https://wakatime.com/badge/github/kornicameister/axion.svg)](https://wakatime.com/badge/github/kornicameister/axion)
