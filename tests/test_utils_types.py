@@ -17,6 +17,7 @@ from axion.utils import types as axion_types
             (t.NewType('X', t.Any), True),  # type: ignore
         ],
     ),
+    ids=lambda x: repr(x),
 )
 def test_is_any_type(the_type: t.Any, expected_result: bool) -> None:
     actual_result = axion_types.is_any_type(the_type)
@@ -66,6 +67,7 @@ def test_is_not_any_type(the_type: t.Any) -> None:
             False,
         ),
     ),
+    ids=lambda x: repr(x),
 )
 def test_is_dict_like(the_type: t.Any, expected_result: bool) -> None:
     actual_result = axion_types.is_dict_like(the_type)
@@ -83,6 +85,7 @@ def test_is_dict_like(the_type: t.Any, expected_result: bool) -> None:
         (t.NewType('F', t.Mapping[str, str]), True),  # type: ignore
         (te.TypedDict('X', x=int), False),  # type: ignore
     ),
+    ids=lambda x: repr(x),
 )
 def test_is_new_type(the_type: t.Any, expected_result: bool) -> None:
     actual_result = axion_types.is_new_type(the_type)
@@ -98,6 +101,7 @@ def test_is_new_type(the_type: t.Any, expected_result: bool) -> None:
         (te.Literal[None], False),
         (te.Literal[None, 204], False),
     ),
+    ids=lambda x: repr(x),
 )
 def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
     actual_result = axion_types.is_none_type(the_type)
@@ -110,6 +114,14 @@ def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
         (
             te.Literal[204],
             {int},
+        ),
+        (
+            te.Literal[True],
+            {bool},
+        ),
+        (
+            te.Literal[False],
+            {bool},
         ),
         (
             te.Literal[204, 300, 400],
@@ -132,6 +144,7 @@ def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
             {bool, int, float},
         ),
     ),
+    ids=lambda x: repr(x),
 )
 def test_literal_types(
         the_type: t.Any,

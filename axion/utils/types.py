@@ -1,5 +1,6 @@
 import collections
 import functools
+import sys
 import typing as t
 
 import more_itertools
@@ -76,7 +77,6 @@ def is_dict_like(tt: t.Any) -> bool:
     return False  # pragma: no cover
 
 
-@functools.lru_cache(maxsize=30, typed=True)
 def literal_types(tt: t.Any) -> t.Iterable[PP]:
     assert ti.is_literal_type(tt)
     pps = [_literal_types(x) for x in ti.get_args(tt, ti.NEW_TYPING)]
@@ -84,17 +84,14 @@ def literal_types(tt: t.Any) -> t.Iterable[PP]:
 
 
 def _literal_types(tt: t.Any) -> t.Iterable[PP]:
-    try:
-        val = None
 
-        if isinstance(tt, P_TYPES):
-            val = (type(tt), )
-        assert val is not None
+    if ti.is_literal_type(tt):
+        return literal_types(tt)
+    elif is_new_type(tt):
+        return literal_types(tt.__supertype__)
+    elif (isinstance(tt, bool) and tt is True) and sys.version_info >= (3, 9):
+        return (bool, )
+    elif isinstance(tt, P_TYPES):
+        return (type(tt), )
 
-        return val
-    except (AssertionError, TypeError):
-        if ti.is_literal_type(tt):
-            return literal_types(tt)
-        elif is_new_type(tt):
-            return literal_types(tt.__supertype__)
     raise TypeError(f'Fail to resolve Literal mro for {type(tt)}')

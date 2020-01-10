@@ -1450,6 +1450,92 @@ class TestReturnType:
         ) == err.value['return']
 
     @pytest.mark.parametrize(
+        'headers_type',
+        (
+            int,
+            float,
+            complex,
+            t.List[str],
+            t.Set[t.Tuple[str, str]],
+        ),
+    )
+    def test_incorrect_headers_type(self, headers_type: t.Type[t.Any]) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'RV_Bad_Headers',
+            {'http_code': int, 'headers': headers_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.headers' in err.value
+
+        assert (
+            f'expected ['
+            f'typing.Mapping[str, typing.Any],'
+            f'typing.Dict[str, typing.Any],'
+            f'typing_extensions.TypedDict], '
+            f'but got '
+            f'{utils.get_type_repr(headers_type)}'
+        ) == err.value['return.headers']
+
+    @pytest.mark.parametrize(
+        'cookies_type',
+        (
+            int,
+            float,
+            complex,
+            t.List[str],
+            t.Set[t.Tuple[str, str]],
+        ),
+    )
+    def test_incorrect_cookies_type(self, cookies_type: t.Type[t.Any]) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'RV_Bad_Cookies',
+            {'http_code': int, 'cookies': cookies_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.cookies' in err.value
+
+        assert (
+            f'expected ['
+            f'typing.Mapping[str, typing.Any],'
+            f'typing.Dict[str, typing.Any],'
+            f'typing_extensions.TypedDict], '
+            f'but got '
+            f'{utils.get_type_repr(cookies_type)}'
+        ) == err.value['return.cookies']
+
+    @pytest.mark.parametrize(
         'return_code',
         (
             str,

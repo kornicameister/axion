@@ -36,9 +36,14 @@ ParamMapping = t.Mapping[OAS_Param, F_Param]
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
 
-BODY_EXPECTED_TYPES: te.Final = [
+BODY_TYPES: te.Final = [
     t.Mapping[str, t.Any],
     t.Dict[str, t.Any],
+]
+COOKIES_HEADERS_TYPE: te.Final = [
+    t.Mapping[str, t.Any],
+    t.Dict[str, t.Any],
+    te.TypedDict,
 ]
 HTTP_CODE_TYPE: te.Final = int
 
@@ -299,13 +304,28 @@ def _analyze_return_type(
         rt_entries = getattr(return_type, '__annotations__', {})
 
         if AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys())):
-            # TODO(kornicameister) analyze other entries,
-            # like maybe body or headers/cookies?
             http_code_err = _analyze_return_type_http_code(
                 operation,
                 rt_entries.pop('http_code', None),
             )
-            return {http_code_err} if http_code_err else set()
+            errors = {http_code_err} if http_code_err else set()
+
+            for key in ('headers', 'cookies'):
+                rt_entry = rt_entries.pop(key, None)
+                if not rt_entry:
+                    continue
+                elif not types.is_dict_like(rt_entry):
+                    errors.add(
+                        Error(
+                            param_name=f'return.{key}',
+                            reason=IncorrectTypeReason(
+                                expected=COOKIES_HEADERS_TYPE,
+                                actual=rt_entry,
+                            ),
+                        ),
+                    )
+
+            return errors
         else:
             logger.opt(
                 record=True,
@@ -439,7 +459,7 @@ def _analyze_body_signature_set_oas_set(
                 param_name='body',
                 reason=IncorrectTypeReason(
                     actual=body_arg,
-                    expected=BODY_EXPECTED_TYPES,
+                    expected=BODY_TYPES,
                 ),
             ),
         }, True
@@ -532,11 +552,7 @@ def _analyze_cookies(
                     param_name='cookies',
                     reason=IncorrectTypeReason(
                         actual=cookies_arg,
-                        expected=[
-                            t.Mapping[str, t.Any],
-                            t.Dict[str, t.Any],
-                            te.TypedDict,
-                        ],
+                        expected=COOKIES_HEADERS_TYPE,
                     ),
                 ),
             }, {}
@@ -711,11 +727,7 @@ def _analyze_headers(
                     param_name='headers',
                     reason=IncorrectTypeReason(
                         actual=headers_arg,
-                        expected=[
-                            t.Mapping[str, t.Any],
-                            t.Dict[str, t.Any],
-                            te.TypedDict,
-                        ],
+                        expected=COOKIES_HEADERS_TYPE,
                     ),
                 ),
             }, {}

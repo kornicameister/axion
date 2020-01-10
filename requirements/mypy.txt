@@ -1,2 +1,3 @@
 mypy==0.761
 lxml==4.4.2
+git+https://github.com/python/typed_ast@master ; python_version >= '3.9'
