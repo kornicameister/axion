@@ -1,5 +1,4 @@
 import asyncio
-import collections
 from dataclasses import dataclass
 import functools
 import importlib
@@ -14,6 +13,7 @@ import typing_inspect as ti
 
 from axion import specification
 from axion import utils
+from axion.utils import types
 
 __all__ = (
     'InvalidHandlerError',
@@ -385,7 +385,10 @@ def _analyze_cookies(
     if cookies_arg is not None:
         # pre-check type of headers param in signature
         # must be either TypedDict, Mapping, Dict or a subclass of those
-        is_mapping, is_any = is_arg_dict_like(cookies_arg)
+        is_mapping, is_any = (
+            types.is_dict_like(cookies_arg),
+            types.is_any_type(cookies_arg),
+        )
         if not (is_mapping or is_any):
             return {
                 Error(
@@ -561,7 +564,10 @@ def _analyze_headers(
     if headers_arg is not None:
         # pre-check type of headers param in signature
         # must be either TypedDict, Mapping or a subclass of those
-        is_mapping, is_any = is_arg_dict_like(headers_arg)
+        is_mapping, is_any = (
+            types.is_dict_like(headers_arg),
+            types.is_any_type(headers_arg),
+        )
         if not (is_mapping or is_any):
             return {
                 Error(
@@ -761,29 +767,6 @@ def _analyze_headers_signature_set_oas_set(
             )] = hdr_param_name
 
     return errors, param_mapping
-
-
-def is_arg_dict_like(sig_headers: t.Any) -> t.Tuple[bool, bool]:
-    maybe_name = getattr(sig_headers, '_name', '')
-    if maybe_name.lower() == 'any':
-        return False, True
-
-    maybe_supertype = getattr(sig_headers, '__supertype__', None)
-    maybe_mro = getattr(sig_headers, '__mro__', None)
-    if maybe_name:
-        # raw typing.Dict or typing.Mapping
-        return maybe_name in ('Mapping', 'Dict'), False
-    elif maybe_supertype:
-        # typing.NewType
-        return is_arg_dict_like(maybe_supertype)
-    elif maybe_mro:
-        for mro in maybe_mro:
-            if issubclass(mro, (dict, collections.abc.Mapping)):
-                return True, False
-    elif sys.version_info < (3, 7):
-        return False, sig_headers is t.Any
-
-    return False, False
 
 
 def _analyze_path_query(

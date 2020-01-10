@@ -1,11 +1,15 @@
 import collections
 import functools
+import types
 import typing as t
 
 import more_itertools
+import typing_extensions as te
 import typing_inspect as ti
 
-P_TYPES = (
+DICT_LIKE_TYPES: te.Final = (dict, collections.abc.Mapping)
+
+P_TYPES: te.Final = (
     int,
     float,
     complex,
@@ -31,10 +35,12 @@ PP = t.Type[t.Union[None,
                     ]]
 
 
+@functools.lru_cache(maxsize=30, typed=True)
 def is_new_type(tt: t.Type[t.Any]) -> bool:
     return getattr(tt, '__supertype__', None) is not None
 
 
+@functools.lru_cache(maxsize=30, typed=True)
 def is_none_type(tt: t.Type[t.Any]) -> bool:
     try:
         return issubclass(type(None), tt)
@@ -42,12 +48,15 @@ def is_none_type(tt: t.Type[t.Any]) -> bool:
         return False
 
 
+@functools.lru_cache(maxsize=30, typed=True)
 def is_any_type(tt: t.Any) -> bool:
+    if is_new_type(tt):
+        return is_any_type(tt.__supertype__)
     return tt is t.Any
 
 
+@functools.lru_cache(maxsize=30, typed=True)
 def is_dict_like(tt: t.Any) -> bool:
-
     try:
         assert any((
             ti.is_generic_type(tt),
@@ -57,16 +66,22 @@ def is_dict_like(tt: t.Any) -> bool:
         return False
     else:
         maybe_mro = getattr(tt, '__mro__', None)
+        maybe_origin = ti.get_origin(tt)
+        maybe_bases = types.resolve_bases((tt, ))
 
     if is_new_type(tt):
         return is_dict_like(tt.__supertype__)
+    elif maybe_origin:
+        return issubclass(maybe_origin, DICT_LIKE_TYPES)
     elif maybe_mro:
-        return any(issubclass(mro, (dict, collections.abc.Mapping)) for mro in maybe_mro)
+        return any(issubclass(mro, DICT_LIKE_TYPES) for mro in maybe_mro)
+    elif maybe_bases:
+        return any(issubclass(base, DICT_LIKE_TYPES) for base in maybe_bases)
     else:
         return False
 
 
-@functools.lru_cache(maxsize=100, typed=True)
+@functools.lru_cache(maxsize=30, typed=True)
 def literal_types(tt: t.Any) -> t.Iterable[PP]:
     assert ti.is_literal_type(tt)
     pps = [_literal_types(x) for x in ti.get_args(tt, ti.NEW_TYPING)]
