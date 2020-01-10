@@ -1,15 +1,13 @@
-name: Python package
-
+---
+name: Lint Python
 on: [push]
-
 jobs:
   build:
 
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v1
@@ -30,6 +28,3 @@ jobs:
     - name: Lint with yapf
       run: |
         tox -e yapf
-    - name: Test with pytest
-      run: |
-        pytest -s -q --tb=short
