@@ -1,3 +1,4 @@
+import collections
 import functools
 import typing as t
 
@@ -38,6 +39,30 @@ def is_none_type(tt: t.Type[t.Any]) -> bool:
     try:
         return issubclass(type(None), tt)
     except TypeError:
+        return False
+
+
+def is_any_type(tt: t.Any) -> bool:
+    return tt is t.Any
+
+
+def is_dict_like(tt: t.Any) -> bool:
+
+    try:
+        assert any((
+            ti.is_generic_type(tt),
+            getattr(tt, '__annotations__', None) is not None,
+        ))
+    except AssertionError:
+        return False
+    else:
+        maybe_mro = getattr(tt, '__mro__', None)
+
+    if is_new_type(tt):
+        return is_dict_like(tt.__supertype__)
+    elif maybe_mro:
+        return any(issubclass(mro, (dict, collections.abc.Mapping)) for mro in maybe_mro)
+    else:
         return False
 
 

@@ -6,6 +6,31 @@ import typing_extensions as te
 from axion.utils import types
 
 
+def test_is_any_type() -> None:
+    assert types.is_any_type(t.Any)
+    for pp in types.P_TYPES:
+        assert not types.is_any_type(pp)
+
+
+@pytest.mark.parametrize(
+    'the_type,expected_result',
+    (
+        (t.Mapping[str, str], True),
+        (t.Dict[str, str], True),
+        (t.Mapping[int, float], True),
+        (te.TypedDict('Z', z=int), True),  # type: ignore
+        (t.List[int], False),
+        (int, False),
+        (bool, False),
+        (complex, False),
+        (t.Dict[str, complex], True),
+    ),
+)
+def test_is_dict_like(the_type: t.Any, expected_result: bool) -> None:
+    actual_result = types.is_dict_like(the_type)
+    assert expected_result == actual_result
+
+
 @pytest.mark.parametrize(
     'the_type,expected_result',
     (
