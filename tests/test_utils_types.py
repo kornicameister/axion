@@ -1,3 +1,4 @@
+import sys
 import types
 import typing as t
 
@@ -112,7 +113,11 @@ def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
     'the_type,expected_types',
     (
         (
-            te.Literal[204],
+            te.Literal[1, 204],
+            {int},
+        ),
+        (
+            te.Literal[1],
             {int},
         ),
         (
@@ -143,8 +148,13 @@ def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
                        ],
             {bool, int, float},
         ),
+        (te.Literal[None], {type(None)}),
     ),
     ids=lambda x: repr(x),
+)
+@pytest.mark.xfail(
+    sys.version_info >= (3, 8, 0),
+    reason='https://bugs.python.org/issue39308',
 )
 def test_literal_types(
         the_type: t.Any,

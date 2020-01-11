@@ -25,7 +25,7 @@ else:
         (te.Literal[1, 2], f'{LITERAL_PKG}.Literal[1, 2]'),
         (
             te.Literal[True],
-            f'{LITERAL_PKG}.Literal[{1 if sys.version_info > (3, 8) else True}]',
+            f'{LITERAL_PKG}.Literal[True]',
         ),
         (te.Literal[False], f'{LITERAL_PKG}.Literal[False]'),
         (te.Literal[True, False], f'{LITERAL_PKG}.Literal[True, False]'),
@@ -131,15 +131,19 @@ else:
         ),
     ),
 )
+@pytest.mark.xfail(
+    sys.version_info >= (3, 8, 0),
+    reason='https://bugs.python.org/issue39308',
+)
 def test_get_type_repr(
         the_type: t.Optional[t.Type[t.Any]],
         expected_type_repr: str,
 ) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr(the_type)  # type: ignore
+            get_type_repr.get_repr(the_type)  # type: ignore
     else:
-        actual_type_repr = get_type_repr(the_type)
+        actual_type_repr = get_type_repr.get_repr(the_type)
         assert actual_type_repr == expected_type_repr
 
 
@@ -162,6 +166,6 @@ def test_response_repr() -> None:
         'http_code: int'
         '}'
     )
-    v2 = get_type_repr(response.Response)
+    v2 = get_type_repr.get_repr(response.Response)
 
     assert v1 == v2

@@ -401,7 +401,7 @@ class TestCookies:
         assert err.value['cookies'] == (
             f'expected [typing.Mapping[str, typing.Any],'
             f'typing.Dict[str, typing.Any],typing_extensions.TypedDict]'
-            f', but got {utils.get_type_repr(the_type)}'
+            f', but got {get_type_repr.get_repr(the_type)}'
         )
 
     @pytest.mark.parametrize(
@@ -891,7 +891,7 @@ class TestHeaders:
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
         assert (f'expected [str], '
-                f'but got {utils.get_type_repr(the_type)}'
+                f'but got {get_type_repr.get_repr(the_type)}'
                 ) == err.value['headers.x_trace_id']
 
 
@@ -1062,8 +1062,12 @@ class TestPathQuery:
 
 
 class TestBody:
+    class R(te.TypedDict):
+        http_code: int
+        body: te.Literal[None]
+
     def test_no_request_body_empty_signature(self) -> None:
-        async def test() -> response.Response:
+        async def test() -> TestBody.R:
             ...
 
         hdrl = handler._build(
@@ -1075,7 +1079,7 @@ class TestBody:
 
     @pytest.mark.parametrize('required', (True, False))
     def test_request_body_signature_set(self, required: bool) -> None:
-        async def test(body: t.Dict[str, t.Any]) -> response.Response:
+        async def test(body: t.Dict[str, t.Any]) -> TestBody.R:
             ...
 
         hdrl = handler._build(
@@ -1097,7 +1101,7 @@ class TestBody:
         assert hdrl.has_body
 
     def test_request_body_required_signature_optional(self) -> None:
-        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> response.Response:
+        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1142,7 +1146,7 @@ class TestBody:
             self,
             the_type: t.Any,
     ) -> None:
-        async def test(body: the_type) -> response.Response:  # type: ignore
+        async def test(body: the_type) -> TestBody.R:  # type: ignore
             ...
 
         hdrl = handler._build(
@@ -1167,7 +1171,7 @@ class TestBody:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def test(body: t.Dict[str, t.Any]) -> response.Response:
+        async def test(body: t.Dict[str, t.Any]) -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1192,7 +1196,7 @@ class TestBody:
             required: bool,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo() -> response.Response:
+        async def foo() -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1291,14 +1295,14 @@ class TestReturnType:
                     {'http_code': t.NewType('HttpCode', te.Literal[response_code])},
                 ),
                 te.TypedDict(  # type: ignore
-                    'ResponsePartial_DifferentTypes_V1',
+                    'Response_V1',
                     {
                         'http_code': int,
                         'links': t.List[str],
                     },
                 ),
                 te.TypedDict(  # type: ignore
-                    'ResponsePartial_DifferentTypes_V2',
+                    'Response_V2',
                     {
                         'http_code': int,
                         'headers': t.Mapping[str, str],
@@ -1306,7 +1310,7 @@ class TestReturnType:
                     },
                 ),
                 te.TypedDict(   # type: ignore
-                    'ResponsePartial_DifferentTypes_V3',
+                    'Response_V3',
                     {
                         'http_code': int,
                         'headers': t.Mapping[str, str],
@@ -1315,19 +1319,24 @@ class TestReturnType:
                     },
                 ),
                 te.TypedDict(  # type: ignore
-                    'ResponsePartial_DifferentTypes_V4',
+                    'Response_V4',
                     {
                         'http_code': int,
-                        'body': t.List[t.Dict[str, t.Any]],
+                        'body': te.Literal[None],
                         'headers': t.Mapping[str, str],
                         'cookies': t.Mapping[str, str],
                         'links': t.List[str],
                     },
                 ),
+                te.TypedDict(  # type: ignore
+                    'Response_V5',
+                    http_code=int,
+                    body=None,
+                ),
             )
         ),
     )
-    def test_correct_handler(
+    def test_correct_handler_no_body(
             self,
             response_code: int,
             return_type: t.Type[t.Any],
@@ -1445,8 +1454,8 @@ class TestReturnType:
         assert 'return' in err.value
 
         assert (
-            f'expected [{utils.get_type_repr(response.Response)}], but got '
-            f'{utils.get_type_repr(return_type if return_type else type(None))}'
+            f'expected [{get_type_repr.get_repr(response.Response)}], but got '
+            f'{get_type_repr.get_repr(return_type if return_type else type(None))}'
         ) == err.value['return']
 
     @pytest.mark.parametrize(
@@ -1489,7 +1498,7 @@ class TestReturnType:
             f'typing.Dict[str, typing.Any],'
             f'typing_extensions.TypedDict], '
             f'but got '
-            f'{utils.get_type_repr(headers_type)}'
+            f'{get_type_repr.get_repr(headers_type)}'
         ) == err.value['return.headers']
 
     @pytest.mark.parametrize(
@@ -1532,7 +1541,7 @@ class TestReturnType:
             f'typing.Dict[str, typing.Any],'
             f'typing_extensions.TypedDict], '
             f'but got '
-            f'{utils.get_type_repr(cookies_type)}'
+            f'{get_type_repr.get_repr(cookies_type)}'
         ) == err.value['return.cookies']
 
     @pytest.mark.parametrize(
@@ -1571,6 +1580,135 @@ class TestReturnType:
         assert err
         assert err.value
         assert 1 == len(err.value)
+
+    @pytest.mark.parametrize(
+        'body_type',
+        (
+            t.Dict[str, str],
+            t.IO[str],
+            t.AnyStr,
+            te.TypedDict('Body', foos=t.List[str]),  # type: ignore
+        ),
+        ids=lambda x: repr(x),
+    )
+    def test_return_body_invalid_http_204(
+            self,
+            body_type: t.Type[t.Any],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'ReturnTypeWithBodyFor204',
+            {'http_code': te.Literal[204], 'body': body_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.body' in err.value
+        assert (
+            'OAS defines single response with 204 code. '
+            'Returning http body in such case is not possible.'
+        ) == err.value['return.body']
+
+    @pytest.mark.parametrize(
+        'body_type',
+        (
+            None,
+            te.Literal[None],
+            t.NewType('Body', te.Literal[None]),
+        ),
+        ids=lambda x: repr(x),
+    )
+    def test_return_body_valid_http_204(
+            self,
+            body_type: t.Type[t.Any],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'ReturnTypeWithBodyFor204',
+            {'http_code': te.Literal[204], 'body': body_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        handler._build(
+            handler=test,
+            operation=TestReturnType._make_operation({
+                '204': {
+                    'description': 'Incorrect return type',
+                },
+            }),
+        )
+
+    @pytest.mark.parametrize(
+        'return_code,body_required,body_type',
+        (
+            (200, True, t.Dict[str, t.Any]),
+            (200, False, t.Dict[str, t.Any]),
+            (201, True, t.Dict[str, t.Any]),
+            (200, True, t.Mapping[str, t.Any]),
+            (200, True, te.TypedDict(  # type: ignore
+                'Body',
+                name=str,
+                age=int,
+                weight=float,
+            )),
+        ),
+        ids=lambda x: repr(x),
+    )
+    def test_return_body_valid_oas_with_body(
+            self,
+            return_code: int,
+            body_required: bool,
+            body_type: t.Type[t.Any],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            f'ReturnBody_{return_code}_{repr(body_type)}',
+            {'http_code': te.Literal[return_code], 'body': body_type},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        handler._build(
+            handler=test,
+            operation=TestReturnType._make_operation({
+                f'{return_code}': {
+                    'required': body_required,
+                    'description': 'Incorrect return type',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                'type': 'object',
+                                'properties': {
+                                    'name': {
+                                        'type': 'string',
+                                    },
+                                    'age': {
+                                        'type': 'integer',
+                                    },
+                                    'weight': {
+                                        'type': 'number',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+        )
 
     @staticmethod
     def _make_operation(responses_def: t.Dict[str, t.Any]) -> model.OASOperation:

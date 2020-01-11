@@ -1,6 +1,5 @@
 import collections
 import functools
-import sys
 import typing as t
 
 import more_itertools
@@ -43,7 +42,7 @@ def is_new_type(tt: t.Type[t.Any]) -> bool:
 @functools.lru_cache(maxsize=30, typed=True)
 def is_none_type(tt: t.Type[t.Any]) -> bool:
     try:
-        return issubclass(type(None), tt)
+        return tt is type(None)  # noqa
     except TypeError:
         return False
 
@@ -84,14 +83,17 @@ def literal_types(tt: t.Any) -> t.Iterable[PP]:
 
 
 def _literal_types(tt: t.Any) -> t.Iterable[PP]:
-
     if ti.is_literal_type(tt):
         return literal_types(tt)
     elif is_new_type(tt):
         return literal_types(tt.__supertype__)
-    elif (isinstance(tt, bool) and tt is True) and sys.version_info >= (3, 9):
-        return (bool, )
     elif isinstance(tt, P_TYPES):
         return (type(tt), )
+
+    try:
+        assert isinstance(tt, type(None))
+        return (type(None), )
+    except (TypeError, AssertionError):
+        ...
 
     raise TypeError(f'Fail to resolve Literal mro for {type(tt)}')

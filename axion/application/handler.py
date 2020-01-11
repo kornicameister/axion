@@ -301,31 +301,37 @@ def _analyze_return_type(
         return {Error(param_name='return', reason='missing')}
     else:
         return_type = signature.pop('return')
-        rt_entries = getattr(return_type, '__annotations__', {})
+        rt_entries = getattr(return_type, '__annotations__', {}).copy()
+        matching_keys = AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys()))
 
-        if AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys())):
-            http_code_err = _analyze_return_type_http_code(
-                operation,
-                rt_entries.pop('http_code', None),
-            )
-            errors = {http_code_err} if http_code_err else set()
+        logger.opt(
+            record=True,
+            lazy=True,
+        ).debug(
+            'Operation {id} handler defines [{keys}] in return type',
+            id=lambda: operation.id,
+            keys=lambda: ','.join(rt_entries.keys()),
+        )
 
-            for key in ('headers', 'cookies'):
-                rt_entry = rt_entries.pop(key, None)
-                if not rt_entry:
-                    continue
-                elif not types.is_dict_like(rt_entry):
-                    errors.add(
-                        Error(
-                            param_name=f'return.{key}',
-                            reason=IncorrectTypeReason(
-                                expected=COOKIES_HEADERS_TYPE,
-                                actual=rt_entry,
-                            ),
-                        ),
-                    )
-
-            return errors
+        if matching_keys:
+            return {
+                *_analyze_return_type_http_code(
+                    operation,
+                    rt_entries.pop('http_code', None),
+                ),
+                *_analyze_return_type_cookies(
+                    operation,
+                    rt_entries.pop('cookies', None),
+                ),
+                *_analyze_return_type_headers(
+                    operation,
+                    rt_entries.pop('headers', None),
+                ),
+                *_analyze_return_type_body(
+                    operation,
+                    rt_entries.pop('body', None),
+                ),
+            }
         else:
             logger.opt(
                 record=True,
@@ -348,10 +354,115 @@ def _analyze_return_type(
             }
 
 
+def _analyze_return_type_headers(
+        operation: oas.OASOperation,
+        headers: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+    if headers is not None and not types.is_dict_like(headers):
+        return {
+            Error(
+                param_name=f'return.headers',
+                reason=IncorrectTypeReason(
+                    expected=COOKIES_HEADERS_TYPE,
+                    actual=headers,
+                ),
+            ),
+        }
+    return set()
+
+
+def _analyze_return_type_body(
+        operation: oas.OASOperation,
+        body: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+    if body is None:
+        ...
+    elif types.is_none_type(body):
+        ...
+    elif types.is_new_type(body):
+        return _analyze_return_type_body(
+            operation,
+            body.__supertype__,
+        )
+    elif types.is_any_type(body):
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).warning(
+            'Operation {id} handler defined return.body as {any}. '
+            'axion permits that but be warned that you loose entire support '
+            'from linters (i.e. mypy)',
+            id=lambda: operation.id,
+            any=lambda: repr(t.Any),
+        )
+        return set()
+    elif ti.is_literal_type(body):
+        body_args = ti.get_args(body, ti.NEW_TYPING)
+        if len(body_args) == 1:
+            return _analyze_return_type_body(
+                operation,
+                body_args[0],
+            )
+        return set()
+    else:
+        if all((
+                len(operation.responses),
+                204 in operation.responses,
+        )):
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler defines return.body but '
+                'having only 204 response defined makes it impossible to return '
+                'any body.',
+                id=lambda: operation.id,
+            )
+            return {
+                Error(
+                    param_name=f'return.body',
+                    reason=CustomReason(
+                        'OAS defines single response with 204 code. '
+                        'Returning http body in such case is not possible.',
+                    ),
+                ),
+            }
+        elif not types.is_dict_like(body):
+            return {
+                Error(
+                    param_name=f'return.body',
+                    reason=IncorrectTypeReason(
+                        expected=BODY_TYPES,
+                        actual=body,
+                    ),
+                ),
+            }
+
+    return set()
+
+
+def _analyze_return_type_cookies(
+        operation: oas.OASOperation,
+        cookies: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+    if cookies is not None and not types.is_dict_like(cookies):
+        return {
+            Error(
+                param_name=f'return.cookies',
+                reason=IncorrectTypeReason(
+                    expected=COOKIES_HEADERS_TYPE,
+                    actual=cookies,
+                ),
+            ),
+        }
+    return set()
+
+
 def _analyze_return_type_http_code(
         operation: oas.OASOperation,
         rt_http_code: t.Optional[t.Type[t.Any]],
-) -> t.Optional[Error]:
+) -> t.Set[Error]:
+
     if rt_http_code is None:
         # if there's no http_code in return Response
         # this is permitted only if there's single response defined in
@@ -367,58 +478,68 @@ def _analyze_return_type_http_code(
                 id=lambda: operation.id,
                 count_of_ops=lambda: len(operation.responses),
             )
-            return Error(
+            return {Error(
                 param_name='return.http_code',
                 reason='missing',
-            )
-        return None
+            )}
+        return set()
+
     elif ti.is_literal_type(rt_http_code):
         # this is acceptable. Literals hold particular values inside of them
         # if user wants to have it that way -> go ahead.
         # axion however will not validate a specific values in Literal.
         # this is by design and due to:
         # - error responses that axion implements via exceptions
-        literal_types = utils.literal_types(rt_http_code)
+        literal_types = types.literal_types(rt_http_code)
         if not all(issubclass(lmt, HTTP_CODE_TYPE) for lmt in literal_types):
-            return Error(
-                param_name='return.http_code',
-                reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
-            )
-        return None
-    elif utils.is_new_type(rt_http_code):
+            return {
+                Error(
+                    param_name='return.http_code',
+                    reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
+                ),
+            }
+        return set()
+
+    elif types.is_new_type(rt_http_code):
         # not quite sure why user would like to alias that
         # but it is not a problem for axion as long `NewType` embedded type
         # is fine
         return _analyze_return_type_http_code(operation, rt_http_code.__supertype__)
+
     elif issubclass(rt_http_code, bool):
         # yeah, Python rocks -> bool is subclass of an int
         # not quite sure wh that happens, perhaps someone sometime
         # will answer that question
-        return Error(
-            param_name='return.http_code',
-            reason=IncorrectTypeReason(
-                expected=[HTTP_CODE_TYPE],
-                actual=bool,
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    expected=[HTTP_CODE_TYPE],
+                    actual=bool,
+                ),
             ),
-        )
+        }
     else:
+
         try:
             assert issubclass(rt_http_code, HTTP_CODE_TYPE)
-            return None
+            return set()
         except (AssertionError, TypeError):
             ...
-        return Error(
-            param_name='return.http_code',
-            reason=IncorrectTypeReason(
-                actual=rt_http_code,
-                expected=[
-                    type(None),
-                    HTTP_CODE_TYPE,
-                    t.NewType('HttpCode', HTTP_CODE_TYPE),
-                    te.Literal,
-                ],
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    actual=rt_http_code,
+                    expected=[
+                        type(None),
+                        HTTP_CODE_TYPE,
+                        t.NewType('HttpCode', HTTP_CODE_TYPE),
+                        te.Literal,
+                    ],
+                ),
             ),
-        )
+        }
 
 
 def _analyze_request_body(
