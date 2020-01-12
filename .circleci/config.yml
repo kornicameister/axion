@@ -41,7 +41,7 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - pyenv-v4-{{ arch }}
+            - pyenv-v5-{{ arch }}
       - run:
           name: Install Pythons
           command: |
@@ -51,12 +51,11 @@ jobs:
             pyenv install 3.8.1 -s
             pyenv install 3.9-dev -s
       - save_cache:
-          key: pyenv-v4-{{ arch }}
+          key: pyenv-v5-{{ arch }}
           paths:
             - ~/.pyenv/versions/3.6.9
             - ~/.pyenv/versions/3.7.6
             - ~/.pyenv/versions/3.8.1
-            - ~/.pyenv/versions/3.9-dev
       - run:
           name: Mighty test run
           command: |
