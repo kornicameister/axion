@@ -101,6 +101,7 @@ class Error(t.NamedTuple):
     param_name: str
 
 
+@te.final
 class InvalidHandlerError(
         ValueError,
         t.Mapping[str, str],
@@ -129,7 +130,7 @@ class InvalidHandlerError(
         else:
             super().__init__(message)
 
-        self._errors = errors
+        self._errors = frozenset(errors or [])
         self._operation_id = operation_id
 
     @property
@@ -148,6 +149,10 @@ class InvalidHandlerError(
 
     def __getitem__(self, key: str) -> str:
         return self.reasons[key]
+
+    def __repr__(self) -> str:
+        repr_reasons = (f'{k}: {v}' for k, v in self.reasons.items())
+        return f'InvalidHandlerError :: {", ".join(repr_reasons)}'
 
 
 def make(operation: oas.OASOperation) -> Handler:
