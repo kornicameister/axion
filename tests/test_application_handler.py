@@ -4,10 +4,10 @@ from _pytest import logging
 import pytest
 import typing_extensions as te
 
-from axion import utils
 from axion.application import handler
 from axion.oas import model
 from axion.oas import parser
+from axion.utils import get_type_repr
 
 
 def normal_f() -> None:
@@ -400,7 +400,7 @@ class TestCookies:
         assert err.value['cookies'] == (
             f'expected [typing.Mapping[str, typing.Any],'
             f'typing.Dict[str, typing.Any],typing_extensions.TypedDict]'
-            f', but got {utils.get_type_repr(the_type)}'
+            f', but got {get_type_repr.get_repr(the_type)}'
         )
 
     @pytest.mark.parametrize(
@@ -890,7 +890,7 @@ class TestHeaders:
         assert len(err.value) == 1
         assert 'headers.x_trace_id' in err.value
         assert (f'expected [str], '
-                f'but got {utils.get_type_repr(the_type)}'
+                f'but got {get_type_repr.get_repr(the_type)}'
                 ) == err.value['headers.x_trace_id']
 
 

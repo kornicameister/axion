@@ -12,7 +12,7 @@ import typing_extensions as te
 import typing_inspect as ti
 
 from axion import oas
-from axion import utils
+from axion.utils import get_type_repr
 from axion.utils import types
 
 __all__ = (
@@ -88,8 +88,8 @@ class IncorrectTypeReason:
         self.actual = actual
 
     def __repr__(self) -> str:
-        expected_str = ','.join(utils.get_type_repr(rt) for rt in self.expected)
-        actual_str = utils.get_type_repr(self.actual)
+        expected_str = ','.join(get_type_repr.get_repr(rt) for rt in self.expected)
+        actual_str = get_type_repr.get_repr(self.actual)
         return f'expected [{expected_str}], but got {actual_str}'
 
 
