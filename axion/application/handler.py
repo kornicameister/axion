@@ -101,6 +101,7 @@ class Error(t.NamedTuple):
     param_name: str
 
 
+@te.final
 class InvalidHandlerError(
         ValueError,
         t.Mapping[str, str],
