@@ -6,8 +6,8 @@ import typing_extensions as te
 
 from axion import utils
 from axion.application import handler
-from axion.specification import model
-from axion.specification import parser
+from axion.oas import model
+from axion.oas import parser
 
 
 def normal_f() -> None:

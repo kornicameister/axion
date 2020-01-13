@@ -3,7 +3,7 @@ import typing as t
 import pytest
 
 from axion import application
-from axion import specification
+from axion import oas
 
 
 @pytest.mark.parametrize(('url', 'variables', 'expected_base_path'), (
@@ -47,5 +47,5 @@ def test_app_get_base_path(
         expected_base_path: str,
 ) -> None:
     assert expected_base_path == application.get_base_path(
-        servers=[specification.OASServer(url=url, variables=variables)],
+        servers=[oas.OASServer(url=url, variables=variables)],
     ) == expected_base_path

@@ -2,8 +2,8 @@ import typing as t
 
 import pytest
 
-from axion.specification import model
-from axion.specification import parser
+from axion.oas import model
+from axion.oas import parser
 
 
 def test_path_param_resolve() -> None:

@@ -2,7 +2,7 @@ import typing as t
 
 import pytest
 
-from axion.specification.parser import type as parse_type
+from axion.oas.parser import type as parse_type
 
 
 @pytest.mark.parametrize('python_type', (str, int, float, dict, set, list, bool))
