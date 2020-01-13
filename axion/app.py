@@ -7,7 +7,7 @@ from loguru import logger
 import typing_extensions as te
 
 from axion import application
-from axion import specification
+from axion import oas
 
 APIs = t.Dict[str, web.Application]
 
@@ -62,7 +62,7 @@ class Application:
         if not spec_location.is_absolute():
             spec_location = (self.root_dir / spec_location).resolve()
 
-        loaded_spec = specification.load(spec_location)
+        loaded_spec = oas.load(spec_location)
         target_app, target_base_path = _get_target_app(
             root_app=self.root_app,
             known_base_paths=self.api_base_paths,
@@ -90,7 +90,7 @@ class Application:
 
 def _apply_specification(
         for_app: web.Application,
-        spec: specification.OASSpecification,
+        spec: oas.OASSpecification,
 ) -> None:
 
     for op in spec.operations:
@@ -107,7 +107,7 @@ def _apply_specification(
         )
 
 
-def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
+def _make_handler(operation: oas.OASOperation) -> web_app._Handler:
     user_handler = application.resolve_handler(operation)
 
     async def handler(request: web.Request) -> web.StreamResponse:
@@ -120,7 +120,7 @@ def _make_handler(operation: specification.OASOperation) -> web_app._Handler:
 def _get_target_app(
         root_app: web.Application,
         known_base_paths: t.Set[str],
-        servers: t.List[specification.OASServer],
+        servers: t.List[oas.OASServer],
         middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
         base_path: t.Optional[str] = None,
 ) -> t.Tuple[web.Application, str]:

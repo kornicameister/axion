@@ -4,8 +4,8 @@ import openapi_spec_validator as osv
 import pytest
 import pytest_mock as ptm
 
-from axion.specification import loader
-from axion.specification import parser
+from axion.oas import loader
+from axion.oas import parser
 
 
 def test_spec_is_just_invalid(tmp_path: Path) -> None:

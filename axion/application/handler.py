@@ -11,7 +11,7 @@ from multidict import istr
 import typing_extensions as te
 import typing_inspect as ti
 
-from axion import specification
+from axion import oas
 from axion import utils
 from axion.utils import types
 
@@ -26,7 +26,7 @@ T = t.Any
 OAS_Param = t.NamedTuple(
     'OAS_Param',
     (
-        ('param_in', specification.OASParameterLocation),
+        ('param_in', oas.OASParameterLocation),
         ('param_name', str),
     ),
 )
@@ -70,8 +70,8 @@ class Handler:
         return self._params('cookie')
 
     def _params(
-        self,
-        param_in: specification.OASParameterLocation,
+            self,
+            param_in: oas.OASParameterLocation,
     ) -> t.FrozenSet[t.Tuple[str, str]]:
         gen = ((oas_param.param_name, fn_param)
                for oas_param, fn_param in self.param_mapping.items()
@@ -150,7 +150,7 @@ class InvalidHandlerError(
         return self.reasons[key]
 
 
-def make(operation: specification.OASOperation) -> Handler:
+def make(operation: oas.OASOperation) -> Handler:
     logger.opt(record=True).info('Making user handler for op={op}', op=operation)
     return _build(
         _resolve(operation.id),
@@ -158,7 +158,7 @@ def make(operation: specification.OASOperation) -> Handler:
     )
 
 
-def _resolve(operation_id: specification.OASOperationId) -> F:
+def _resolve(operation_id: oas.OASOperationId) -> F:
     logger.opt(
         lazy=True,
         record=True,
@@ -193,7 +193,7 @@ def _resolve(operation_id: specification.OASOperationId) -> F:
 
 def _build(
         handler: F,
-        operation: specification.OASOperation,
+        operation: oas.OASOperation,
 ) -> Handler:
     signature = t.get_type_hints(handler)
 
@@ -205,15 +205,15 @@ def _build(
 
     if operation.parameters:
         h_errors, h_params = _analyze_headers(
-            specification.operation_filter_parameters(operation, 'header'),
+            oas.operation_filter_parameters(operation, 'header'),
             signature.pop('headers', None),
         )
         c_errors, c_params = _analyze_cookies(
-            specification.operation_filter_parameters(operation, 'cookie'),
+            oas.operation_filter_parameters(operation, 'cookie'),
             signature.pop('cookies', None),
         )
         pq_errors, pq_params = _analyze_path_query(
-            specification.operation_filter_parameters(operation, 'path', 'query'),
+            oas.operation_filter_parameters(operation, 'path', 'query'),
             signature,
         )
 
@@ -265,7 +265,7 @@ def _build(
 
 
 def _analyze_request_body(
-        request_body: t.Optional[specification.OASRequestBody],
+        request_body: t.Optional[oas.OASRequestBody],
         body_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], bool]:
     if body_arg is None:
@@ -284,7 +284,7 @@ def _analyze_request_body(
 
 
 def _analyze_body_signature_set_oas_set(
-        request_body: specification.OASRequestBody,
+        request_body: oas.OASRequestBody,
         body_arg: t.Type[t.Any],
 ) -> t.Tuple[t.Set[Error], bool]:
     logger.opt(
@@ -352,7 +352,7 @@ def _analyze_body_signature_gone_oas_set() -> t.Tuple[t.Set[Error], bool]:
 
 
 def _analyze_cookies(
-        parameters: t.Sequence[specification.OASParameter],
+        parameters: t.Sequence[oas.OASParameter],
         cookies_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     """Analyzes signature of the handler against the cookies.
@@ -455,7 +455,7 @@ def _analyze_cookies_signature_set_oas_gone(
 
 
 def _analyze_cookies_signature_set_oas_set(
-        parameters: t.Sequence[specification.OASParameter],
+        parameters: t.Sequence[oas.OASParameter],
         cookies_arg: t.Any,
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     logger.opt(record=True).debug('"cookies" found both in signature and operation')
@@ -522,7 +522,7 @@ def _analyze_cookies_signature_set_oas_set(
 
 
 def _analyze_headers(
-        parameters: t.Sequence[specification.OASParameter],
+        parameters: t.Sequence[oas.OASParameter],
         headers_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     """Analyzes signature of the handler against the headers.
@@ -633,7 +633,7 @@ def _analyze_headers_signature_set_oas_gone(
         # deal with typed dict, only reserved headers are allowed as dict
         reserved_headers_keys = {
             _get_f_param(rh): rh.lower()
-            for rh in specification.OASReservedHeaders
+            for rh in oas.OASReservedHeaders
         }
         entries = t.get_type_hints(headers_arg).items()
         if entries:
@@ -642,7 +642,7 @@ def _analyze_headers_signature_set_oas_gone(
                     logger.opt(record=True).error(
                         '{sig_key} is not one of {reserved_headers} headers',
                         sig_key=hdr_param_name,
-                        reserved_headers=specification.OASReservedHeaders,
+                        reserved_headers=oas.OASReservedHeaders,
                     )
                     errors.add(
                         Error(
@@ -674,7 +674,7 @@ def _analyze_headers_signature_set_oas_gone(
     except TypeError:
         # deal with mapping: in that case user will receive all
         # reserved headers inside of the handler
-        for hdr in specification.OASReservedHeaders:
+        for hdr in oas.OASReservedHeaders:
             param_mapping[OAS_Param(
                 param_in='header',
                 param_name=hdr.lower(),
@@ -684,7 +684,7 @@ def _analyze_headers_signature_set_oas_gone(
 
 
 def _analyze_headers_signature_set_oas_set(
-        parameters: t.Sequence[specification.OASParameter],
+        parameters: t.Sequence[oas.OASParameter],
         headers_arg: t.Any,
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     logger.opt(record=True).debug('"headers" found both in signature and operation')
@@ -697,7 +697,7 @@ def _analyze_headers_signature_set_oas_set(
                                   for rh in parameters}
     reserved_headers: t.Dict[F_Param, str] = {
         _get_f_param(rh): rh
-        for rh in specification.OASReservedHeaders
+        for rh in oas.OASReservedHeaders
     }
     all_headers_names = {**param_headers, **reserved_headers}
 
@@ -770,7 +770,7 @@ def _analyze_headers_signature_set_oas_set(
 
 
 def _analyze_path_query(
-        parameters: t.Sequence[specification.OASParameter],
+        parameters: t.Sequence[oas.OASParameter],
         signature: t.Dict[str, t.Any],
 ) -> t.Tuple[t.Set[Error], ParamMapping]:
     errors: t.Set[Error] = set()
@@ -795,7 +795,7 @@ def _analyze_path_query(
                 )
             else:
                 key = OAS_Param(
-                    param_in=specification.parameter_in(op_param),
+                    param_in=oas.parameter_in(op_param),
                     param_name=op_param.name,
                 )
                 param_mapping[key] = handler_param_name
@@ -810,7 +810,7 @@ def _analyze_path_query(
     return errors, param_mapping
 
 
-def _build_type_from_oas_param(param: specification.OASParameter) -> t.Any:
+def _build_type_from_oas_param(param: oas.OASParameter) -> t.Any:
     p_type = param.python_type
     p_required = param.required
     if not p_required:

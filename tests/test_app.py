@@ -6,8 +6,8 @@ import pytest
 import pytest_mock as ptm
 
 from axion import app
-from axion.specification import loader
-from axion.specification import model
+from axion.oas import loader
+from axion.oas import model
 
 
 def test_app_add_api_single_server(
@@ -22,7 +22,7 @@ def test_app_add_api_single_server(
     loaded_spec.servers = [single_server]
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         return_value=loaded_spec,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -53,7 +53,7 @@ def test_app_add_more_than_single_server_gives_warning(
         model.OASServer(url='/v2', variables={}),
     ]
 
-    mocker.patch('axion.specification.load', return_value=loaded_spec)
+    mocker.patch('axion.oas.load', return_value=loaded_spec)
     mocker.patch('axion.app._apply_specification')
     loguru_warning = mocker.patch('loguru.logger.warning')
 
@@ -85,7 +85,7 @@ def test_app_add_api_duplicated_base_path(
         return spec_one if path == spec_one_path else spec_two
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -129,7 +129,7 @@ def test_app_add_api_overlapping_base_paths(
         return spec_one if path == spec_one_path else spec_two
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -157,7 +157,7 @@ def test_app_add_with_custom_base_path(
     spec_one_path = tmp_path / 'openapi_1.yml'
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         return_value=spec_one,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -181,7 +181,7 @@ def test_app_add_with_relative_base_path(mocker: ptm.MockFixture) -> None:
     spec_one_path = Path('../tests/specifications/simple.yml')
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         return_value=spec_one,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')
@@ -224,7 +224,7 @@ def test_app_add_api_different_base_path(
             return spec_admin
 
     spec_load = mocker.patch(
-        'axion.specification.load',
+        'axion.oas.load',
         side_effect=spec_load_side_effect,
     )
     apply_spec = mocker.patch('axion.app._apply_specification')

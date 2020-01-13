@@ -3,10 +3,10 @@ import typing as t
 from loguru import logger
 import yarl
 
-from axion import specification
+from axion import oas
 
 
-def make(servers: t.List[specification.OASServer]) -> str:
+def make(servers: t.List[oas.OASServer]) -> str:
     server_count = len(servers)
 
     if server_count > 1:

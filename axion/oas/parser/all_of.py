@@ -2,8 +2,8 @@ import copy
 import functools
 import typing as t
 
-from axion.specification import exceptions
-from axion.specification import model
+from axion.oas import exceptions
+from axion.oas import model
 
 M = t.TypeVar('M', bound=model.OASType[t.Any])
 V = t.TypeVar('V', bound=object)

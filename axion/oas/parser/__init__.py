@@ -4,9 +4,9 @@ from loguru import logger
 import openapi_spec_validator as osv
 import yarl
 
-from axion.specification import model
-from axion.specification.parser import ref as parse_ref
-from axion.specification.parser import type as parse_type
+from axion.oas import model
+from axion.oas.parser import ref as parse_ref
+from axion.oas.parser import type as parse_type
 
 P = t.Union[model.OASHeaderParameter,
             model.OASPathParameter,

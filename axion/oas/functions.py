@@ -3,7 +3,7 @@ import typing as t
 
 from loguru import logger
 
-from axion.specification import model
+from axion.oas import model
 
 _PARAM_IN_TO_CLS_MAP = {
     'path': model.OASPathParameter,

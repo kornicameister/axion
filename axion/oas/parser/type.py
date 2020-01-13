@@ -4,10 +4,10 @@ import typing as t
 
 from loguru import logger
 
-from axion.specification import exceptions
-from axion.specification import model
-from axion.specification.parser import all_of
-from axion.specification.parser import ref
+from axion.oas import exceptions
+from axion.oas import model
+from axion.oas.parser import all_of
+from axion.oas.parser import ref
 
 __all__ = ('resolve', )
 
