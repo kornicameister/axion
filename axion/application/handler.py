@@ -70,8 +70,8 @@ class Handler:
         return self._params('cookie')
 
     def _params(
-        self,
-        param_in: oas.OASParameterLocation,
+            self,
+            param_in: oas.OASParameterLocation,
     ) -> t.FrozenSet[t.Tuple[str, str]]:
         gen = ((oas_param.param_name, fn_param)
                for oas_param, fn_param in self.param_mapping.items()
