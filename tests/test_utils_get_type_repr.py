@@ -112,6 +112,6 @@ from axion.utils import get_type_repr
 def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr(the_type)
+            get_type_repr.get_repr(the_type)
     else:
-        assert get_type_repr(the_type) == str_repr
+        assert get_type_repr.get_repr(the_type) == str_repr
