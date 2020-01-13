@@ -130,7 +130,7 @@ class InvalidHandlerError(
         else:
             super().__init__(message)
 
-        self._errors = frozenset(errors)  # type: t.FrozenSet[Error]
+        self._errors = frozenset(errors or [])
         self._operation_id = operation_id
 
     @property
