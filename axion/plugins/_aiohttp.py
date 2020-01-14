@@ -103,8 +103,8 @@ def _make_handler(operation: oas.OASOperation) -> web_app._Handler:
     user_handler = handler.resolve(operation, asynchronous=True)
 
     async def wrapper(request: web.Request) -> web.StreamResponse:
-        await user_handler.fn()  # pragma: no cover
-        return web.Response()  # pragma: no cover
+        d = await user_handler.fn()  # pragma: no cover
+        return web.Response(status=d['http_code'])  # pragma: no cover
 
     return wrapper
 
