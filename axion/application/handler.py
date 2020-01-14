@@ -8,7 +8,6 @@ import typing as t
 
 from loguru import logger
 from multidict import istr
-import pampy as pm
 import typing_extensions as te
 import typing_inspect as ti
 
@@ -328,10 +327,6 @@ def _analyze_return_type(
                     operation,
                     rt_entries.pop('headers', None),
                 ),
-                *_analyze_return_type_body(
-                    operation,
-                    rt_entries.pop('body', None),
-                ),
             }
         else:
             logger.opt(
@@ -359,137 +354,19 @@ def _analyze_return_type_headers(
         operation: oas.OASOperation,
         headers: t.Optional[t.Type[t.Any]],
 ) -> t.Set[Error]:
-    if headers is not None and not types.is_dict_like(headers):
-        return {
-            Error(
-                param_name=f'return.headers',
-                reason=IncorrectTypeReason(
-                    expected=COOKIES_HEADERS_TYPE,
-                    actual=headers,
-                ),
-            ),
-        }
-    return set()
-
-
-def _analyze_return_type_body(
-        operation: oas.OASOperation,
-        body: t.Optional[t.Type[t.Any]],
-) -> t.Set[Error]:
-
-    def _is_arg_body_none() -> bool:
-        return any((
-            body is None,
-            types.is_none_type(body),
-            ti.is_literal_type(body) and ti.get_args(body, ti.NEW_TYPING)[0] is None,
-        ))
-
-    def _body_must_be_empty(__: t.Any) -> t.Set[Error]:
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).error(
-            'Operation {id} handler defines return.body but '
-            'having only 204 response defined makes it impossible to return '
-            'any body.',
-            id=lambda: operation.id,
-        )
-        return {
-            Error(
-                param_name=f'return.body',
-                reason=CustomReason(
-                    'OAS defines single response with 204 code. '
-                    'Returning http body in such case is not possible.',
-                ),
-            ),
-        }
-
-    match_input = (list(operation.responses.keys()), _is_arg_body_none())
-    errors: t.Set[Error] = pm.match(
-        match_input,
-        # yapf: disable
-        ([204], True), set(),
-        ([204], False), _body_must_be_empty,
-        pm._, set(),
-        # yapf: enable
-    )
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).error(
-        'Operation handler {id} produced {err} error{s} over an input {mi}',
-        id=lambda: operation.id,
-        s=lambda: '' if len(errors) else 's',
-        mi=lambda: match_input,
-        err=lambda: len(errors),
-    )
-    return errors
-
-    assert False, 'this should not happen'
-
-    if body is None:
-        ...
-    elif types.is_none_type(body):
-        ...
-    elif types.is_new_type(body):
-        return _analyze_return_type_body(
-            operation,
-            body.__supertype__,
-        )
-    elif types.is_any_type(body):
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).warning(
-            'Operation {id} handler defined return.body as {any}. '
-            'axion permits that but be warned that you loose entire support '
-            'from linters (i.e. mypy)',
-            id=lambda: operation.id,
-            any=lambda: repr(t.Any),
-        )
-        return set()
-    elif ti.is_literal_type(body):
-        body_args = ti.get_args(body, ti.NEW_TYPING)
-        if len(body_args) == 1:
-            return _analyze_return_type_body(
-                operation,
-                body_args[0],
-            )
-        return set()
-    else:
-        if all((
-                len(operation.responses),
-                204 in operation.responses,
-        )):
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).error(
-                'Operation {id} handler defines return.body but '
-                'having only 204 response defined makes it impossible to return '
-                'any body.',
-                id=lambda: operation.id,
-            )
+    if headers is not None:
+        if types.is_any_type(headers):
+            return set()
+        elif not types.is_dict_like(headers):
             return {
                 Error(
-                    param_name=f'return.body',
-                    reason=CustomReason(
-                        'OAS defines single response with 204 code. '
-                        'Returning http body in such case is not possible.',
-                    ),
-                ),
-            }
-        elif not types.is_dict_like(body):
-            return {
-                Error(
-                    param_name=f'return.body',
+                    param_name=f'return.headers',
                     reason=IncorrectTypeReason(
-                        expected=BODY_TYPES,
-                        actual=body,
+                        expected=COOKIES_HEADERS_TYPE,
+                        actual=headers,
                     ),
                 ),
             }
-
     return set()
 
 
@@ -497,16 +374,19 @@ def _analyze_return_type_cookies(
         operation: oas.OASOperation,
         cookies: t.Optional[t.Type[t.Any]],
 ) -> t.Set[Error]:
-    if cookies is not None and not types.is_dict_like(cookies):
-        return {
-            Error(
-                param_name=f'return.cookies',
-                reason=IncorrectTypeReason(
-                    expected=COOKIES_HEADERS_TYPE,
-                    actual=cookies,
+    if cookies is not None:
+        if types.is_any_type(cookies):
+            return set()
+        elif not types.is_dict_like(cookies):
+            return {
+                Error(
+                    param_name=f'return.cookies',
+                    reason=IncorrectTypeReason(
+                        expected=COOKIES_HEADERS_TYPE,
+                        actual=cookies,
+                    ),
                 ),
-            ),
-        }
+            }
     return set()
 
 
