@@ -8,6 +8,7 @@ import typing as t
 
 from loguru import logger
 from multidict import istr
+import pampy as pm
 import typing_extensions as te
 import typing_inspect as ti
 
@@ -375,6 +376,57 @@ def _analyze_return_type_body(
         operation: oas.OASOperation,
         body: t.Optional[t.Type[t.Any]],
 ) -> t.Set[Error]:
+
+    def _is_arg_body_none() -> bool:
+        return any((
+            body is None,
+            types.is_none_type(body),
+            ti.is_literal_type(body) and ti.get_args(body, ti.NEW_TYPING)[0] is None,
+        ))
+
+    def _body_must_be_empty(__: t.Any) -> t.Set[Error]:
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).error(
+            'Operation {id} handler defines return.body but '
+            'having only 204 response defined makes it impossible to return '
+            'any body.',
+            id=lambda: operation.id,
+        )
+        return {
+            Error(
+                param_name=f'return.body',
+                reason=CustomReason(
+                    'OAS defines single response with 204 code. '
+                    'Returning http body in such case is not possible.',
+                ),
+            ),
+        }
+
+    match_input = (list(operation.responses.keys()), _is_arg_body_none())
+    errors: t.Set[Error] = pm.match(
+        match_input,
+        # yapf: disable
+        ([204], True), set(),
+        ([204], False), _body_must_be_empty,
+        pm._, set(),
+        # yapf: enable
+    )
+    logger.opt(
+        record=True,
+        lazy=True,
+    ).error(
+        'Operation handler {id} produced {err} error{s} over an input {mi}',
+        id=lambda: operation.id,
+        s=lambda: '' if len(errors) else 's',
+        mi=lambda: match_input,
+        err=lambda: len(errors),
+    )
+    return errors
+
+    assert False, 'this should not happen'
+
     if body is None:
         ...
     elif types.is_none_type(body):

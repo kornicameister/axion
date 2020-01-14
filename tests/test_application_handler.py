@@ -1336,7 +1336,7 @@ class TestReturnType:
             )
         ),
     )
-    def test_correct_handler_no_body(
+    def test_correct_handler_no_oas_body(
             self,
             response_code: int,
             return_type: t.Type[t.Any],
