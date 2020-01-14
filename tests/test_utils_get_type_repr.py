@@ -1,3 +1,4 @@
+import sys
 import typing as t
 
 import pytest
@@ -5,9 +6,14 @@ import typing_extensions as te
 
 from axion.utils import get_type_repr
 
+if sys.version_info > (3, 8):
+    LITERAL_PKG = 'typing'
+else:
+    LITERAL_PKG = 'typing_extensions'
+
 
 @pytest.mark.parametrize(
-    'the_type,str_repr',
+    ['the_type', 'expected_type_repr'],
     (
         (str, 'str'),
         (bool, 'bool'),
@@ -15,6 +21,21 @@ from axion.utils import get_type_repr
         (list, 'list'),
         (dict, 'dict'),
         (set, 'set'),
+        (te.Literal[1], f'{LITERAL_PKG}.Literal[1]'),
+        (te.Literal[1, 2], f'{LITERAL_PKG}.Literal[1, 2]'),
+        (
+            te.Literal[True],
+            f'{LITERAL_PKG}.Literal[True]',
+        ),
+        (te.Literal[False], f'{LITERAL_PKG}.Literal[False]'),
+        (te.Literal[True, False], f'{LITERAL_PKG}.Literal[True, False]'),
+        (te.Literal[False, True], f'{LITERAL_PKG}.Literal[False, True]'),
+        (te.Literal[None], f'{LITERAL_PKG}.Literal[None]'),
+        (te.Literal['test'], f"{LITERAL_PKG}.Literal['test']"),
+        (
+            te.Literal['a', 'x', 'i', 'o', 'n'],
+            f"{LITERAL_PKG}.Literal['a', 'x', 'i', 'o', 'n']",
+        ),
         (t.NewType('Cookies', int), 'Cookies[int]'),
         (t.NewType('Cookies', bool), 'Cookies[bool]'),
         (t.NewType('Cookies', str), 'Cookies[str]'),
@@ -66,6 +87,7 @@ from axion.utils import get_type_repr
         (t.AbstractSet, 'typing.AbstractSet[typing.Any]'),
         (t.AbstractSet[bool], 'typing.AbstractSet[bool]'),
         (t.Optional[t.AbstractSet[bool]], 'typing.Optional[typing.AbstractSet[bool]]'),
+        (type(None), 'NoneType'),
         (None, None),
         (t.Any, 'typing.Any'),
         (te.TypedDict, 'typing_extensions.TypedDict'),
@@ -77,7 +99,7 @@ from axion.utils import get_type_repr
                     'csrftoken': str,
                 },
             ),
-            'Cookies{debug: bool, csrftoken: str}',
+            'Cookies{csrftoken: str, debug: bool}',
         ),
         (
             te.TypedDict(  # type: ignore
@@ -88,7 +110,7 @@ from axion.utils import get_type_repr
                     'hasPrev': bool,
                 },
             ),
-            'Paging{page: typing.Optional[int], hasNext: bool, hasPrev: bool}',
+            'Paging{hasNext: bool, hasPrev: bool, page: typing.Optional[int]}',
         ),
         (
             te.TypedDict(  # type: ignore
@@ -101,17 +123,49 @@ from axion.utils import get_type_repr
             ),
             (
                 'Complex{'
-                'page: typing.Optional[int], '
-                'foo: typing.Union[typing.List[str], typing.Set[float]],'
-                ' bar: Bar{little: bool}'
+                'bar: Bar{little: bool}, '
+                'foo: typing.Union[typing.List[str], typing.Set[float]], '
+                'page: typing.Optional[int]'
                 '}'
             ),
         ),
     ),
 )
-def test_get_type_string_repr(the_type: t.Optional[t.Type[t.Any]], str_repr: str) -> None:
+@pytest.mark.xfail(
+    sys.version_info >= (3, 8, 0),
+    reason='https://bugs.python.org/issue39308',
+)
+def test_get_type_repr(
+        the_type: t.Optional[t.Type[t.Any]],
+        expected_type_repr: str,
+) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr.get_repr(the_type)
+            get_type_repr.get_repr(the_type)  # type: ignore
     else:
-        assert get_type_repr.get_repr(the_type) == str_repr
+        actual_type_repr = get_type_repr.get_repr(the_type)
+        assert actual_type_repr == expected_type_repr
+
+
+@pytest.mark.skip(
+    reason=(
+        'For some reason http_code is sometimes not included in an output or '
+        'annotations of `TypedDict` and there is no explanation for that now.'
+        ''
+        'This test ought to unblocked once that has been resolved'
+    ),
+)
+def test_response_repr() -> None:
+    from axion import response
+
+    v1 = (
+        'Response{'
+        'body: typing.Any, '
+        'cookies: typing.Mapping[str, str], '
+        'headers: typing.Mapping[str, str], '
+        'http_code: int'
+        '}'
+    )
+    v2 = get_type_repr.get_repr(response.Response)
+
+    assert v1 == v2

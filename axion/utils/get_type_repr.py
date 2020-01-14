@@ -1,17 +1,17 @@
-import functools
 import sys
 import typing as t
 
 from loguru import logger
 import typing_inspect as ti
 
+from axion.utils import types
 
-@functools.lru_cache(maxsize=100)
+
 def get_repr(val: t.Type[t.Any]) -> str:
     logger.opt(
         lazy=True,
         record=True,
-    ).debug(
+    ).trace(
         'Getting string representation for val={val}',
         val=lambda: val,
     )
@@ -22,7 +22,11 @@ def _repr(val: t.Type[t.Any]) -> str:
 
     assert val is not None
 
-    if _is_new_type(val):
+    if types.is_none_type(val):
+        return 'NoneType'
+    elif ti.is_literal_type(val):
+        return str(val)
+    elif types.is_new_type(val):
         nested_type = val.__supertype__
         return f'{_qualified_name(val)}[{get_repr(nested_type)}]'
     elif ti.is_typevar(val):
@@ -63,13 +67,14 @@ def _repr(val: t.Type[t.Any]) -> str:
         return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
         val_name = _qualified_name(val)
-        maybe_td_keys = getattr(val, '__annotations__', {}).copy()
-        if maybe_td_keys:
+        maybe_td_entries = getattr(val, '__annotations__', {}).copy()
+        if maybe_td_entries:
             # we are dealing with typed dict
             # that's quite lovely
+            td_keys = sorted(maybe_td_entries.keys())
             internal_members_repr = ', '.join(
-                '{key}: {type}'.format(key=k, type=get_repr(v))
-                for k, v in maybe_td_keys.items()
+                '{key}: {type}'.format(key=k, type=get_repr(maybe_td_entries.get(k)))
+                for k in td_keys
             )
             return f'{val_name}{{{internal_members_repr}}}'
         elif 'TypedDict' == getattr(val, '__name__', ''):
@@ -85,10 +90,6 @@ def _qualified_name(tt: t.Type[t.Any]) -> str:
         the_name = tt.__name__ or tt.__qualname__
 
     return the_name
-
-
-def _is_new_type(tt: t.Type[t.Any]) -> bool:
-    return getattr(tt, '__supertype__', None) is not None
 
 
 if sys.version_info < (3, 7):

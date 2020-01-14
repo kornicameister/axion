@@ -4,17 +4,18 @@ from _pytest import logging
 import pytest
 import typing_extensions as te
 
+from axion import response
 from axion.application import handler
 from axion.oas import model
 from axion.oas import parser
 from axion.utils import get_type_repr
 
 
-def normal_f() -> None:
+def normal_f() -> response.Response:
     ...
 
 
-async def async_f() -> None:
+async def async_f() -> response.Response:
     ...
 
 
@@ -68,7 +69,7 @@ def test_resolve_handler_couroutine() -> None:
 
 
 def test_empty_handler_signature(caplog: logging.LogCaptureFixture) -> None:
-    async def foo() -> None:
+    async def foo() -> response.Response:
         ...
 
     handler._build(
@@ -101,7 +102,7 @@ def test_not_empty_signature(caplog: logging.LogCaptureFixture) -> None:
             foo: str,
             bar: str,
             lorem_ipsum: t.List[str],
-    ) -> None:
+    ) -> response.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
@@ -205,7 +206,7 @@ class TestCookies:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str) -> None:
+        async def foo(name: str) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -235,7 +236,7 @@ class TestCookies:
             the_type: t.Type[t.Any],
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -253,7 +254,7 @@ class TestCookies:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str) -> None:
+        async def foo(name: str) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -292,7 +293,7 @@ class TestCookies:
             the_type: t.Type[t.Any],
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         hdrl = handler._build(
@@ -353,7 +354,7 @@ class TestCookies:
             the_type: t.Type[t.Any],
             expected_errors: t.List[t.Tuple[str, str]],
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -386,7 +387,7 @@ class TestCookies:
             op_id: str,
             the_type: t.Type[t.Any],
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -415,7 +416,7 @@ class TestCookies:
             the_type: t.Type[t.Any],
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         hdrl = handler._build(
@@ -454,12 +455,12 @@ class TestCookies:
             ), 'bar'),
         ),
     )
-    def test_signature_set_bad_oas_cookies_unkown(
+    def test_signature_set_bad_oas_cookies_unknown(
             self,
             the_type: t.Type[t.Any],
             extra_param: str,
     ) -> None:
-        async def foo(name: str, cookies: the_type) -> None:  # type: ignore
+        async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -533,7 +534,7 @@ class TestHeaders:
             op_id: str,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, headers: the_type) -> None:  # type: ignore
+        async def foo(name: str, headers: the_type) -> response.Response:  # type: ignore
             ...
 
         hdrl = handler._build(
@@ -573,7 +574,7 @@ class TestHeaders:
         else:
             Headers = t.List[str]  # type: ignore
 
-        async def foo(name: str, headers: Headers) -> None:
+        async def foo(name: str, headers: Headers) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -588,7 +589,7 @@ class TestHeaders:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str) -> None:
+        async def foo(name: str) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -613,7 +614,7 @@ class TestHeaders:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str) -> None:
+        async def foo(name: str) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -629,7 +630,7 @@ class TestHeaders:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, headers: t.Mapping[str, str]) -> None:
+        async def foo(name: str, headers: t.Mapping[str, str]) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -653,7 +654,7 @@ class TestHeaders:
         class EXTRA_INVALID(te.TypedDict):
             content_length: str
 
-        async def extra_invalid(name: str, headers: EXTRA_INVALID) -> None:
+        async def extra_invalid(name: str, headers: EXTRA_INVALID) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -675,7 +676,7 @@ class TestHeaders:
         class Invalid(te.TypedDict):
             accept: int
 
-        async def goo(name: str, headers: Invalid) -> None:
+        async def goo(name: str, headers: Invalid) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -704,16 +705,16 @@ class TestHeaders:
         class FULL(CT, AUTH, ACCEPT):
             ...
 
-        async def content_type(name: str, headers: CT) -> None:
+        async def content_type(name: str, headers: CT) -> response.Response:
             ...
 
-        async def auth(name: str, headers: AUTH) -> None:
+        async def auth(name: str, headers: AUTH) -> response.Response:
             ...
 
-        async def accept(name: str, headers: ACCEPT) -> None:
+        async def accept(name: str, headers: ACCEPT) -> response.Response:
             ...
 
-        async def full(name: str, headers: FULL) -> None:
+        async def full(name: str, headers: FULL) -> response.Response:
             ...
 
         for fn in (accept, auth, content_type, full):
@@ -752,7 +753,7 @@ class TestHeaders:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo(name: str, headers: t.Mapping[str, str]) -> None:
+        async def foo(name: str, headers: t.Mapping[str, str]) -> response.Response:
             ...
 
         operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
@@ -789,16 +790,16 @@ class TestHeaders:
             authorization: str
             x_trace_id: str
 
-        async def one(name: str, headers: One) -> None:
+        async def one(name: str, headers: One) -> response.Response:
             ...
 
-        async def two(name: str, headers: Two) -> None:
+        async def two(name: str, headers: Two) -> response.Response:
             ...
 
-        async def three(name: str, headers: Three) -> None:
+        async def three(name: str, headers: Three) -> response.Response:
             ...
 
-        async def full(name: str, headers: FULL) -> None:
+        async def full(name: str, headers: FULL) -> response.Response:
             ...
 
         operation = next(filter(lambda op: op.id == 'headers_op', self.operations))
@@ -843,7 +844,7 @@ class TestHeaders:
             user_agent: str
             x_trace_id: str
 
-        async def goo(name: str, headers: Invalid) -> None:
+        async def goo(name: str, headers: Invalid) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -878,7 +879,7 @@ class TestHeaders:
         class Invalid(te.TypedDict):
             x_trace_id: the_type  # type: ignore
 
-        async def goo(name: str, headers: Invalid) -> None:
+        async def goo(name: str, headers: Invalid) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -950,7 +951,7 @@ class TestPathQuery:
                 limit: t.Optional[int],
                 page: t.Optional[float],
                 include_extra: t.Optional[bool],
-        ) -> None:
+        ) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -965,7 +966,7 @@ class TestPathQuery:
         assert err.value['id'] == 'missing'
 
     def test_signature_all_missing(self) -> None:
-        async def foo() -> None:
+        async def foo() -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -986,7 +987,7 @@ class TestPathQuery:
                 limit: t.Optional[int],
                 page: t.Optional[float],
                 include_extra: t.Optional[bool],
-        ) -> None:
+        ) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1006,7 +1007,7 @@ class TestPathQuery:
                 limit: t.Optional[t.Union[int, float]],
                 page: t.Optional[t.AbstractSet[bool]],
                 include_extra: t.Union[int, str],
-        ) -> None:
+        ) -> response.Response:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1048,7 +1049,7 @@ class TestPathQuery:
                 limit: t.Optional[int],
                 page: t.Optional[float],
                 include_extra: t.Optional[bool],
-        ) -> None:
+        ) -> response.Response:
             ...
 
         hdrl = handler._build(
@@ -1061,8 +1062,12 @@ class TestPathQuery:
 
 
 class TestBody:
+    class R(te.TypedDict):
+        http_code: int
+        body: te.Literal[None]
+
     def test_no_request_body_empty_signature(self) -> None:
-        async def test() -> None:
+        async def test() -> TestBody.R:
             ...
 
         hdrl = handler._build(
@@ -1074,7 +1079,7 @@ class TestBody:
 
     @pytest.mark.parametrize('required', (True, False))
     def test_request_body_signature_set(self, required: bool) -> None:
-        async def test(body: t.Dict[str, t.Any]) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> TestBody.R:
             ...
 
         hdrl = handler._build(
@@ -1096,7 +1101,7 @@ class TestBody:
         assert hdrl.has_body
 
     def test_request_body_required_signature_optional(self) -> None:
-        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> None:
+        async def test(body: t.Optional[t.Dict[str, t.Any]]) -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1141,7 +1146,7 @@ class TestBody:
             self,
             the_type: t.Any,
     ) -> None:
-        async def test(body: the_type) -> None:  # type: ignore
+        async def test(body: the_type) -> TestBody.R:  # type: ignore
             ...
 
         hdrl = handler._build(
@@ -1166,7 +1171,7 @@ class TestBody:
             self,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def test(body: t.Dict[str, t.Any]) -> None:
+        async def test(body: t.Dict[str, t.Any]) -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1191,7 +1196,7 @@ class TestBody:
             required: bool,
             caplog: logging.LogCaptureFixture,
     ) -> None:
-        async def foo() -> None:
+        async def foo() -> TestBody.R:
             ...
 
         with pytest.raises(handler.InvalidHandlerError) as err:
@@ -1240,6 +1245,352 @@ class TestBody:
                                     },
                                 },
                             },
+                        },
+                    },
+                },
+            ),
+        )[0]
+
+
+class TestReturnType:
+    @pytest.mark.parametrize(
+        'response_code,return_type',
+        (
+            (
+                response_code,
+                return_type,
+            ) for response_code in [
+                200,
+                201,
+                204,
+                300,
+                401,
+                404,
+                500,
+                503,
+            ] for return_type in (
+                response.Response,
+                te.TypedDict(  # type: ignore
+                    'JustHttpCodeIsOk',
+                    {'http_code': int},
+                ),
+                te.TypedDict(  # type: ignore
+                    'JustHttpCodeIsAsNewType_Int',
+                    {'http_code': t.NewType('HTTP_CODE', int)},
+                ),
+                te.TypedDict(  # type: ignore
+                    'HttpCodeWithSomeJunkThatWillBeIgnored',
+                    {
+                        'http_code': int,
+                        'foo': str,
+                        'bar': bool,
+                    },
+                ),
+                te.TypedDict(  # type: ignore
+                    f'HttpCodeDefinedAs_Literal[{response_code}]',
+                    {'http_code': te.Literal[response_code]},
+                ),
+                te.TypedDict(  # type: ignore
+                    f'HttpCodeDefinedAs_Literal_&_NewType[{response_code}]',
+                    {'http_code': t.NewType('HttpCode', te.Literal[response_code])},
+                ),
+                te.TypedDict(  # type: ignore
+                    'Response_V1',
+                    {
+                        'http_code': int,
+                        'links': t.List[str],
+                    },
+                ),
+                te.TypedDict(  # type: ignore
+                    'Response_V2',
+                    {
+                        'http_code': int,
+                        'headers': t.Mapping[str, str],
+                        'links': t.List[str],
+                    },
+                ),
+                te.TypedDict(   # type: ignore
+                    'Response_V3',
+                    {
+                        'http_code': int,
+                        'headers': t.Mapping[str, str],
+                        'cookies': t.Mapping[str, str],
+                        'links': t.List[str],
+                    },
+                ),
+                te.TypedDict(  # type: ignore
+                    'Response_V4',
+                    {
+                        'http_code': int,
+                        'body': te.Literal[None],
+                        'headers': t.Mapping[str, str],
+                        'cookies': t.Mapping[str, str],
+                        'links': t.List[str],
+                    },
+                ),
+                te.TypedDict(  # type: ignore
+                    'Response_V5',
+                    http_code=int,
+                    body=None,
+                ),
+            )
+        ),
+    )
+    def test_correct_handler_no_oas_body(
+            self,
+            response_code: int,
+            return_type: t.Type[t.Any],
+    ) -> None:
+        async def test() -> return_type:  # type: ignore
+            ...
+
+        operation = TestReturnType._make_operation({
+            f'{response_code}': {
+                'description': f'Returning {return_type}',
+            },
+        })
+        handler._build(
+            handler=test,
+            operation=operation,
+        )
+
+    def test_missing_return_annotation(self) -> None:
+        async def test():  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'It will not work anyway',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return' in err.value
+        assert 'missing' == err.value['return']
+
+    @pytest.mark.parametrize('response_code', (200, 300, 400, 'default'))
+    def test_omitted_return_code_single_oas_resp(
+            self,
+            response_code: t.Union[str, te.Literal['default']],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'MissingHttpCode',
+            {'body': t.Dict[str, int]},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        handler._build(
+            handler=test,
+            operation=TestReturnType._make_operation({
+                f'{response_code}': {
+                    'description': 'I am alone',
+                },
+            }),
+        )
+
+    def test_omitted_return_code_couple_oas_resp(self) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'MissingHttpCode',
+            {'body': t.Dict[str, int]},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '200': {
+                        'description': 'I am alone',
+                    },
+                    '300': {
+                        'description': 'I am alone',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.http_code' in err.value
+        assert 'missing' == err.value['return.http_code']
+
+    @pytest.mark.parametrize(
+        'return_type',
+        (
+            int,
+            float,
+            None,
+            t.Mapping[str, str],
+            t.Dict[str, str],
+        ),
+    )
+    def test_incorrect_return_type(self, return_type: t.Type[t.Any]) -> None:
+        async def test() -> return_type:  # type: ignore
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return' in err.value
+
+        assert (
+            f'expected [{get_type_repr.get_repr(response.Response)}], but got '
+            f'{get_type_repr.get_repr(return_type if return_type else type(None))}'
+        ) == err.value['return']
+
+    @pytest.mark.parametrize(
+        'headers_type',
+        (
+            int,
+            float,
+            complex,
+            t.List[str],
+            t.Set[t.Tuple[str, str]],
+        ),
+    )
+    def test_incorrect_headers_type(self, headers_type: t.Type[t.Any]) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'RV_Bad_Headers',
+            {'http_code': int, 'headers': headers_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.headers' in err.value
+
+        assert (
+            f'expected ['
+            f'typing.Mapping[str, typing.Any],'
+            f'typing.Dict[str, typing.Any],'
+            f'typing_extensions.TypedDict], '
+            f'but got '
+            f'{get_type_repr.get_repr(headers_type)}'
+        ) == err.value['return.headers']
+
+    @pytest.mark.parametrize(
+        'cookies_type',
+        (
+            int,
+            float,
+            complex,
+            t.List[str],
+            t.Set[t.Tuple[str, str]],
+        ),
+    )
+    def test_incorrect_cookies_type(self, cookies_type: t.Type[t.Any]) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            'RV_Bad_Cookies',
+            {'http_code': int, 'cookies': cookies_type},  # type: ignore
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+        assert 'return.cookies' in err.value
+
+        assert (
+            f'expected ['
+            f'typing.Mapping[str, typing.Any],'
+            f'typing.Dict[str, typing.Any],'
+            f'typing_extensions.TypedDict], '
+            f'but got '
+            f'{get_type_repr.get_repr(cookies_type)}'
+        ) == err.value['return.cookies']
+
+    @pytest.mark.parametrize(
+        'return_code',
+        (
+            str,
+            bool,
+            t.NewType('HttpCode', bool),
+            t.NewType('HTTP_CODE', float),
+            te.Literal['c', 'o', 'd', 'e'],
+            te.Literal[13.0],
+        ),
+    )
+    def test_incorrect_return_http_code(
+            self,
+            return_code: t.Type[t.Any],
+    ) -> None:
+        test_returns = te.TypedDict(  # type: ignore
+            f'ReturnWithCodeAs_{return_code}',
+            {'http_code': return_code},
+        )
+
+        async def test() -> test_returns:
+            ...
+
+        with pytest.raises(handler.InvalidHandlerError) as err:
+            handler._build(
+                handler=test,
+                operation=TestReturnType._make_operation({
+                    '204': {
+                        'description': 'Incorrect return type',
+                    },
+                }),
+            )
+
+        assert err
+        assert err.value
+        assert 1 == len(err.value)
+
+    @staticmethod
+    def _make_operation(responses_def: t.Dict[str, t.Any]) -> model.OASOperation:
+        return list(
+            parser._resolve_operations(
+                components={},
+                paths={
+                    '/testReturnType': {
+                        'get': {
+                            'operationId': 'empty_response_body',
+                            'responses': responses_def,
                         },
                     },
                 },

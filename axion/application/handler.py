@@ -12,6 +12,7 @@ import typing_extensions as te
 import typing_inspect as ti
 
 from axion import oas
+from axion import response
 from axion.utils import get_type_repr
 from axion.utils import types
 
@@ -35,10 +36,19 @@ ParamMapping = t.Mapping[OAS_Param, F_Param]
 
 CamelCaseToSnakeCaseRegex = re.compile(r'(?!^)(?<!_)([A-Z])')
 
-BODY_EXPECTED_TYPES = [
+BODY_TYPES: te.Final = [
     t.Mapping[str, t.Any],
     t.Dict[str, t.Any],
 ]
+COOKIES_HEADERS_TYPE: te.Final = [
+    t.Mapping[str, t.Any],
+    t.Dict[str, t.Any],
+    te.TypedDict,
+]
+HTTP_CODE_TYPE: te.Final = int
+
+AXION_RESPONSE_ENTRIES: te.Final = getattr(response.Response, '__annotations__', {})
+AXION_RESPONSE_KEYS: te.Final = frozenset(AXION_RESPONSE_ENTRIES.keys())
 
 if sys.version_info >= (3, 8):
     cached_property = functools.cached_property
@@ -93,7 +103,9 @@ class IncorrectTypeReason:
         return f'expected [{expected_str}], but got {actual_str}'
 
 
-Reason = t.Union[te.Literal['missing', 'unexpected', 'unknown'], IncorrectTypeReason]
+CustomReason = t.NewType('CustomReason', str)
+CommonReasons = te.Literal['missing', 'unexpected', 'unknown']
+Reason = t.Union[CommonReasons, IncorrectTypeReason, CustomReason]
 
 
 class Error(t.NamedTuple):
@@ -206,6 +218,12 @@ def _build(
         operation.request_body,
         signature.pop('body', None),
     )
+    rt_errors = _analyze_return_type(
+        operation,
+        signature,
+    )
+
+    errors.update(rt_errors)
     param_mapping: t.Dict[OAS_Param, F_Param] = {}
 
     if operation.parameters:
@@ -221,8 +239,6 @@ def _build(
             oas.operation_filter_parameters(operation, 'path', 'query'),
             signature,
         )
-
-        signature.pop('return')  # pragma: no cover
 
         if signature:
             logger.opt(record=True).error(
@@ -269,6 +285,195 @@ def _build(
     )
 
 
+def _analyze_return_type(
+        operation: oas.OASOperation,
+        signature: t.Dict[str, t.Any],
+) -> t.Set[Error]:
+
+    if 'return' not in signature:
+        logger.opt(
+            record=True,
+            lazy=True,
+        ).error(
+            'Operation {id} handler does not define return annotation',
+            id=lambda: operation.id,
+        )
+        return {Error(param_name='return', reason='missing')}
+    else:
+        return_type = signature.pop('return')
+        rt_entries = getattr(return_type, '__annotations__', {}).copy()
+        matching_keys = AXION_RESPONSE_KEYS.intersection(set(rt_entries.keys()))
+
+        logger.opt(
+            record=True,
+            lazy=True,
+        ).debug(
+            'Operation {id} handler defines [{keys}] in return type',
+            id=lambda: operation.id,
+            keys=lambda: ','.join(rt_entries.keys()),
+        )
+
+        if matching_keys:
+            return {
+                *_analyze_return_type_http_code(
+                    operation,
+                    rt_entries.pop('http_code', None),
+                ),
+                *_analyze_return_type_cookies(
+                    operation,
+                    rt_entries.pop('cookies', None),
+                ),
+                *_analyze_return_type_headers(
+                    operation,
+                    rt_entries.pop('headers', None),
+                ),
+            }
+        else:
+            logger.opt(
+                record=True,
+                lazy=True,
+            ).error(
+                'Operation {id} handler return type is incorrect, '
+                'expected {expected_type} but received {actual_type}',
+                id=lambda: operation.id,
+                expected_type=lambda: response.Response,
+                actual_type=lambda: return_type,
+            )
+            return {
+                Error(
+                    param_name='return',
+                    reason=IncorrectTypeReason(
+                        expected=[response.Response],
+                        actual=return_type,
+                    ),
+                ),
+            }
+
+
+def _analyze_return_type_headers(
+        operation: oas.OASOperation,
+        headers: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+    if headers is not None:
+        if types.is_any_type(headers):
+            return set()
+        elif not types.is_dict_like(headers):
+            return {
+                Error(
+                    param_name=f'return.headers',
+                    reason=IncorrectTypeReason(
+                        expected=COOKIES_HEADERS_TYPE,
+                        actual=headers,
+                    ),
+                ),
+            }
+    return set()
+
+
+def _analyze_return_type_cookies(
+        operation: oas.OASOperation,
+        cookies: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+    if cookies is not None:
+        if types.is_any_type(cookies):
+            return set()
+        elif not types.is_dict_like(cookies):
+            return {
+                Error(
+                    param_name=f'return.cookies',
+                    reason=IncorrectTypeReason(
+                        expected=COOKIES_HEADERS_TYPE,
+                        actual=cookies,
+                    ),
+                ),
+            }
+    return set()
+
+
+def _analyze_return_type_http_code(
+        operation: oas.OASOperation,
+        rt_http_code: t.Optional[t.Type[t.Any]],
+) -> t.Set[Error]:
+
+    if rt_http_code is None:
+        # if there's no http_code in return Response
+        # this is permitted only if there's single response defined in
+        # OAS responses. User needs to set it otherwise how can we tell if
+        # everything is correct
+        if len(operation.responses) != 1:
+            logger.opt(
+                lazy=True,
+                record=True,
+            ).error(
+                'Operation {id} handler skips return.http_code but it is impossible '
+                ' with {count_of_ops} responses due to ambiguity.',
+                id=lambda: operation.id,
+                count_of_ops=lambda: len(operation.responses),
+            )
+            return {Error(
+                param_name='return.http_code',
+                reason='missing',
+            )}
+        return set()
+
+    elif ti.is_literal_type(rt_http_code):
+        # this is acceptable. Literals hold particular values inside of them
+        # if user wants to have it that way -> go ahead.
+        # axion however will not validate a specific values in Literal.
+        # this is by design and due to:
+        # - error responses that axion implements via exceptions
+        literal_types = types.literal_types(rt_http_code)
+        if not all(issubclass(lmt, HTTP_CODE_TYPE) for lmt in literal_types):
+            return {
+                Error(
+                    param_name='return.http_code',
+                    reason=CustomReason(f'expected {repr(te.Literal)}[int]'),
+                ),
+            }
+        return set()
+
+    elif types.is_new_type(rt_http_code):
+        # not quite sure why user would like to alias that
+        # but it is not a problem for axion as long `NewType` embedded type
+        # is fine
+        return _analyze_return_type_http_code(operation, rt_http_code.__supertype__)
+
+    elif issubclass(rt_http_code, bool):
+        # yeah, Python rocks -> bool is subclass of an int
+        # not quite sure wh that happens, perhaps someone sometime
+        # will answer that question
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    expected=[HTTP_CODE_TYPE],
+                    actual=bool,
+                ),
+            ),
+        }
+    else:
+
+        try:
+            assert issubclass(rt_http_code, HTTP_CODE_TYPE)
+            return set()
+        except (AssertionError, TypeError):
+            ...
+        return {
+            Error(
+                param_name='return.http_code',
+                reason=IncorrectTypeReason(
+                    actual=rt_http_code,
+                    expected=[
+                        type(None),
+                        HTTP_CODE_TYPE,
+                        t.NewType('HttpCode', HTTP_CODE_TYPE),
+                        te.Literal,
+                    ],
+                ),
+            ),
+        }
+
+
 def _analyze_request_body(
         request_body: t.Optional[oas.OASRequestBody],
         body_arg: t.Optional[t.Type[t.Any]],
@@ -307,7 +512,7 @@ def _analyze_body_signature_set_oas_set(
                 param_name='body',
                 reason=IncorrectTypeReason(
                     actual=body_arg,
-                    expected=BODY_EXPECTED_TYPES,
+                    expected=BODY_TYPES,
                 ),
             ),
         }, True
@@ -400,11 +605,7 @@ def _analyze_cookies(
                     param_name='cookies',
                     reason=IncorrectTypeReason(
                         actual=cookies_arg,
-                        expected=[
-                            t.Mapping[str, t.Any],
-                            t.Dict[str, t.Any],
-                            te.TypedDict,
-                        ],
+                        expected=COOKIES_HEADERS_TYPE,
                     ),
                 ),
             }, {}
@@ -579,11 +780,7 @@ def _analyze_headers(
                     param_name='headers',
                     reason=IncorrectTypeReason(
                         actual=headers_arg,
-                        expected=[
-                            t.Mapping[str, t.Any],
-                            t.Dict[str, t.Any],
-                            te.TypedDict,
-                        ],
+                        expected=COOKIES_HEADERS_TYPE,
                     ),
                 ),
             }, {}
