@@ -7,7 +7,7 @@ import typing_inspect as ti
 from axion.utils import types
 
 
-def get_repr(val: t.Type[t.Any]) -> str:
+def get_repr(val: t.Any) -> str:
     logger.opt(
         lazy=True,
         record=True,
@@ -18,7 +18,7 @@ def get_repr(val: t.Type[t.Any]) -> str:
     return _repr(val)
 
 
-def _repr(val: t.Type[t.Any]) -> str:
+def _repr(val: t.Any) -> str:
 
     assert val is not None
 

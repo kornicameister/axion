@@ -7,6 +7,7 @@ ignore = S101,S608
 per-file-ignores =
     tests/test_init_import.py:F401
     tests/conftest.py:S311
+    axion/handler/__init__.py:F811
 
 import-order-style=appnexus
 application-package-names=axion

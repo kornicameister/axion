@@ -7,6 +7,7 @@ from loguru import logger
 import typing_extensions as te
 
 from axion import application
+from axion import handler
 from axion import oas
 
 APIs = t.Dict[str, web.Application]
@@ -108,13 +109,13 @@ def _apply_specification(
 
 
 def _make_handler(operation: oas.OASOperation) -> web_app._Handler:
-    user_handler = application.resolve_handler(operation)
+    user_handler = handler.resolve(operation, asynchronous=True)
 
-    async def handler(request: web.Request) -> web.StreamResponse:
-        await user_handler.fn  # pragma: no cover
+    async def wrapper(request: web.Request) -> web.StreamResponse:
+        await user_handler.fn()  # pragma: no cover
         return web.Response()  # pragma: no cover
 
-    return handler
+    return wrapper
 
 
 def _get_target_app(
