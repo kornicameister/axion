@@ -508,6 +508,10 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         return set if self.unique_items else list
 
 
+OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
+OASParameterName = t.NewType('OASParameterName', str)
+
+
 class OASParameter(PythonTypeCompatible, abc.ABC):
     __slots__ = (
         'name',
@@ -522,7 +526,7 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             required: t.Optional[bool],
@@ -574,7 +578,7 @@ class OASPathParameter(OASParameter):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             explode: t.Optional[bool],
@@ -606,7 +610,7 @@ class OASQueryParameter(OASParameter):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             required: t.Optional[bool],
@@ -660,7 +664,6 @@ class OASParameterStyle:
         self.locations = locations
 
 
-OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
 OASParameterStyles: t.Dict[str, OASParameterStyle] = {
     'form': OASParameterStyle(
         name='form',
