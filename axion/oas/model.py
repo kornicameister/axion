@@ -467,7 +467,8 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
         else:
             return self.additional_properties is True
 
-
+        
+@te.final
 class OASArrayType(OASType[t.Iterable[t.Any]]):
     __slots__ = (
         'items_type',
