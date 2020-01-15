@@ -286,7 +286,7 @@ def _resolve_parameter(
                     f'Header parameter name {param_name} is reserved thus invalid',
                 )
             return model.OASHeaderParameter(
-                name=param_name,
+                name=model.OASParameterName(param_name),
                 example=example,
                 required=required,
                 explode=explode,
@@ -299,7 +299,7 @@ def _resolve_parameter(
                     f'Path parameter {param_name} must have required set to True',
                 )
             return model.OASPathParameter(
-                name=param_name,
+                name=model.OASParameterName(param_name),
                 example=example,
                 explode=explode,
                 deprecated=deprecated,
@@ -308,7 +308,7 @@ def _resolve_parameter(
         elif issubclass(param_in, model.OASQueryParameter):
             allow_reserved = bool(param_def.get('allowReserved', False))
             return model.OASQueryParameter(
-                name=param_name,
+                name=model.OASParameterName(param_name),
                 example=example,
                 required=required,
                 explode=explode,
@@ -319,7 +319,7 @@ def _resolve_parameter(
             )
         elif issubclass(param_in, model.OASCookieParameter):
             return model.OASCookieParameter(
-                name=param_name,
+                name=model.OASParameterName(param_name),
                 example=example,
                 required=required,
                 explode=explode,
