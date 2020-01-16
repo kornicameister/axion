@@ -33,6 +33,8 @@ PP = t.Type[t.Union[None,
                     dict,
                     ]]
 
+AnyCallable = t.Callable[..., t.Any]
+
 
 @functools.lru_cache(maxsize=30, typed=True)
 def is_new_type(tt: t.Type[t.Any]) -> bool:
@@ -41,10 +43,7 @@ def is_new_type(tt: t.Type[t.Any]) -> bool:
 
 @functools.lru_cache(maxsize=30, typed=True)
 def is_none_type(tt: t.Type[t.Any]) -> bool:
-    try:
-        return tt is type(None)  # noqa
-    except TypeError:
-        return False
+    return tt is type(None)  # noqa
 
 
 @functools.lru_cache(maxsize=30, typed=True)

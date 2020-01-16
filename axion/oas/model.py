@@ -2,15 +2,18 @@ import abc
 import enum
 import typing as t
 
-from multidict import istr
 import typing_extensions as te
 import yarl
 
 HTTPCode = t.NewType('HTTPCode', int)
+
+OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
+OASParameterName = t.NewType('OASParameterName', str)
+
 OASReservedHeaders = (
-    istr('Authorization'),
-    istr('Content-Type'),
-    istr('Accept'),
+    'Authorization',
+    'Content-Type',
+    'Accept',
 )
 
 PTC = t.Type[t.Union[str,
@@ -508,10 +511,6 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         return set if self.unique_items else list
 
 
-OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
-OASParameterName = t.NewType('OASParameterName', str)
-
-
 class OASParameter(PythonTypeCompatible, abc.ABC):
     __slots__ = (
         'name',
@@ -555,9 +554,10 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
     def __eq__(self, other: t.Any) -> bool:
         if isinstance(other, OASParameter):
-            return (
-                self.name == other.name and self.__class__.name == other.__class__.name
-            )
+            return all((
+                self.name == other.name,
+                self.__class__.name == other.__class__.name,
+            ))
         return False
 
     @property

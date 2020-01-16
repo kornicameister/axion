@@ -141,7 +141,7 @@ def test_get_type_repr(
 ) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):
-            get_type_repr.get_repr(the_type)  # type: ignore
+            get_type_repr.get_repr(the_type)
     else:
         actual_type_repr = get_type_repr.get_repr(the_type)
         assert actual_type_repr == expected_type_repr
