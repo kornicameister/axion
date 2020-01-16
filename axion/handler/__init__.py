@@ -22,7 +22,7 @@ def resolve(
         operation: oas.OASOperation,
         asynchronous: te.Literal[True],
 ) -> model.AsyncHandler:
-    ...
+    ...  # pragma: no cover
 
 
 @t.overload
@@ -30,7 +30,7 @@ def resolve(
         operation: oas.OASOperation,
         asynchronous: te.Literal[False],
 ) -> model.SyncHandler:
-    ...
+    ...  # pragma: no cover
 
 
 def resolve(
@@ -93,7 +93,7 @@ def _import(
             LOG.debug(
                 'Found synchronous handler for operation {id}',
                 id=lambda: operation_id,
-            )
+            )  # pragma: no cover
 
         return function
     except ImportError as err:

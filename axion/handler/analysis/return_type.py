@@ -82,6 +82,11 @@ def _analyze_headers(
 ) -> t.Set[exceptions.Error]:
     if headers is not None:
         if types.is_any_type(headers):
+            logger.opt(record=True).warning(
+                'Detected usage of "return.headers" declared as typing.Any. '
+                'axion will allow such declaration but be warned that '
+                'you will loose all the help linters (like mypy) offer.',
+            )
             return set()
         elif not types.is_dict_like(headers):
             return {
@@ -102,6 +107,11 @@ def _analyze_cookies(
 ) -> t.Set[exceptions.Error]:
     if cookies is not None:
         if types.is_any_type(cookies):
+            logger.opt(record=True).warning(
+                'Detected usage of "return.cookies" declared as typing.Any. '
+                'axion will allow such declaration but be warned that '
+                'you will loose all the help linters (like mypy) offer.',
+            )
             return set()
         elif not types.is_dict_like(cookies):
             return {

@@ -1,5 +1,6 @@
 import typing as t
 
+from _pytest import logging
 import pytest
 import typing_extensions as te
 
@@ -304,6 +305,31 @@ def test_incorrect_cookies_type(cookies_type: t.Type[t.Any]) -> None:
         f'but got '
         f'{get_type_repr.get_repr(cookies_type)}'
     ) == err.value['return.cookies']
+
+
+def test_headers_cookies_any(caplog: logging.LogCaptureFixture) -> None:
+    class R(te.TypedDict):
+        headers: t.Any
+        cookies: t.Any
+        return_code: int
+
+    async def test() -> R:
+        ...
+
+    handler._resolve(
+        handler=test,
+        operation=_make_operation({
+            '204': {
+                'description': 'Incorrect return type',
+            },
+        }),
+    )
+
+    for msg in (
+            'Detected usage of "return.headers" declared as typing.Any.',
+            'Detected usage of "return.cookies" declared as typing.Any.',
+    ):
+        assert any(filter(lambda m: t.cast(str, m).startswith(msg), caplog.messages))
 
 
 @pytest.mark.parametrize(
