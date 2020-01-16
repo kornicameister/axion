@@ -68,7 +68,9 @@ class InvalidHandlerError(
 
     @property
     def reasons(self) -> t.Mapping[str, str]:
-        return md.CIMultiDict({e.param_name: str(e.reason) for e in self._errors or []})
+        v: t.Mapping[str, str]
+        v = md.CIMultiDict({e.param_name: str(e.reason) for e in self._errors or []})
+        return v
 
     def __iter__(self) -> t.Iterator[Error]:  # type: ignore
         return iter(e for e in self._errors or [])
