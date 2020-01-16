@@ -14,20 +14,20 @@ def analyze(
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
     if body_arg is None:
         if request_body is None:
-            return _analyze_body_signature_gone_oas_gone()
+            return _analyze_signature_gone_oas_gone()
         else:
-            return _analyze_body_signature_gone_oas_set()
+            return _analyze_signature_gone_oas_set()
     else:
         if request_body is None:
-            return _analyze_body_signature_set_oas_gone()
+            return _analyze_signature_set_oas_gone()
         else:
-            return _analyze_body_signature_set_oas_set(
+            return _analyze_signature_set_oas_set(
                 request_body=request_body,
                 body_arg=body_arg,
             )
 
 
-def _analyze_body_signature_set_oas_set(
+def _analyze_signature_set_oas_set(
         request_body: oas.OASRequestBody,
         body_arg: t.Type[t.Any],
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
@@ -37,10 +37,10 @@ def _analyze_body_signature_set_oas_set(
     ).trace(
         'Operation defines both request body and argument handler',
     )
-    is_body_required = request_body.required
-    is_body_arg_required = not ti.is_optional_type(body_arg)
+    is_required = request_body.required
+    is_arg_required = not ti.is_optional_type(body_arg)
 
-    if is_body_required and not is_body_arg_required:
+    if is_required and not is_arg_required:
         return {
             exceptions.Error(
                 param_name='body',
@@ -53,7 +53,7 @@ def _analyze_body_signature_set_oas_set(
     return set(), True
 
 
-def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
+def _analyze_signature_set_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
     logger.opt(
         lazy=True,
         record=True,
@@ -69,7 +69,7 @@ def _analyze_body_signature_set_oas_gone() -> t.Tuple[t.Set[exceptions.Error], b
     }, False
 
 
-def _analyze_body_signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
+def _analyze_signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
     logger.opt(
         lazy=True,
         record=True,
@@ -79,7 +79,7 @@ def _analyze_body_signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], 
     return set(), False
 
 
-def _analyze_body_signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], bool]:
+def _analyze_signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], bool]:
     logger.opt(
         lazy=True,
         record=True,
