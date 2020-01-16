@@ -74,30 +74,31 @@ class Handler(t.Generic[F]):
     param_mapping: ParamMapping
 
     @cached_property
-    def path_params(self) -> md.CIMultiDict[FunctionArgName]:
+    def path_params(self) -> t.Mapping[str, str]:
         return self._params('path')
 
     @cached_property
-    def header_params(self) -> md.CIMultiDict[FunctionArgName]:
+    def header_params(self) -> t.Mapping[str, str]:
         return self._params('header')
 
     @cached_property
-    def query_params(self) -> md.CIMultiDict[FunctionArgName]:
+    def query_params(self) -> t.Mapping[str, str]:
         return self._params('query')
 
     @cached_property
-    def cookie_params(self) -> md.CIMultiDict[FunctionArgName]:
+    def cookie_params(self) -> t.Mapping[str, str]:
         return self._params('cookie')
 
     def _params(
             self,
             param_in: oas.OASParameterLocation,
-    ) -> md.CIMultiDict[FunctionArgName]:
-        return md.CIMultiDict({
+    ) -> t.Mapping[str, str]:
+        v: t.Mapping[str, str] = md.CIMultiDict({
             oas_param.param_name: fn_param
             for oas_param, fn_param in self.param_mapping.items()
             if oas_param.param_in == param_in
         })
+        return v
 
 
 @te.final
