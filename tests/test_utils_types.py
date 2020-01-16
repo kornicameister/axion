@@ -101,8 +101,6 @@ def test_is_new_type(the_type: t.Any, expected_result: bool) -> None:
         (int, False),
         (te.Literal[None], False),
         (te.Literal[None, 204], False),
-        (t.Dict[str, str], False),
-        (t.NamedTuple('NT', x=int), False),
     ),
     ids=lambda x: repr(x),
 )

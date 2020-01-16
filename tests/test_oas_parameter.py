@@ -1,6 +1,5 @@
 import typing as t
 
-from multidict import istr
 import pytest
 
 from axion.oas import model
@@ -35,7 +34,7 @@ def test_path_param_resolve() -> None:
     assert path.example == 'Test'
 
     cmp_path = model.OASPathParameter(
-        name=model.OASParameterName(istr('app_id')),
+        name=model.OASParameterName('app_id'),
         schema=(
             model.OASStringType(
                 default=None,
@@ -58,7 +57,7 @@ def test_path_param_resolve() -> None:
 
     assert cmp_path == path
 
-    cmp_path.name = model.OASParameterName(istr('other'))
+    cmp_path.name = model.OASParameterName('other')
     assert not cmp_path == path
     assert cmp_path != path
 
