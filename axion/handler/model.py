@@ -1,7 +1,6 @@
-from dataclasses import dataclass
+import dataclasses as dc
 import functools
 import re
-import sys
 import typing as t
 
 import multidict as md
@@ -10,11 +9,6 @@ import typing_extensions as te
 from axion import oas
 from axion import response
 from axion.utils import types
-
-if sys.version_info >= (3, 8):
-    cached_property = functools.cached_property
-else:
-    from cached_property import cached_property
 
 HTTP_CODE_TYPE: te.Final = int
 COOKIES_HEADERS_TYPE: te.Final = [
@@ -67,38 +61,61 @@ def convert_oas_param_to_ptype(param: oas.OASParameter) -> t.Any:
 F = t.TypeVar('F', bound=types.AnyCallable)
 
 
-@dataclass(frozen=True, repr=True)
+@dc.dataclass(frozen=True, repr=True)
 class Handler(t.Generic[F]):
     fn: F
     has_body: bool
-    param_mapping: ParamMapping
 
-    @cached_property
-    def path_params(self) -> t.Mapping[str, str]:
-        return self._params('path')
+    param_mapping: dc.InitVar[ParamMapping]
+    path_params: t.Mapping[str, str] = dc.field(
+        init=False,
+        metadata={
+            'oas_param_loc': 'path',
+        },
+        repr=False,
+    )
+    header_params: t.Mapping[str, str] = dc.field(
+        init=False,
+        metadata={
+            'oas_param_loc': 'header',
+        },
+        repr=False,
+    )
+    query_params: t.Mapping[str, str] = dc.field(
+        init=False,
+        metadata={
+            'oas_param_loc': 'query',
+        },
+        repr=False,
+    )
+    cookie_params: t.Mapping[str, str] = dc.field(
+        init=False,
+        metadata={
+            'oas_param_loc': 'cookies',
+        },
+        repr=False,
+    )
 
-    @cached_property
-    def header_params(self) -> t.Mapping[str, str]:
-        return self._params('header')
-
-    @cached_property
-    def query_params(self) -> t.Mapping[str, str]:
-        return self._params('query')
-
-    @cached_property
-    def cookie_params(self) -> t.Mapping[str, str]:
-        return self._params('cookie')
-
-    def _params(
+    def __post_init__(
             self,
-            param_in: oas.OASParameterLocation,
-    ) -> t.Mapping[str, str]:
-        v: t.Mapping[str, str] = md.CIMultiDict({
-            oas_param.param_name: fn_param
-            for oas_param, fn_param in self.param_mapping.items()
-            if oas_param.param_in == param_in
-        })
-        return v
+            param_mapping: ParamMapping,
+    ) -> None:
+        def _params(param_in: oas.OASParameterLocation) -> t.Mapping[str, str]:
+            v: t.Mapping[str, str] = md.CIMultiDict({
+                oas_param.param_name: fn_param
+                for oas_param, fn_param in param_mapping.items()
+                if oas_param.param_in == param_in
+            })
+            return v
+
+        derived_params = {
+            ('header_params', 'header'),
+            ('path_params', 'path'),
+            ('query_params', 'query'),
+            ('cookie_params', 'cookie'),
+        }  # type: t.Collection[t.Tuple[str, oas.OASParameterLocation]]
+        for attr_name, param_loc in derived_params:
+            object.__setattr__(self, attr_name, _params(param_loc))
 
 
 @te.final
