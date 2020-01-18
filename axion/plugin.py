@@ -4,6 +4,9 @@ from axion import oas
 
 
 class PluginMeta(type):
+
+    all_known_plugins: t.ClassVar[t.Dict['PluginId', t.Type['Plugin']]] = {}
+
     def __new__(
             cls,
             name: t.Any,
@@ -21,11 +24,23 @@ class PluginMeta(type):
             parent_name = f'{dct["__module__"]}.{dct["__qualname__"]}'
             raise TypeError(f'Inheriting from {parent_name} is forbidden.')
 
+        def _ensure_no_duplicates(p_id: 'PluginId') -> bool:
+            maybe_plugin = cls.all_known_plugins.get(p_id, None)
+            if not maybe_plugin:
+                return False
+            elif maybe_plugin == p:
+                return False
+            else:
+                raise InvalidPluginDefinition(
+                    f'Plugin with ID={p_id} is already registered as '
+                    f'{cls.all_known_plugins[p_id].__qualname__}',
+                )
+
         plugin_name = str(name)
 
         try:
             # user-set attributes that axion needs
-            plugin_id = str(id) if id else None
+            plugin_id = PluginId(id) if id else None
             plugin_version = tuple(map(int, version.split('.'))) if version else None
             plugin_docs = dct.pop('__doc__', None)
 
@@ -33,6 +48,9 @@ class PluginMeta(type):
             assert plugin_id, 'Plugin must present an ID'
             assert plugin_version, 'Plugin must present a version'
             assert plugin_docs, 'Plugin must present documentation'
+
+            # check if no duplicate
+            _ensure_no_duplicates(plugin_id)
         except AssertionError as err:
             raise InvalidPluginDefinition(str(err))
 
@@ -51,12 +69,14 @@ class PluginMeta(type):
             p,
             'plugin_info',
             lambda: PluginInfo(
-                id=PluginId(plugin_id),
+                id=plugin_id,
                 name=plugin_name,
                 version=plugin_version,
                 documentation=plugin_docs,
             ),
         )
+
+        cls.all_known_plugins[plugin_id] = p
 
         return p
 

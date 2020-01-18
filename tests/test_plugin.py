@@ -80,10 +80,26 @@ def test_subclass_ok() -> None:
 
 
 def test_no_double_subclass() -> None:
-    class P1(plugin.Plugin, id='p1', version='0.0.1'):
+    class P1(plugin.Plugin, id='p3', version='0.0.1'):
         """P1 plugin"""
 
     with pytest.raises(TypeError):
 
         class P2(P1, id='p2', version='0.0.3'):
             """P1 plugin should not be subclassed"""
+
+
+def test_no_plugin_duplication() -> None:
+    bad_id = 'thor'
+
+    class P1(plugin.Plugin, id=bad_id, version='0.0.1'):
+        """P1 plugin"""
+
+    with pytest.raises(plugin.InvalidPluginDefinition) as err:
+
+        class P2(plugin.Plugin, id=bad_id, version='0.0.1'):
+            """P2 plugin"""
+
+    assert str(
+        err.value
+    ) == f'Plugin with ID={bad_id} is already registered as {P1.__qualname__}'
