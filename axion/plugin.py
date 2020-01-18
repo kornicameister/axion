@@ -1,5 +1,7 @@
 import typing as t
 
+from axion import oas
+
 
 class PluginMeta(type):
     def __new__(
@@ -27,6 +29,9 @@ class PluginMeta(type):
         assert plugin_version, 'Plugin must present SemVer version'
         assert plugin_docs, 'Plugin must present documentation'
 
+        # TODO(kornicameister) add ID so that plugin can be instantiated without importing it
+        # TODO(kornicaemsiter) signature of plugin instantation must accept only axion configuration (single arg)
+
         # disallow further subclassing
         setattr(  # noqa
             p,
@@ -50,6 +55,15 @@ class PluginMeta(type):
 
 class Plugin(metaclass=PluginMeta):
     plugin_info: t.ClassVar[t.Callable[[], 'PluginInfo']]
+
+    def add_api(
+            self,
+            oas_specification: oas.OASSpecification,
+            server_base_path: t.Optional[str] = None,
+            *_: None,
+            **kwargs: t.Any,
+    ) -> None:
+        ...
 
 
 class PluginInfo(t.NamedTuple):

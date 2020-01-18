@@ -5,7 +5,7 @@ from aiohttp import web_urldispatcher
 import pytest
 import pytest_mock as ptm
 
-from axion import app
+from axion.plugins import _aiohttp as app
 from axion.oas import loader
 from axion.oas import model
 
@@ -29,7 +29,7 @@ def test_app_add_api_single_server(
 
     spec_location = tmp_path / 'openapi.yaml'
 
-    the_app = app.Application(root_dir=Path.cwd())
+    the_app = app.AioHttpPlugin(root_dir=Path.cwd())
     the_app.add_api(spec_location)
 
     spec_load.assert_called_once_with(spec_location)

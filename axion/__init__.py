@@ -1,14 +1,43 @@
+from pathlib import Path
 import typing as t
 
 from loguru import logger
 import typing_extensions as te
 
 from axion import app
+from axion import oas
 from axion import plugin
 
 Application = app.Application
 
 LOG: te.Final = logger.opt(record=True, lazy=True)
+
+
+@te.final
+class Axion:
+    __slots__ = 'root_dir', 'plugged'
+
+    def __init__(
+            self,
+            root_dir: Path,
+            # TODO(kornicameister) this should be plugin ID
+            plugged: plugin.Plugin,
+    ) -> None:
+        self.root_dir = root_dir
+        self.plugged = plugged
+
+    def add_api(
+            self,
+            spec_location: Path,
+            server_base_path: t.Optional[str] = None,
+            *_: None,
+            **kwargs: t.Any,
+    ) -> None:
+
+        if not spec_location.is_absolute():
+            spec_location = (self.root_dir / spec_location).resolve().absolute()
+
+        self.plugged.add_api(oas.load(spec_location), server_base_path, **kwargs)
 
 
 def plugins() -> t.Tuple[plugin.Plugin, ...]:
