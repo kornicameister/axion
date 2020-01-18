@@ -36,7 +36,8 @@ class PluginMeta(type):
         except AssertionError as err:
             raise InvalidPluginDefinition(str(err))
 
-        # TODO(kornicaemsiter) signature of plugin instantation must accept only axion configuration (single arg)
+        # TODO(kornicaemsiter) signature of plugin instantation must accept only axion
+        # configuration (single arg)
 
         # disallow further subclassing
         setattr(  # noqa
@@ -50,7 +51,7 @@ class PluginMeta(type):
             p,
             'plugin_info',
             lambda: PluginInfo(
-                id=plugin_id,
+                id=PluginId(plugin_id),
                 name=plugin_name,
                 version=plugin_version,
                 documentation=plugin_docs,
@@ -73,8 +74,11 @@ class Plugin(metaclass=PluginMeta):
         ...
 
 
+PluginId = t.NewType('PluginId', str)
+
+
 class PluginInfo(t.NamedTuple):
-    id: str
+    id: PluginId
     name: str
     version: t.Tuple[int, ...]
     documentation: str
