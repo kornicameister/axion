@@ -101,5 +101,23 @@ def test_no_plugin_duplication() -> None:
             """P2 plugin"""
 
     assert str(
-        err.value
+        err.value,
     ) == f'Plugin with ID={bad_id} is already registered as {P1.__qualname__}'
+
+
+def test_plugin_bad_init_extra_arg() -> None:
+    from axion import conf
+
+    with pytest.raises(plugin.InvalidPluginDefinition) as err:
+
+        class BadInit(plugin.Plugin, id='BadInit', version='0.0.1'):
+            """I am naughty to try and have extra args in __init___"""
+            def __init__(self, is_debug: bool, cfg: conf.Configuration) -> None:
+                super().__init__(cfg)
+
+    assert err.value
+    assert str(err.value) == (
+        f'Plugin with ID=BadInit has incorrect __init__ signature. '
+        f'It should accept single argument '
+        f'of {repr(conf.Configuration)} type.'
+    )

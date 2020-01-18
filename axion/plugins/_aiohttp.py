@@ -5,6 +5,7 @@ from aiohttp import web_app
 from loguru import logger
 import typing_extensions as te
 
+from axion import conf
 from axion import application
 from axion import handler
 from axion import oas
@@ -14,7 +15,11 @@ APIs = t.Dict[str, web.Application]
 
 
 @te.final
-class AioHttpPlugin(plugin.Plugin, version='0.0.1'):
+class AioHttpPlugin(
+        plugin.Plugin,
+        id='aiohttp',
+        version='0.0.1',
+):
     """aiohttp plugin.
 
     Usage:
@@ -26,7 +31,8 @@ class AioHttpPlugin(plugin.Plugin, version='0.0.1'):
         'api_base_paths',
     )
 
-    def __init__(self) -> None:
+    def __init__(self, configuration: conf.Configuration) -> None:
+        super().__init__(configuration)
         self.root_app = web.Application()
         self.api_base_paths = set()  # type: t.Set[str]
 

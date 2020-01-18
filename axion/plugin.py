@@ -1,5 +1,8 @@
 import typing as t
 
+from more_itertools import ilen
+
+from axion import conf
 from axion import oas
 
 
@@ -24,16 +27,31 @@ class PluginMeta(type):
             parent_name = f'{dct["__module__"]}.{dct["__qualname__"]}'
             raise TypeError(f'Inheriting from {parent_name} is forbidden.')
 
-        def _ensure_no_duplicates(p_id: 'PluginId') -> bool:
+        def _ensure_no_duplicates(p_id: 'PluginId') -> None:
             maybe_plugin = cls.all_known_plugins.get(p_id, None)
-            if not maybe_plugin:
-                return False
-            elif maybe_plugin == p:
-                return False
-            else:
+            if maybe_plugin is not None and maybe_plugin != p:
                 raise InvalidPluginDefinition(
                     f'Plugin with ID={p_id} is already registered as '
                     f'{cls.all_known_plugins[p_id].__qualname__}',
+                )
+
+        def _ensure_correct_init_signature(p_id: 'PluginId') -> None:
+            signature = t.get_type_hints(getattr(p, '__init__'))  # noqa
+            signature.pop('return')
+
+            has_conf = ilen(
+                filter(lambda v: issubclass(
+                    v,  # type: ignore
+                    conf.Configuration,
+                ), signature.values()),
+            ) > 0
+            has_correct_sig = has_conf and len(signature) == 1
+
+            if not has_correct_sig:
+                raise InvalidPluginDefinition(
+                    f'Plugin with ID={p_id} has incorrect __init__ signature. '
+                    f'It should accept single argument '
+                    f'of {repr(conf.Configuration)} type.',
                 )
 
         plugin_name = str(name)
@@ -51,11 +69,11 @@ class PluginMeta(type):
 
             # check if no duplicate
             _ensure_no_duplicates(plugin_id)
+
+            # check if init is correct
+            _ensure_correct_init_signature(plugin_id)
         except AssertionError as err:
             raise InvalidPluginDefinition(str(err))
-
-        # TODO(kornicaemsiter) signature of plugin instantation must accept only axion
-        # configuration (single arg)
 
         # disallow further subclassing
         setattr(  # noqa
@@ -83,6 +101,9 @@ class PluginMeta(type):
 
 class Plugin(metaclass=PluginMeta):
     plugin_info: t.ClassVar[t.Callable[[], 'PluginInfo']]
+
+    def __init__(self, configuration: conf.Configuration) -> None:
+        self.configuration = configuration
 
     def add_api(
             self,
