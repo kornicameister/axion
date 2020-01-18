@@ -105,7 +105,7 @@ def test_no_plugin_duplication() -> None:
     ) == f'Plugin with ID={bad_id} is already registered as {P1.__qualname__}'
 
 
-def test_plugin_bad_init_extra_arg() -> None:
+def test_bad_init_extra_arg() -> None:
     from axion import conf
 
     with pytest.raises(plugin.InvalidPluginDefinition) as err:
@@ -121,3 +121,15 @@ def test_plugin_bad_init_extra_arg() -> None:
         f'It should accept single argument '
         f'of {repr(conf.Configuration)} type.'
     )
+
+
+def test_good_inits() -> None:
+    from axion import conf
+
+    class GoodInit_1(plugin.Plugin, id='g1', version='0.0.1'):
+        """I am wonderful"""
+        def __init__(self, cfg: conf.Configuration) -> None:
+            super().__init__(cfg)
+
+    class GoodInit_2(plugin.Plugin, id='g2', version='0.0.1'):
+        """I am wonderful"""
