@@ -9,6 +9,7 @@ class PluginMeta(type):
             name: t.Any,
             bases: t.Any,
             dct: t.Any,
+            id: t.Optional[str] = None,
             version: t.Optional[str] = None,
     ) -> t.Any:
         p = super().__new__(cls, name, bases, dct)
@@ -20,16 +21,21 @@ class PluginMeta(type):
             parent_name = f'{dct["__module__"]}.{dct["__qualname__"]}'
             raise TypeError(f'Inheriting from {parent_name} is forbidden.')
 
-        plugin_name = name
-        plugin_version = tuple(map(int, (version or '').split('.')))
-        plugin_docs = dct.pop('__doc__', None)
+        plugin_name = str(name)
 
-        # make sure that plugin is a correct subclass
-        assert plugin_name, 'Plugin must present a version'
-        assert plugin_version, 'Plugin must present SemVer version'
-        assert plugin_docs, 'Plugin must present documentation'
+        try:
+            # user-set attributes that axion needs
+            plugin_id = str(id) if id else None
+            plugin_version = tuple(map(int, version.split('.'))) if version else None
+            plugin_docs = dct.pop('__doc__', None)
 
-        # TODO(kornicameister) add ID so that plugin can be instantiated without importing it
+            # make sure those those are correct
+            assert plugin_id, 'Plugin must present an ID'
+            assert plugin_version, 'Plugin must present a version'
+            assert plugin_docs, 'Plugin must present documentation'
+        except AssertionError as err:
+            raise InvalidPluginDefinition(str(err))
+
         # TODO(kornicaemsiter) signature of plugin instantation must accept only axion configuration (single arg)
 
         # disallow further subclassing
@@ -44,6 +50,7 @@ class PluginMeta(type):
             p,
             'plugin_info',
             lambda: PluginInfo(
+                id=plugin_id,
                 name=plugin_name,
                 version=plugin_version,
                 documentation=plugin_docs,
@@ -67,6 +74,11 @@ class Plugin(metaclass=PluginMeta):
 
 
 class PluginInfo(t.NamedTuple):
+    id: str
     name: str
     version: t.Tuple[int, ...]
     documentation: str
+
+
+class InvalidPluginDefinition(ValueError):
+    ...
