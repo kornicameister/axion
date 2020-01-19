@@ -35,16 +35,14 @@ class PluginMeta(type):
                     f'{cls.all_known_plugins[p_id].__qualname__}',
                 )
 
+        def _is_axion_configuration(v: t.Any) -> bool:
+            return issubclass(v, conf.Configuration)
+
         def _ensure_correct_init_signature(p_id: 'PluginId') -> None:
             signature = t.get_type_hints(getattr(p, '__init__'))  # noqa
             signature.pop('return')
 
-            has_conf = ilen(
-                filter(lambda v: issubclass(
-                    v,  # type: ignore
-                    conf.Configuration,
-                ), signature.values()),
-            ) > 0
+            has_conf = ilen(filter(_is_axion_configuration, signature.values())) > 0
             has_correct_sig = has_conf and len(signature) == 1
 
             if not has_correct_sig:
