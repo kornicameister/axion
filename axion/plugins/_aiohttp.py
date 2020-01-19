@@ -23,7 +23,7 @@ class AioHttpPlugin(
     """aiohttp plugin.
 
     Usage:
-    TODO(kornicameister) complete example about usage -> an issue for later
+        https://github.com/kornicameister/axion/issues/202
 
     """
     __slots__ = (
