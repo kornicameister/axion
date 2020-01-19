@@ -1,3 +1,4 @@
+import abc
 import typing as t
 
 from more_itertools import ilen
@@ -6,7 +7,7 @@ from axion import conf
 from axion import oas
 
 
-class PluginMeta(type):
+class PluginMeta(abc.ABCMeta):
 
     all_known_plugins: t.ClassVar[t.Dict['PluginId', t.Type['Plugin']]] = {}
 
