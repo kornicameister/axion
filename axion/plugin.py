@@ -110,7 +110,7 @@ class Plugin(metaclass=PluginMeta):
             base_path: t.Optional[str] = None,
             **kwargs: t.Any,
     ) -> None:
-        ...
+        ...  # pragma: no cover
 
 
 PluginId = t.NewType('PluginId', str)
