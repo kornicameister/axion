@@ -107,9 +107,9 @@ class Plugin(metaclass=PluginMeta):
 
     def add_api(
             self,
-            oas_specification: oas.OASSpecification,
-            server_base_path: t.Optional[str] = None,
+            spec: oas.OASSpecification,
             *_: None,
+            base_path: t.Optional[str] = None,
             **kwargs: t.Any,
     ) -> None:
         ...

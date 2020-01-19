@@ -4,30 +4,27 @@ import typing as t
 from loguru import logger
 import typing_extensions as te
 
-from axion import app
+from axion import conf
 from axion import oas
+from axion import plugin
 
-Application = app.Application
-
-if t.TYPE_CHECKING:
-    from axion import plugin
-    PluginId = plugin.PluginId
-    Plugin = plugin.Plugin
-else:
-    PluginId = Plugin = None
+Plugins = t.Mapping[plugin.PluginId, t.Type[plugin.Plugin]]
 
 
 @te.final
 class Axion:
-    __slots__ = 'root_dir', 'plugin_id'
+    __slots__ = 'root_dir', 'plugin_id', 'plugged'
 
     def __init__(
             self,
             root_dir: Path,
-            plugin_id: PluginId,
+            plugin_id: t.Union[plugin.PluginId, str],
+            configuration: conf.Configuration,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
+
+        self.plugged = _plugins()[plugin.PluginId(plugin_id)](configuration)
 
     def add_api(
             self,
@@ -40,11 +37,20 @@ class Axion:
         if not spec_location.is_absolute():
             spec_location = (self.root_dir / spec_location).resolve().absolute()
 
-        self.plugged.add_api(oas.load(spec_location), server_base_path, **kwargs)
+        spec = oas.load(spec_location)
+
+        self.plugged.add_api(
+            spec=spec,
+            base_path=server_base_path,
+            **kwargs,
+        )
+
+    def __repr__(self) -> str:
+        return f'axion running {self.plugin_id} application'
 
 
-def _plugins() -> t.Mapping[PluginId, t.Type[Plugin]]:
-    discovered_plugins: t.Optional[t.Mapping[PluginId, t.Type[Plugin]]] = getattr(
+def _plugins() -> Plugins:
+    discovered_plugins: Plugins = getattr(
         _plugins,
         '__cache__',
         None,
@@ -73,16 +79,16 @@ def _plugins() -> t.Mapping[PluginId, t.Type[Plugin]]:
             )
 
         def to_plugin(
-                maybe_plugin: t.Optional[t.Any] = None,
-        ) -> t.Optional[t.Type[Plugin]]:
+            maybe_plugin: t.Optional[t.Any] = None,
+        ) -> t.Optional[t.Type[plugin.Plugin]]:
             if not maybe_plugin:
                 return None
             elif not issubclass(maybe_plugin, plugin.Plugin):
                 return None
             else:
-                return t.cast(t.Type[Plugin], maybe_plugin)
+                return t.cast(t.Type[plugin.Plugin], maybe_plugin)
 
-        def check_and_get(m: t.Any) -> t.Tuple[PluginId, t.Type[Plugin]]:
+        def check_and_get(m: t.Any) -> t.Tuple[plugin.PluginId, t.Type[plugin.Plugin]]:
             classes = (getattr(m, el) for el in dir(m) if inspect.isclass(getattr(m, el)))
             plugin_classes = list(
                 filter(
@@ -93,7 +99,7 @@ def _plugins() -> t.Mapping[PluginId, t.Type[Plugin]]:
             assert len(
                 plugin_classes,
             ) == 1, f'Builtin plugin module {m.__name__} should define just one plugin'
-            p = t.cast(t.Type[Plugin], plugin_classes[0])
+            p = t.cast(t.Type[plugin.Plugin], plugin_classes[0])
             return p.plugin_info().id, p
 
         discovered_plugins = dict([
