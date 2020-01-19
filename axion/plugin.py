@@ -104,6 +104,7 @@ class Plugin(metaclass=PluginMeta):
     def __init__(self, configuration: conf.Configuration) -> None:
         self.configuration = configuration
 
+    @abc.abstractmethod
     def add_api(
             self,
             spec: oas.OASSpecification,
@@ -111,7 +112,7 @@ class Plugin(metaclass=PluginMeta):
             base_path: t.Optional[str] = None,
             **kwargs: t.Any,
     ) -> None:
-        ...  # pragma: no cover
+        raise NotImplementedError()
 
 
 PluginId = t.NewType('PluginId', str)
