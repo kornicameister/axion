@@ -10,22 +10,15 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
+        linter: [flake8, mypy, yapf]
       
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip tox
-    - name: Lint with flake8
-      run: |
-        tox -e flake8
-    - name: Lint with mypy
-      run: |
-        tox -e mypy
-    - name: Lint with yapf
-      run: |
-        tox -e yapf
+    - run: pip install --upgrade pip tox
+    - name: Lint with ${{ linter }}
+      run: tox -e ${{ linter }}
+      with:
+        linter:  ${{ matrix.linter }}
