@@ -1,6 +1,5 @@
 import pytest_mock as ptm
 
-from axion import fp
 from axion.pipeline import validator
 
 
@@ -19,7 +18,7 @@ class TestHttpCode:
         v = validator.HttpCodeValidator(oas_op)
 
         for http_code in range(200, 500):
-            assert fp.Result.is_ok(v({'http_code': http_code}))
+            assert v({'http_code': http_code}).unwrap() == http_code
 
     def test_true_if_code_matches(
             self,
@@ -34,7 +33,7 @@ class TestHttpCode:
         v = validator.HttpCodeValidator(oas_op)
 
         for http_code in responses.keys():
-            assert fp.Result.is_ok(v({'http_code': http_code}))
+            assert v({'http_code': http_code}).unwrap() == http_code
 
     def test_fail_if_no_match(
             self,
@@ -49,14 +48,11 @@ class TestHttpCode:
         v = validator.HttpCodeValidator(oas_op)
         wrong_code = 304
 
-        result = v({'http_code': wrong_code})
+        err = v({'http_code': wrong_code}).failure()
 
-        assert not fp.Result.is_ok(result)
-        assert fp.Result.is_fail(result)
-
-        assert result.error.oas_operation_id == mocker.ANY
-        assert result.error.occurred_at == 'return.http_code'
-        assert result.error.message == (
+        assert err.oas_operation_id == mocker.ANY
+        assert err.occurred_at == 'return.http_code'
+        assert err.message == (
             f'HTTP code {wrong_code} does not match {op_id} '
             f'response codes {{{", ".join(map(str, responses.keys()))}}}.'
         )

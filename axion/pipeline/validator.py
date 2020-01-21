@@ -2,7 +2,8 @@ import abc
 import dataclasses as dc
 import typing as t
 
-from axion import fp
+from returns import result as rr
+
 from axion import oas
 from axion import response
 
@@ -41,7 +42,7 @@ class Validator(t.Generic[VT], abc.ABC):
         self._oas_operation = oas_operation
 
     @abc.abstractmethod
-    def __call__(self, r: response.Response) -> fp.Result[VT, ValidationError]:
+    def __call__(self, r: response.Response) -> rr.Result[VT, ValidationError]:
         raise NotImplementedError()
 
 
@@ -61,14 +62,14 @@ class HttpCodeValidator(Validator[int]):
         )
         self._has_default = 'default' in oas_operation.responses.keys()
 
-    def __call__(self, r: response.Response) -> fp.Result[int, ValidationError]:
+    def __call__(self, r: response.Response) -> rr.Result[int, ValidationError]:
         http_code = r['http_code']
         if http_code in self._allowed_codes:
-            return fp.Result.ok(http_code)
+            return rr.Success(http_code)
         elif self._has_default:
-            return fp.Result.ok(http_code)
+            return rr.Success(http_code)
         else:
-            return fp.Result.fail(
+            return rr.Failure(
                 ValidationError(
                     message=(
                         f'HTTP code {http_code} does not match {self._oas_operation.id} '
