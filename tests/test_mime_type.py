@@ -1,6 +1,6 @@
 import pytest
 
-from axion.specification import model
+from axion.oas import model
 
 
 @pytest.mark.parametrize((

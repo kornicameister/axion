@@ -2,15 +2,18 @@ import abc
 import enum
 import typing as t
 
-from multidict import istr
 import typing_extensions as te
 import yarl
 
 HTTPCode = t.NewType('HTTPCode', int)
+
+OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
+OASParameterName = t.NewType('OASParameterName', str)
+
 OASReservedHeaders = (
-    istr('Authorization'),
-    istr('Content-Type'),
-    istr('Accept'),
+    'Authorization',
+    'Content-Type',
+    'Accept',
 )
 
 PTC = t.Type[t.Union[str,
@@ -468,6 +471,7 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
             return self.additional_properties is True
 
 
+@te.final
 class OASArrayType(OASType[t.Iterable[t.Any]]):
     __slots__ = (
         'items_type',
@@ -521,7 +525,7 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             required: t.Optional[bool],
@@ -550,9 +554,10 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
 
     def __eq__(self, other: t.Any) -> bool:
         if isinstance(other, OASParameter):
-            return (
-                self.name == other.name and self.__class__.name == other.__class__.name
-            )
+            return all((
+                self.name == other.name,
+                self.__class__.name == other.__class__.name,
+            ))
         return False
 
     @property
@@ -573,7 +578,7 @@ class OASPathParameter(OASParameter):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             explode: t.Optional[bool],
@@ -605,7 +610,7 @@ class OASQueryParameter(OASParameter):
 
     def __init__(
             self,
-            name: str,
+            name: OASParameterName,
             schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
             example: t.Optional[t.Any],
             required: t.Optional[bool],
@@ -659,7 +664,6 @@ class OASParameterStyle:
         self.locations = locations
 
 
-OASParameterLocation = te.Literal['path', 'query', 'cookie', 'header']
 OASParameterStyles: t.Dict[str, OASParameterStyle] = {
     'form': OASParameterStyle(
         name='form',

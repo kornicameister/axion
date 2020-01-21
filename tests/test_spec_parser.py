@@ -2,8 +2,8 @@ from pathlib import Path
 
 import yarl
 
-from axion.specification import loader
-from axion.specification import model
+from axion.oas import loader
+from axion.oas import model
 
 
 def test_spec_render_complex_schema() -> None:

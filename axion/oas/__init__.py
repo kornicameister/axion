@@ -1,15 +1,16 @@
-from axion.specification import loader
-from axion.specification.functions import (
+from axion.oas import loader
+from axion.oas.functions import (
     operation_filter_parameters,
     parameter_in,
 )
-from axion.specification.model import (
+from axion.oas.model import (
     OASContent,
     OASMediaType,
     OASOperation,
     OASOperationId,
     OASParameter,
     OASParameterLocation,
+    OASParameterName,
     OASRequestBody,
     OASReservedHeaders,
     OASServer,
@@ -31,6 +32,7 @@ __all__ = [
     'OASContent',
     'OASParameter',
     'OASParameterLocation',
+    'OASParameterName',
     'OASMediaType',
     'OASReservedHeaders',
     'OASRequestBody',

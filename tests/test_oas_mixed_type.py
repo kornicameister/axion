@@ -2,9 +2,9 @@ import typing as t
 
 import pytest
 
-from axion.specification import exceptions
-from axion.specification import model
-from axion.specification.parser import type as parse_type
+from axion.oas import exceptions
+from axion.oas import model
+from axion.oas.parser import type as parse_type
 
 
 @pytest.mark.parametrize(

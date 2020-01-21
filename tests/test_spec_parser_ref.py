@@ -2,7 +2,7 @@ import typing as t
 
 import pytest
 
-from axion.specification.parser import ref
+from axion.oas.parser import ref
 
 
 @pytest.mark.parametrize(('reference,expected_def'), [

@@ -1,10 +1,10 @@
-pytest==5.3.2
+pytest==5.3.4
 pytest-cov==2.8.1
 pytest-watch==4.2.0
 pytest-mock==2.0.0
 pytest-asyncio==0.10.0
 pytest-click==0.3
-pytest-randomly==3.2.0
+pytest-randomly==3.2.1
 mock==3.0.5
 
-asyncpg==0.20.0
+asyncpg==0.20.1

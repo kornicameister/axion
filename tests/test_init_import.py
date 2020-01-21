@@ -1,5 +1,5 @@
 def test_import_application_from_root_pkg() -> None:
     try:
-        from axion import Application
+        from axion import Axion
     except ImportError:
-        raise AssertionError('axion.Application not importable from main package')
+        raise AssertionError('axion.Axion not importable from main package')

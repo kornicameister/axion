@@ -4,8 +4,8 @@ import typing as t
 import jinja2
 import yaml
 
-from axion.specification import model
-from axion.specification import parser
+from axion.oas import model
+from axion.oas import parser
 
 JinjaArguments = t.Dict[str, t.Any]
 
