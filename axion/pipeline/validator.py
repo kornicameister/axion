@@ -33,10 +33,13 @@ class ValidationError(BaseException):
 VT = t.TypeVar('VT')  # type of data validator...validates ;-)
 
 
-class Validator(t.Generic[VT], abc.ABC):
-    __slots__ = '_oas_operation'
+class Validator(t.Generic[VT], metaclass=abc.ABCMeta):
+    __slots__ = ('_oas_operation', )
 
-    def __init__(self, oas_operation: oas.OASOperation) -> None:
+    def __init__(
+            self,
+            oas_operation: oas.OASOperation,
+    ) -> None:
         self._oas_operation = oas_operation
 
     @abc.abstractmethod
