@@ -2,14 +2,12 @@ import abc
 import dataclasses as dc
 import typing as t
 
-from returns import result as rr
-
 from axion import oas
 from axion import response
 
 
 @dc.dataclass(frozen=True)
-class ValidationError:
+class ValidationError(BaseException):
     message: str = dc.field(
         repr=False,
         metadata={'doc': 'Detailed message concerning an error.'},
@@ -42,7 +40,7 @@ class Validator(t.Generic[VT], abc.ABC):
         self._oas_operation = oas_operation
 
     @abc.abstractmethod
-    def __call__(self, r: response.Response) -> rr.Result[VT, ValidationError]:
+    def __call__(self, r: response.Response) -> VT:
         raise NotImplementedError()
 
 
@@ -62,20 +60,18 @@ class HttpCodeValidator(Validator[int]):
         )
         self._has_default = 'default' in oas_operation.responses.keys()
 
-    def __call__(self, r: response.Response) -> rr.Result[int, ValidationError]:
+    def __call__(self, r: response.Response) -> int:
         http_code = r['http_code']
         if http_code in self._allowed_codes:
-            return rr.Success(http_code)
+            return http_code
         elif self._has_default:
-            return rr.Success(http_code)
+            return http_code
         else:
-            return rr.Failure(
-                ValidationError(
-                    message=(
-                        f'HTTP code {http_code} does not match {self._oas_operation.id} '
-                        f'response codes {{{", ".join(map(str, self._allowed_codes))}}}.'
-                    ),
-                    oas_operation_id=self._oas_operation.id,
-                    occurred_at='return.http_code',
+            raise ValidationError(
+                message=(
+                    f'HTTP code {http_code} does not match {self._oas_operation.id} '
+                    f'response codes {{{", ".join(map(str, self._allowed_codes))}}}.'
                 ),
+                oas_operation_id=self._oas_operation.id,
+                occurred_at='return.http_code',
             )
