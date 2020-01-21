@@ -12,18 +12,6 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
 jobs:
-  verify:
-    working_directory: ~/app
-    docker:
-      - image: circleci/python:3.8.1
-    steps:
-      - checkout
-      - <<: *install_prepare
-      - run:
-          name: Verify
-          command: tox -p auto -e yapf,mypy,flake8
-      - store_artifacts:
-          path: typingcov
   test:
     docker:
      - image: circleci/python:3.8.1
@@ -102,24 +90,13 @@ workflows:
   version: 2
   release:
     jobs:
-      - verify:
-          filters: &release_filters
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v\d+\.\d+\.\d+$/
-          requires:
-            - test
       - test:
           filters:
             <<: *release_filters
       - deploy:
           filters:
             <<: *release_filters
-          requires:
-            - verify
   verify:
     jobs:
-      - verify
       - test
       - install
