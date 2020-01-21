@@ -13,9 +13,20 @@ jobs:
         linter: [flake8, mypy, yapf]
       
     steps:
+    - uses: actions/cache@v1.1.0
+      with:
+        path: .tox
+        key: tox-env
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    
     - run: pip install --upgrade pip tox
     - run: tox -e ${{ matrix.linter }}
+    
+    - uses: rlespinasse/github-slug-action@1.1.0
+    - uses: actions/download-artifact@v1.0.0
+      with:
+        name: typingcov_${{ env.GITHUB_SHA_SHORT }}
+        path: typingcov
