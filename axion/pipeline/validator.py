@@ -2,6 +2,8 @@ import abc
 import dataclasses as dc
 import typing as t
 
+from loguru import logger
+
 from axion import oas
 from axion import response
 
@@ -65,6 +67,16 @@ class HttpCodeValidator(Validator[int]):
 
     def __call__(self, r: response.Response) -> int:
         http_code = r['http_code']
+
+        logger.opt(
+            lazy=True,
+            record=True,
+        ).debug(
+            'Validating OAS response {id} against http_code {hc}',
+            id=lambda: self._oas_operation.id,
+            hc=lambda: http_code,
+        )
+
         if http_code in self._allowed_codes:
             return http_code
         elif self._has_default:

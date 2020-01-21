@@ -1,3 +1,4 @@
+import asyncio
 import typing as t
 
 from aiohttp import web
@@ -10,6 +11,8 @@ from axion import conf
 from axion import handler
 from axion import oas
 from axion import plugin
+from axion import response
+from axion.pipeline import validator
 
 APIs = t.Dict[str, web.Application]
 
@@ -31,9 +34,13 @@ class AioHttpPlugin(
         'api_base_paths',
     )
 
-    def __init__(self, configuration: conf.Configuration) -> None:
+    def __init__(
+            self,
+            configuration: conf.Configuration,
+            loop: t.Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         super().__init__(configuration)
-        self.root_app = web.Application()
+        self.root_app = web.Application(loop=loop)
         self.api_base_paths = {}  # type: t.Dict[str, web.Application]
 
     def add_api(
@@ -101,9 +108,27 @@ def _apply_specification(
 
 def _make_handler(operation: oas.OASOperation) -> web_app._Handler:
     user_handler = handler.resolve(operation, asynchronous=True)
+    validators = {
+        validator.HttpCodeValidator(operation),
+    }
+
+    def _validate(
+            r: response.Response,
+            v: validator.Validator[t.Any],
+    ) -> bool:
+        try:
+            v(r)
+            return True
+        except validator.ValidationError as e:
+            logger.exception('Response validation failure', e)
+            return False
 
     async def wrapper(request: web.Request) -> web.StreamResponse:
         d = await user_handler.fn()  # pragma: no cover
+
+        is_valid = all(_validate(d, v) for v in validators)
+        assert is_valid
+
         return web.Response(status=d['http_code'])  # pragma: no cover
 
     return wrapper

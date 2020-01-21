@@ -18,13 +18,18 @@ class Axion:
     def __init__(
             self,
             root_dir: Path,
-            plugin_id: t.Union[plugin.PluginId, str],
             configuration: conf.Configuration,
+            plugin_id: t.Union[plugin.PluginId, str],
+            *_: None,
+            **kwargs: t.Any,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
 
-        self.plugged = _plugins()[plugin.PluginId(plugin_id)](configuration)
+        self.plugged = _plugins()[plugin.PluginId(plugin_id)](
+            configuration,
+            **kwargs,
+        )
 
     def add_api(
             self,

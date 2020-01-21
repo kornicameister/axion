@@ -2,7 +2,9 @@
 openapi: 3.0.1
 info:
   title: Sample GET request
-  description: API to test various GET requests
+  description: |
+    API to test various GET requests. This includes not only
+    successful responses but alsp responses that were meant to fail.
   version: 1.0.0
 servers:
   - url: "/"
@@ -27,3 +29,14 @@ paths:
       responses:
         "204":
           description: Empty
+  /unmatched:
+    get:
+      operationId: tests.test_it_get.unmatched_http_code
+      summary: Fails because ends with bad http_code
+      description: |
+        Purpose of this test is to ensure that axion properly
+        terminates response if its internal caching validation fails
+      responses:
+        "201":
+          description: |
+            Handler will not end with this code
