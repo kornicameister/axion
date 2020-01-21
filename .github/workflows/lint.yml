@@ -18,7 +18,4 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - run: pip install --upgrade pip tox
-    - name: Lint with ${{ linter }}
-      run: tox -e ${{ linter }}
-      with:
-        linter:  ${{ matrix.linter }}
+    - run: tox -e ${{ matrix.linter }}
