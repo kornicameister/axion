@@ -15,7 +15,6 @@ def analyze(
         operation: oas.OASOperation,
         signature: t.Dict[str, t.Any],
 ) -> t.Set[exceptions.Error]:
-
     if 'return' not in signature:
         logger.opt(
             record=True,
