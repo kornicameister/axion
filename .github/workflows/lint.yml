@@ -30,3 +30,4 @@ jobs:
       with:
         name: typingcov_${{ env.GITHUB_SHA_SHORT }}
         path: typingcov
+      if: ${{ matrix.linter }} == "mypy"
