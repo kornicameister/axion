@@ -1,0 +1,21 @@
+---
+- case: handler_not_defined_in_oas
+  disable_cache: true
+  mypy_config: |
+    plugins = axion.mypy
+    ignore_missing_imports = true
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def upgrade_pet(
+      body: t.Dict[str, str],
+    ) -> response.Response:
+      return {
+          'http_code': 200,
+      }
+  out: |
+    main:7: error: main.upgrade_pet does not map to OAS operation

@@ -10,11 +10,11 @@ from axion.handler.analysis import cookies_arg
 from axion.handler.analysis import headers_arg
 from axion.handler.analysis import path_query_arg
 from axion.handler.analysis import return_type
-from axion.utils import types
+from axion.utils.types import AnyCallable
 
 
 def analyze(
-        handler: types.AnyCallable,
+        handler: AnyCallable,
         operation: oas.OASOperation,
 ) -> model.AnalysisResult:
     logger.opt(
@@ -24,6 +24,7 @@ def analyze(
         'Analyzing operation {id}',
         id=lambda: operation.id,
     )
+
     signature = t.get_type_hints(handler)
 
     errors, has_body = body_arg.analyze(
