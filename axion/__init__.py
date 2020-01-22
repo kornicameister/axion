@@ -26,6 +26,9 @@ class Axion:
 
         self.plugged = _plugins()[plugin.PluginId(plugin_id)](configuration)
 
+    def __call__(self) -> t.Any:
+        return self.plugged.__call__()
+
     def add_api(
             self,
             spec_location: Path,

@@ -36,6 +36,9 @@ class AioHttpPlugin(
         self.root_app = web.Application()
         self.api_base_paths = {}  # type: t.Dict[str, web.Application]
 
+    def __call__(self) -> web.Application:
+        return self.root_app.__call__()
+
     def add_api(
             self,
             spec: oas.OASSpecification,

@@ -105,6 +105,10 @@ class Plugin(metaclass=PluginMeta):
         self.configuration = configuration
 
     @abc.abstractmethod
+    def __call__(self) -> t.Any:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def add_api(
             self,
             spec: oas.OASSpecification,
