@@ -19,6 +19,7 @@ CYTHON_SKIP_COMMANDS = (
     'explain',
 )
 
+ext_modules = None
 if not any(arg in sys.argv for arg in CYTHON_SKIP_COMMANDS) and 'SKIP_CYTHON' not in os.environ:
     try:
         from Cython.Build import cythonize
@@ -47,4 +48,5 @@ setuptools.setup(
         'axion': ['py.typed'],
     },
     zip_safe=False,  # https://mypy.readthedocs.io/en/latest/installed_packages.html
+    ext_modules=ext_modules,
 )
