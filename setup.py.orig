@@ -18,10 +18,15 @@ CYTHON_SKIP_COMMANDS = (
     'check',
     'explain',
 )
+<<<<<<< HEAD
+
+||||||| constructed merge base
+    
+=======
 
 ext_modules = None
-if not any(arg in sys.argv
-           for arg in CYTHON_SKIP_COMMANDS) and 'SKIP_CYTHON' not in os.environ:
+>>>>>>> Update setup.py
+if not any(arg in sys.argv for arg in CYTHON_SKIP_COMMANDS) and 'SKIP_CYTHON' not in os.environ:
     try:
         from Cython.Build import cythonize
     except ImportError:
@@ -45,9 +50,13 @@ setuptools.setup(
     setup_requires='setupmeta',
     python_requires='>=3.6',
     versioning='post',
+<<<<<<< HEAD
     package_data={
         'axion': ['py.typed'],
     },
     zip_safe=False,  # https://mypy.readthedocs.io/en/latest/installed_packages.html
+||||||| constructed merge base
+=======
     ext_modules=ext_modules,
+>>>>>>> Update setup.py
 )
