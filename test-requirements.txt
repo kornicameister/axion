@@ -5,3 +5,4 @@ setupmeta==2.6.15
 -r requirements/mypy.txt
 -r requirements/flake8.txt
 -r requirements/tests.txt
+-r requirements/cython.txt
