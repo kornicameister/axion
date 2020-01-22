@@ -19,7 +19,7 @@ CYTHON_SKIP_COMMANDS = (
     'explain',
 )
 
-if not any(arg in sys.argv for arg in CYTHON_SKIP_COMMANDS and 'SKIP_CYTHON' not in os.environ:
+if not any(arg in sys.argv for arg in CYTHON_SKIP_COMMANDS) and 'SKIP_CYTHON' not in os.environ:
     try:
         from Cython.Build import cythonize
     except ImportError:
