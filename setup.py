@@ -13,7 +13,13 @@ __url__ = 'https://github.com/kornicameister/axion'
 if sys.version_info < (3, 6):
     raise RuntimeError(f'{__title__}:{__version__} requires Python 3.6 or greater')
 
-if not any(arg in sys.argv for arg in ['clean', 'check']) and 'SKIP_CYTHON' not in os.environ:
+CYTHON_SKIP_COMMANDS = (
+    'clean',
+    'check',
+    'explain',
+)
+
+if not any(arg in sys.argv for arg in CYTHON_SKIP_COMMANDS and 'SKIP_CYTHON' not in os.environ:
     try:
         from Cython.Build import cythonize
     except ImportError:
