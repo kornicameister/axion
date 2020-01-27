@@ -70,7 +70,7 @@ def test_add_api_single_server(
     )]
 
     spec_load = mocker.patch(
-        'axion.oas.load',
+        'axion.load_specification',
         return_value=loaded_spec,
     )
 
@@ -116,7 +116,7 @@ def test_add_api_relative_spec_path(
     expected_spec_path = (Path.cwd() / actual_spec_path).resolve()
 
     spec_load = mocker.patch(
-        'axion.oas.load',
+        'axion.load_specification',
         return_value=spec,
     )
 

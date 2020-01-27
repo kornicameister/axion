@@ -1,4 +1,4 @@
-from axion.oas import loader
+from axion.oas.loader import (load_spec as load)
 from axion.oas.functions import (
     operation_filter_parameters,
     parameter_in,
@@ -17,8 +17,6 @@ from axion.oas.model import (
     OASSpecification,
     OASType,
 )
-
-load = loader.load_spec
 
 __all__ = [
     # loading
