@@ -1,4 +1,4 @@
 mypy==0.761
 lxml==4.4.2
-pydantic==1.3  # needed to run mypy due to a plugin
+pydantic==1.4  # needed to run mypy due to a plugin
 git+https://github.com/python/typed_ast@master ; python_version >= '3.9'
