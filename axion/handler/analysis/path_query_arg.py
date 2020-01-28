@@ -12,7 +12,7 @@ LOG: te.Final = logger.opt(lazy=True, record=True)
 
 def analyze(
     parameters: t.Sequence[oas.OASParameter],
-    signature: t.Dict[str, t.Any],
+    signature: t.Dict[str, t.Type[t.Any]],
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
     errors: t.Set[exceptions.Error] = set()
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
