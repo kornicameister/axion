@@ -1,30 +1,12 @@
 from pathlib import Path
-from typing import (
-    Any,
-    cast,
-    Generator,
-    Mapping,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import (Any, cast, Generator, Mapping, Optional, Tuple, Type, Union)
 
 from loguru import logger
-from typing_extensions import (
-    final,
-)
+from typing_extensions import (final)
 
-from axion.conf import (
-    Configuration,
-)
-from axion.oas import (
-    load as load_specification,
-)
-from axion.plugin import (
-    Plugin,
-    PluginId,
-)
+from axion.conf import (Configuration)
+from axion.oas import (load as load_specification)
+from axion.plugin import (Plugin, PluginId)
 
 Plugins = Mapping[PluginId, Type[Plugin]]
 
