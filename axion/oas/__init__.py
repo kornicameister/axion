@@ -1,8 +1,8 @@
-from axion.oas.loader import (load_spec as load)
 from axion.oas.functions import (
     operation_filter_parameters,
     parameter_in,
 )
+from axion.oas.loader import (load_spec as load)
 from axion.oas.model import (
     OASContent,
     OASMediaType,
