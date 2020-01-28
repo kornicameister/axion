@@ -5,15 +5,28 @@ from loguru import logger
 from typing_extensions import (final)
 
 from axion.conf import (Configuration)
-from axion.oas import (load as load_specification)
+from axion.oas import (
+    load as load_specification,
+    oas_endpoint,
+)
 from axion.plugin import (Plugin, PluginId)
 
 Plugins = Mapping[PluginId, Type[Plugin]]
 
+__all__ = (
+    'Axion',
+    'Configuration',
+    'oas_endpoint',
+)
+
 
 @final
 class Axion:
-    __slots__ = 'root_dir', 'plugin_id', 'plugged'
+    __slots__ = (
+        'root_dir',
+        'plugin_id',
+        'plugged',
+    )
 
     def __init__(
             self,
