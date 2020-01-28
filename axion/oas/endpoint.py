@@ -26,12 +26,12 @@ def oas_endpoint(f: AnyCallable) -> AnyCallable:
 
         @wraps(f)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return await f(*args, **kwargs)
+            return await f(*args, **kwargs)  # pragma: no cover
     else:
 
         @wraps(f)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            return f(*args, **kwargs)
+            return f(*args, **kwargs)  # pragma: no cover
 
     operation_id = OASOperationId(f'{f.__module__}.{f.__name__}')
     setattr(  # noqa
