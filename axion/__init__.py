@@ -1,30 +1,43 @@
 from pathlib import Path
-import typing as t
+from typing import (Any, cast, Generator, Mapping, Optional, Tuple, Type, Union)
 
 from loguru import logger
-import typing_extensions as te
+from typing_extensions import (final)
 
-from axion import conf
-from axion import oas
-from axion import plugin
+from axion.conf import (Configuration)
+from axion.oas import (
+    load as load_specification,
+    oas_endpoint,
+)
+from axion.plugin import (Plugin, PluginId)
 
-Plugins = t.Mapping[plugin.PluginId, t.Type[plugin.Plugin]]
+Plugins = Mapping[PluginId, Type[Plugin]]
+
+__all__ = (
+    'Axion',
+    'Configuration',
+    'oas_endpoint',
+)
 
 
-@te.final
+@final
 class Axion:
-    __slots__ = 'root_dir', 'plugin_id', 'plugged'
+    __slots__ = (
+        'root_dir',
+        'plugin_id',
+        'plugged',
+    )
 
     def __init__(
             self,
             root_dir: Path,
-            plugin_id: t.Union[plugin.PluginId, str],
-            configuration: conf.Configuration,
+            plugin_id: Union[PluginId, str],
+            configuration: Configuration,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
 
-        self.plugged = _plugins()[plugin.PluginId(plugin_id)](configuration)
+        self.plugged = _plugins()[PluginId(plugin_id)](configuration)
 
     def __call__(self) -> t.Any:
         return self.plugged.__call__()
@@ -32,15 +45,15 @@ class Axion:
     def add_api(
             self,
             spec_location: Path,
-            server_base_path: t.Optional[str] = None,
+            server_base_path: Optional[str] = None,
             *_: None,
-            **kwargs: t.Any,
+            **kwargs: Any,
     ) -> None:
 
         if not spec_location.is_absolute():
             spec_location = (self.root_dir / spec_location).resolve().absolute()
 
-        spec = oas.load(spec_location)
+        spec = load_specification(spec_location)
 
         self.plugged.add_api(
             spec=spec,
@@ -74,24 +87,22 @@ def _plugins() -> Plugins:
         import pkgutil
         import types
 
-        def iter_ns(import_name: str) -> t.Generator[pkgutil.ModuleInfo, None, None]:
+        def iter_ns(import_name: str) -> Generator[pkgutil.ModuleInfo, None, None]:
             ns_pkg: types.ModuleType = importlib.import_module(import_name)
             return pkgutil.iter_modules(
                 ns_pkg.__dict__['__path__'],
                 f'{ns_pkg.__name__}.',
             )
 
-        def to_plugin(
-            maybe_plugin: t.Optional[t.Any] = None,
-        ) -> t.Optional[t.Type[plugin.Plugin]]:
+        def to_plugin(maybe_plugin: Optional[Any] = None) -> Optional[Type[Plugin]]:
             if not maybe_plugin:
                 return None
-            elif not issubclass(maybe_plugin, plugin.Plugin):
+            elif not issubclass(maybe_plugin, Plugin):
                 return None
             else:
-                return t.cast(t.Type[plugin.Plugin], maybe_plugin)
+                return cast(Type[Plugin], maybe_plugin)
 
-        def check_and_get(m: t.Any) -> t.Tuple[plugin.PluginId, t.Type[plugin.Plugin]]:
+        def check_and_get(m: Any) -> Tuple[PluginId, Type[Plugin]]:
             classes = (getattr(m, el) for el in dir(m) if inspect.isclass(getattr(m, el)))
             plugin_classes = list(
                 filter(
@@ -102,7 +113,7 @@ def _plugins() -> Plugins:
             assert len(
                 plugin_classes,
             ) == 1, f'Builtin plugin module {m.__name__} should define just one plugin'
-            p = t.cast(t.Type[plugin.Plugin], plugin_classes[0])
+            p = cast(Type[Plugin], plugin_classes[0])
             return p.plugin_info().id, p
 
         discovered_plugins = dict([
