@@ -262,8 +262,10 @@ def _oas_handler_analyzer(
             ),
         )
 
-        # TODO(kornicameister) maybe SubType visitor or chain of visitors is
-        # better
+        # TODO(kornicameister) maybe SubType visitor or chain of visitors is better
+        # TODO(kornicameister) check if oas.default matches argument default value
+        # TODO(kornicameister) suggest putting default into OAS handler definition if OAS has it
+        # TODO(kornicameister) do not treat lack of Optional for required.false if there is a default value
         visitor = SameTypeVisitor(oas_arg)
         if not handler_arg.accept(visitor):
             _oas_handler_error(
