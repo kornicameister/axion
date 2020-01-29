@@ -44,6 +44,14 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: page
+          in: query
+          description: current page to show data for
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
       responses:
         "200":
           description: pet response

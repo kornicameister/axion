@@ -8,13 +8,7 @@ from functools import (
 from operator import attrgetter
 from pathlib import Path
 from typing import (
-    cast,
-    Callable,
-    Dict,
-    Mapping,
-    Optional,
-    Tuple,
-    Type as TypingType,
+    Any, cast, Callable, Dict, Mapping, Optional, Tuple, Type as TypingType, List, Iterable
 )
 
 from mypy.checker import TypeChecker
@@ -70,9 +64,12 @@ from mypy.plugin import (
 from mypy.plugins import dataclasses
 from mypy.sametypes import SameTypeVisitor
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Type, TypeOfAny, TypeType, TypeVarDef,
-    TypeVarType, UnionType, get_proper_type, LiteralType, ProperType, TypeList
+    TypeVarType, UnionType, get_proper_type, LiteralType, ProperType, TypeList,
+    TypeAliasType, Overloaded, TypedDictType, TupleType, PartialType, DeletedType,
+    ErasedType, UninhabitedType, UnboundType
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -90,11 +87,9 @@ from axion.oas import (
     operation_filter_parameters,
     parameter_in,
 )
+from axion.oas.functions import default_value
 from axion.oas.model import (
-    OASArrayType,
-    OASBooleanType,
-    OASNumberType,
-    OASStringType,
+    OASArrayType, OASBooleanType, OASNumberType, OASStringType, OASType
 )
 
 AXION_CTR: Final[str] = 'axion.Axion'
@@ -112,11 +107,17 @@ ERROR_NOT_OAS_OP: Final[ErrorCode] = ErrorCode(
     'Handler does not match any OAS operation',
     'OAS',
 )
-ERROR_INVALID_OAS_HANDLER: Final[ErrorCode] = ErrorCode(
+ERROR_INVALID_OAS_ARG: Final[ErrorCode] = ErrorCode(
     'axion-arg-type',
-    'Handler does not conform to OAS specification',
+    'Handler argument type does not conform to OAS specification',
     'OAS',
 )
+ERROR_INVALID_OAS_VALUE: Final[ErrorCode] = ErrorCode(
+    'axion-arg-value',
+    'Handler argument (default) value does not conform to OAS specification',
+    'OAS',
+)
+
 
 
 class OASPluginConfig:
@@ -245,7 +246,7 @@ def _oas_handler_analyzer(
             _oas_handler_error(
                 f_ctx,
                 (
-                    ERROR_INVALID_OAS_HANDLER,
+                    ERROR_INVALID_OAS_ARG,
                     (
                         f'{f_name} does not declare OAS {parameter_in(oas_param)} '
                         f'{oas_param.name}::{f_param} argument'
@@ -254,6 +255,12 @@ def _oas_handler_analyzer(
             )
             continue
 
+        # TODO(kornicameister) maybe SubType visitor or chain of visitors is better
+        # TODO(kornicameister) check if oas.default matches argument default value
+        # TODO(kornicameister) suggest putting default into OAS handler definition if OAS has it
+        # TODO(kornicameister) do not treat lack of Optional for required.false if there is a default value
+
+        # validate type
         oas_arg = get_proper_type(
             _make_type_from_oas_param(
                 oas_param,
@@ -261,19 +268,29 @@ def _oas_handler_analyzer(
                 cast(TypeChecker, f_ctx.api),
             ),
         )
-
-        # TODO(kornicameister) maybe SubType visitor or chain of visitors is better
-        # TODO(kornicameister) check if oas.default matches argument default value
-        # TODO(kornicameister) suggest putting default into OAS handler definition if OAS has it
-        # TODO(kornicameister) do not treat lack of Optional for required.false if there is a default value
-        visitor = SameTypeVisitor(oas_arg)
-        if not handler_arg.accept(visitor):
+        if not handler_arg.accept(SameTypeVisitor(oas_arg)):
             _oas_handler_error(
                 f_ctx,
                 (
-                    ERROR_INVALID_OAS_HANDLER,
+                    ERROR_INVALID_OAS_ARG,
                     f'[{f_param} -> {oas_param.name}] expected {format_type(oas_arg)}, '
                     f'but got {format_type(handler_arg)}',
+                ),
+                line_number=handler_arg.line,
+            )
+            continue
+
+        # validate default value
+        handler_arg_default_value = _get_default_value(f_param, oas_handler)
+        oas_default_values = default_value(oas_param)
+        if handler_arg_default_value is not None and handler_arg_default_value not in oas_default_values:
+            _oas_handler_error(
+                f_ctx,
+                (
+                    ERROR_INVALID_OAS_VALUE,
+                    f'[{f_param} -> {oas_param.name}] Incorrect default value. '
+                    f'Expected one of {",".join(oas_default_values)} '
+                    f'but got {handler_arg_default_value}',
                 ),
                 line_number=handler_arg.line,
             )
@@ -286,6 +303,24 @@ def _oas_handler_analyzer(
     return f_ctx.default_return_type
 
 
+def _get_default_value(arg_name: str, oas_handler: CallableType,) -> Any:
+    arg_expr = next(
+        map(
+            attrgetter('initializer'),
+            filter(
+                lambda arg: arg.variable.name == arg_name,
+                oas_handler.definition.arguments,
+            ),
+        ),
+    )
+    marker = object()
+    maybe_value = getattr(arg_expr, 'value', marker)
+    if maybe_value is not marker:
+        # covers literal values
+        return maybe_value
+    return None
+
+
 def _make_type_from_oas_param(
         param: OASParameter,
         orig_arg: Type,
@@ -296,13 +331,16 @@ def _make_type_from_oas_param(
 
     oas_type, _ = param.schema
     oas_is_required = param.required
+    oas_has_default = len(default_value(param)) > 0
+
+    needs_optional = not (oas_is_required or oas_has_default)
 
     oas_mtype = _make_type_from_oas_type(oas_type, orig_arg, api)
-    oas_mtype = oas_mtype if oas_is_required else UnionType.make_union(
+    oas_mtype = UnionType.make_union(
         items=[NoneType(), oas_mtype],
         line=orig_arg.line,
         column=orig_arg.column,
-    )
+    ) if needs_optional else oas_mtype
 
     return oas_mtype
 
