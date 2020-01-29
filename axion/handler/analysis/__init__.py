@@ -10,11 +10,11 @@ from axion.handler.analysis import cookies_arg
 from axion.handler.analysis import headers_arg
 from axion.handler.analysis import path_query_arg
 from axion.handler.analysis import return_type
-from axion.utils.types import AnyCallable
+from axion.utils import types
 
 
 def analyze(
-        handler: AnyCallable,
+        handler: types.AnyCallable,
         operation: oas.OASOperation,
 ) -> model.AnalysisResult:
     logger.opt(
