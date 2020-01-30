@@ -204,9 +204,24 @@ class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
         self.read_only = read_only
         self.write_only = write_only
 
+    @abc.abstractproperty
+    def oas_type(self) -> str:
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return (
+            f'OASType[{self.oas_type}] :: '
+            f'read_only={self.read_only} '
+            f'write_only={self.write_only} '
+            f'nullable={self.nullable} '
+            f'default={self.default}'
+        )
+
 
 @te.final
 class OASAnyType(OASType[t.Any]):
+    oas_type = 'any'
+
     @property
     def python_type(self) -> t.Type[object]:
         return object
@@ -240,6 +255,8 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
         )
         self.schemas = schemas
         self.discriminator = discriminator
+
+    oas_type = 'oneOf'
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -275,6 +292,8 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
         self.schemas = schemas
         self.discriminator = discriminator
 
+    oas_type = 'anyOf'
+
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
         return dict  # pragma: no cover
@@ -282,6 +301,8 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
 
 @te.final
 class OASBooleanType(OASType[bool]):
+    oas_type = 'boolean'
+
     @property
     def python_type(self) -> t.Type[bool]:
         return bool
@@ -335,6 +356,10 @@ class OASNumberType(OASType[N]):
         self.exclusive_minimum = exclusive_minimum
 
     @property
+    def oas_type(self) -> str:
+        return 'integer' if issubclass(self.number_cls, int) else 'number'
+
+    @property
     def python_type(self) -> t.Type[N]:
         return self.number_cls
 
@@ -374,6 +399,8 @@ class OASStringType(OASType[str]):
         self.pattern = pattern
         self.format = format
 
+    oas_type = 'string'
+
     @property
     def python_type(self) -> t.Type[str]:
         return str
@@ -396,6 +423,8 @@ class OASFileType(OASType[None]):
             read_only=read_only,
             write_only=write_only,
         )
+
+    oas_type = 'string'
 
     @property
     def python_type(self) -> t.Type[bytes]:
@@ -459,6 +488,8 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
         self.additional_properties = additional_properties
         self.discriminator = discriminator
 
+    oas_type = 'object'
+
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
         return dict
@@ -505,6 +536,8 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         self.min_length = min_length
         self.max_length = max_length
         self.unique_items = unique_items
+
+    oas_type = 'array'
 
     @property
     def python_type(self) -> t.Type[t.Union[t.AbstractSet[t.Any], t.List[t.Any]]]:

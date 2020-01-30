@@ -26,3 +26,7 @@ def test_python_type() -> None:
             'type': 'boolean',
         },
     ).python_type, bool)
+
+
+def test_oas_type() -> None:
+    assert parse_type.resolve({}, {'type': 'boolean'}).oas_type == 'boolean'

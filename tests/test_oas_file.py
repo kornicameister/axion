@@ -37,3 +37,10 @@ def test_oas_file_python_type() -> None:
             'format': 'binary',
         },
     ).python_type
+
+
+def test_oas_type() -> None:
+    assert parse_type.resolve({}, {
+        'type': 'string',
+        'format': 'binary',
+    }).oas_type == 'string'
