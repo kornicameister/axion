@@ -26,8 +26,7 @@ jobs:
     
     - run: pip install --upgrade pip tox
     - run: tox -e ${{ matrix.linter }}
-    
-    - uses: rlespinasse/github-slug-action@1.1.0
+  
     - uses: actions/upload-artifact@v1.0.0
       with:
         name: typingcov_${{ env.GITHUB_SHA_SHORT }}
