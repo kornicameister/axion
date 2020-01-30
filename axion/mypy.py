@@ -154,6 +154,9 @@ class OASPlugin(Plugin):
         self._cfg = OASPluginConfig(options)
         self._specifications = _load_specs(self._cfg.oas_dir)
 
+        print('>>>>>', self._cfg.oas_dir)
+        print('\n>>>>>', self._specifications)
+
     def get_function_hook(
             self,
             fullname: str,

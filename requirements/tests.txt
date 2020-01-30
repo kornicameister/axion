@@ -5,7 +5,7 @@ pytest-mock==2.0.0
 pytest-asyncio==0.10.0
 pytest-click==0.3
 pytest-randomly==3.2.1
-pytest-mypy-testing==0.0.4      # tests for mypy plugin
+pytest-mypy-plugins==1.2.0      # tests for mypy plugin
 mypy==0.761                     # tests for mypy plugin
 mock==3.0.5
 

@@ -1,0 +1,5 @@
+---
+- case: test_str
+  main: |
+    test = 'str'
+    reveal_type(test)  # N: Revealed type is 'builtins.str'
