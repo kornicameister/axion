@@ -129,3 +129,7 @@ def test_correct_python_type() -> None:
         ).python_type,
         dict,
     )
+
+
+def test_oas_type() -> None:
+    parse_type.resolve({}, {'type': 'object'}).oas_type == 'object'

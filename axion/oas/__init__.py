@@ -1,8 +1,9 @@
-from axion.oas import loader
+from axion.oas.endpoint import oas_endpoint
 from axion.oas.functions import (
     operation_filter_parameters,
     parameter_in,
 )
+from axion.oas.loader import (load_spec as load)
 from axion.oas.model import (
     OASContent,
     OASMediaType,
@@ -18,9 +19,9 @@ from axion.oas.model import (
     OASType,
 )
 
-load = loader.load_spec
-
-__all__ = [
+__all__ = (
+    # endpoint marker for mypy
+    'oas_endpoint',
     # loading
     'load',
     # types
@@ -39,4 +40,4 @@ __all__ = [
     # utils
     'operation_filter_parameters',
     'parameter_in',
-]
+)
