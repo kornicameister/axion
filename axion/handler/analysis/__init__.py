@@ -24,7 +24,6 @@ def analyze(
         'Analyzing operation {id}',
         id=lambda: operation.id,
     )
-
     signature = t.get_type_hints(handler)
 
     errors, has_body = body_arg.analyze(
