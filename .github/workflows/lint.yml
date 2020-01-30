@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
-        linter: [flake8, mypy, yapf]
+        linter: [flake8, mypy, yapf, safety]
       
     steps:
     - uses: actions/cache@v1.1.0
