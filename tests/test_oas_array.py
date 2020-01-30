@@ -30,3 +30,18 @@ def test_python_type(
         arr_python_type,
         python_type,
     )
+
+
+def test_oas_type() -> None:
+    assert parse_type.resolve(
+        {},
+        {
+            'type': 'array',
+            'uniqueItems': False,
+            'items': {
+                'schema': {
+                    'type': 'string',
+                },
+            },
+        },
+    ).oas_type == 'array'

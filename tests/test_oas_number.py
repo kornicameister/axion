@@ -57,3 +57,8 @@ def test_mismatch_example_default(
                 'default': default,
             },
         )
+
+
+@pytest.mark.parametrize('oas_type', ('number', 'integer'))
+def test_oas_type(oas_type: str) -> None:
+    assert parse_type.resolve({}, {'type': oas_type}).oas_type == oas_type
