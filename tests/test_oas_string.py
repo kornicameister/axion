@@ -7,6 +7,10 @@ from axion.oas import model
 from axion.oas.parser import type as parse_type
 
 
+def test_oas_type() -> None:
+    parse_type.resolve({}, {'type': 'string'}).oas_type == 'string'
+
+
 def test_correct_python_type() -> None:
     oas_string = parse_type.resolve(
         {},
