@@ -7,8 +7,8 @@ from axion import response
 @oas_endpoint
 async def list_pets(
         tags: t.Optional[t.List[str]] = None,
-        page: t.Optional[int] = None,
-        limit: int = 1000,
+        page: t.Optional[int] = 0,
+        limit: t.Optional[int] = None,
 ) -> response.Response:
     return {
         'http_code': 200,

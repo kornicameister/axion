@@ -51,6 +51,7 @@ paths:
           schema:
             type: integer
             format: int32
+            nullable: true
             default: 0
       responses:
         "200":

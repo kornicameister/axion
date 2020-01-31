@@ -1,4 +1,3 @@
-# noqa: T001
 from configparser import ConfigParser
 from functools import (
     partial,
@@ -8,72 +7,25 @@ from functools import (
 from operator import attrgetter
 from pathlib import Path
 from typing import (
-    Any, cast, Callable, Dict, Mapping, Optional, Tuple, Type as TypingType, List, Iterable
-)
+    Any, cast, Callable, Dict, Mapping, Optional, Tuple, Type as TypingType, List,
+    Iterable,
+    Union)
 
 from mypy.checker import TypeChecker
 from mypy.errorcodes import ErrorCode
 from mypy.messages import format_type
-from mypy.nodes import (
-    ARG_NAMED,
-    ARG_NAMED_OPT,
-    ARG_OPT,
-    ARG_POS,
-    ARG_STAR2,
-    MDEF,
-    Argument,
-    AssignmentStmt,
-    Block,
-    CallExpr,
-    ClassDef,
-    Context,
-    Decorator,
-    EllipsisExpr,
-    FuncBase,
-    FuncDef,
-    JsonDict,
-    MemberExpr,
-    NameExpr,
-    PassStmt,
-    PlaceholderNode,
-    ListExpr,
-    RefExpr,
-    StrExpr,
-    SymbolNode,
-    SymbolTableNode,
-    TempNode,
-    TypeInfo,
-    TypeVarExpr,
-    Var,
-    MypyFile,
-)
 from mypy.options import Options
 from mypy.plugin import (
-    CheckerPluginInterface,
-    ClassDefContext,
     MethodContext,
     FunctionContext,
     Plugin,
-    SemanticAnalyzerPluginInterface,
-    DynamicClassDefContext,
-    AttributeContext,
-    MethodSigContext,
-    AnalyzeTypeContext,
-    ReportConfigContext,
 )
-from mypy.plugins import dataclasses
 from mypy.sametypes import SameTypeVisitor
-from mypy.server.trigger import make_wildcard_trigger
-from mypy.type_visitor import TypeTranslator
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneType, Type, TypeOfAny, TypeType, TypeVarDef,
-    TypeVarType, UnionType, get_proper_type, LiteralType, ProperType, TypeList,
-    TypeAliasType, Overloaded, TypedDictType, TupleType, PartialType, DeletedType,
-    ErasedType, UninhabitedType, UnboundType
+    AnyType, CallableType, NoneType, Type,
+    UnionType, get_proper_type
 )
-from mypy.typevars import fill_typevars
-from mypy.util import get_unique_redefinition_name
-from typing_extensions import Final
+from typing_extensions import Final, Literal
 
 from axion import (
     _plugins as axion_plugins,
@@ -89,7 +41,7 @@ from axion.oas import (
 )
 from axion.oas.functions import default_value
 from axion.oas.model import (
-    OASArrayType, OASBooleanType, OASNumberType, OASStringType, OASType
+    OASArrayType, OASBooleanType, OASNumberType, OASStringType
 )
 
 AXION_CTR: Final[str] = 'axion.Axion'
@@ -118,10 +70,12 @@ ERROR_INVALID_OAS_VALUE: Final[ErrorCode] = ErrorCode(
     'OAS',
 )
 
+_ARG_NO_DEFAULT_VALUE_MARKER = object()
+HandlerArgDefaultValue = Union[Any, Literal[_ARG_NO_DEFAULT_VALUE_MARKER]]
 
 
 class OASPluginConfig:
-    __slots__ = ('oas_dir', )
+    __slots__ = ('oas_dirs', )
 
     def __init__(self, options: Options) -> None:
         if options.config_file is None:  # pragma: no cover
@@ -130,17 +84,13 @@ class OASPluginConfig:
         plugin_config = ConfigParser()
         plugin_config.read(options.config_file)
 
-        oas_dir = Path(
-            plugin_config.get(
+        self.oas_dirs = (
+            Path(rd) for rd in plugin_config.get(
                 CONFIGFILE_KEY,
-                'oas_dir',
-                fallback=str(Path.cwd()),
-            ),
+                'oas_directories',
+                fallback='',
+            ).split(',')
         )
-        if not oas_dir.is_absolute():
-            oas_dir = Path.cwd() / oas_dir
-
-        self.oas_dir = oas_dir
 
 
 class OASPlugin(Plugin):
@@ -152,10 +102,7 @@ class OASPlugin(Plugin):
     def __init__(self, options: Options) -> None:
         super().__init__(options)
         self._cfg = OASPluginConfig(options)
-        self._specifications = _load_specs(self._cfg.oas_dir)
-
-        print('>>>>>', self._cfg.oas_dir)
-        print('\n>>>>>', self._specifications)
+        self._specifications = _load_specs(list(self._cfg.oas_dirs))
 
     def get_function_hook(
             self,
@@ -178,8 +125,6 @@ class OASPlugin(Plugin):
     ) -> Optional[Callable[[MethodContext], Type]]:
         # TODO(kornicameister) add_api customizations
         # enforcing settings middlewares for aiohttp plugin maybe
-        if 'add_api' == fullname:
-            print('Here it is')
         return super().get_method_hook(fullname)
 
 
@@ -218,7 +163,8 @@ def _oas_handler_analyzer(
     )
 
     if oas_operation is None:
-        return _oas_handler_error(
+        return _oas_handler_msg(
+            f_ctx.api.msg.fail,
             f_ctx,
             (ERROR_NOT_OAS_OP, f'{f_name} is not OAS operation'),
             line_number=getattr(oas_handler.definition, 'line', None),
@@ -242,11 +188,14 @@ def _oas_handler_analyzer(
                 'query',
             ),
     ):
-        handler_arg: Optional[Type] = signature.pop(f_param, None)
+        handler_arg_type: Optional[Type] = signature.pop(f_param, None)
+        handler_arg_default_value = _get_default_value(f_param, oas_handler)
+        oas_default_values = default_value(oas_param)
 
-        if handler_arg is None:
+        if handler_arg_type is None:
             # log the fact that argument is not there
-            _oas_handler_error(
+            _oas_handler_msg(
+                f_ctx.api.msg.fail,
                 f_ctx,
                 (
                     ERROR_INVALID_OAS_ARG,
@@ -259,43 +208,71 @@ def _oas_handler_analyzer(
             continue
 
         # TODO(kornicameister) maybe SubType visitor or chain of visitors is better
-        # TODO(kornicameister) check if oas.default matches argument default value
-        # TODO(kornicameister) suggest putting default into OAS handler definition if OAS has it
-        # TODO(kornicameister) do not treat lack of Optional for required.false if there is a default value
+        # TODO(kornicameister) do not treat lack of Optional for required.false if there
+        # is a default value on handler level
 
         # validate type
         oas_arg = get_proper_type(
             _make_type_from_oas_param(
                 oas_param,
-                handler_arg,
+                handler_arg_type,
+                handler_arg_default_value,
                 cast(TypeChecker, f_ctx.api),
             ),
         )
-        if not handler_arg.accept(SameTypeVisitor(oas_arg)):
-            _oas_handler_error(
+        if not handler_arg_type.accept(SameTypeVisitor(oas_arg)):
+            _oas_handler_msg(
+                f_ctx.api.msg.fail,
                 f_ctx,
                 (
                     ERROR_INVALID_OAS_ARG,
-                    f'[{f_param} -> {oas_param.name}] expected {format_type(oas_arg)}, '
-                    f'but got {format_type(handler_arg)}',
+                    f'[{f_name}({f_param} -> {oas_param.name})] expected {format_type(oas_arg)}, '
+                    f'but got {format_type(handler_arg_type)}',
                 ),
-                line_number=handler_arg.line,
+                line_number=handler_arg_type.line,
             )
             continue
 
         # validate default value
-        handler_arg_default_value = _get_default_value(f_param, oas_handler)
-        oas_default_values = default_value(oas_param)
-        if handler_arg_default_value is not None and handler_arg_default_value not in oas_default_values:
-            _oas_handler_error(
+        if handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
+            if oas_default_values:
+                default_matches = handler_arg_default_value in oas_default_values
+                if not default_matches:
+                    _oas_handler_msg(
+                        f_ctx.api.msg.fail,
+                        f_ctx,
+                        (
+                            ERROR_INVALID_OAS_VALUE,
+                            f'[{f_name}({f_param} -> {oas_param.name})] Incorrect default value. '
+                            f'Expected one of {",".join(map(str, oas_default_values))} '
+                            f'but got {handler_arg_default_value}',
+                        ),
+                        line_number=handler_arg_type.line,
+                    )
+                    continue
+            else:
+                _oas_handler_msg(
+                    f_ctx.api.msg.note,
+                    f_ctx,
+                    (
+                        None,
+                        f'[{f_name}({f_param} -> {oas_param.name})] OAS does not define a default value. '
+                        f'A default value of "{handler_arg_default_value}" should be placed in OAS '
+                        f'{parameter_in(oas_param)} {oas_param.name} parameter under "default" key '
+                        f'given there is an attempt of defining it outside of the OAS.',
+                    ),
+                    line_number=handler_arg_type.line,
+                )
+        elif oas_default_values:
+            _oas_handler_msg(
+                f_ctx.api.msg.fail,
                 f_ctx,
                 (
                     ERROR_INVALID_OAS_VALUE,
-                    f'[{f_param} -> {oas_param.name}] Incorrect default value. '
-                    f'Expected one of {",".join(oas_default_values)} '
-                    f'but got {handler_arg_default_value}',
+                    f'[{f_name}({f_param} -> {oas_param.name})] OAS defines "{oas_default_values[0]}" as a '
+                    f'default value. It should be reflected in argument default value.'
                 ),
-                line_number=handler_arg.line,
+                line_number=handler_arg_type.line,
             )
             continue
 
@@ -306,7 +283,10 @@ def _oas_handler_analyzer(
     return f_ctx.default_return_type
 
 
-def _get_default_value(arg_name: str, oas_handler: CallableType,) -> Any:
+def _get_default_value(
+        arg_name: str,
+        oas_handler: CallableType,
+) -> HandlerArgDefaultValue:
     arg_expr = next(
         map(
             attrgetter('initializer'),
@@ -315,34 +295,38 @@ def _get_default_value(arg_name: str, oas_handler: CallableType,) -> Any:
                 oas_handler.definition.arguments,
             ),
         ),
+        None,
     )
-    marker = object()
-    maybe_value = getattr(arg_expr, 'value', marker)
-    if maybe_value is not marker:
-        # covers literal values
-        return maybe_value
-    return None
+    if arg_expr is not None:
+        maybe_value = getattr(arg_expr, 'value', _ARG_NO_DEFAULT_VALUE_MARKER)
+        if maybe_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
+            # covers literal values
+            return maybe_value
+    return _ARG_NO_DEFAULT_VALUE_MARKER
 
 
 def _make_type_from_oas_param(
         param: OASParameter,
-        orig_arg: Type,
+        handler_arg_type: Type,
+        handler_arg_default_value: HandlerArgDefaultValue,
         api: TypeChecker,
 ) -> Type:
     if not isinstance(param.schema, tuple):
         return AnyType()
 
     oas_type, _ = param.schema
+
     oas_is_required = param.required
-    oas_has_default = len(default_value(param)) > 0
+    oas_is_nullable = oas_type.nullable
 
-    needs_optional = not (oas_is_required or oas_has_default)
+    handler_has_default = handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER
+    needs_optional = (oas_is_nullable or (not oas_is_required)) and not handler_has_default
 
-    oas_mtype = _make_type_from_oas_type(oas_type, orig_arg, api)
+    oas_mtype = _make_type_from_oas_type(oas_type, handler_arg_type, api)
     oas_mtype = UnionType.make_union(
         items=[NoneType(), oas_mtype],
-        line=orig_arg.line,
-        column=orig_arg.column,
+        line=handler_arg_type.line,
+        column=handler_arg_type.column,
     ) if needs_optional else oas_mtype
 
     return oas_mtype
@@ -436,28 +420,28 @@ def _get_oas_operation(
     )
 
 
-def _oas_handler_error(
+def _oas_handler_msg(
+        msg_fn: Callable[[str, Any, Optional[ErrorCode]], None],
         f_ctx: FunctionContext,
-        msg: Tuple[ErrorCode, str],
+        msg: Tuple[Optional[ErrorCode], str],
         line_number: Optional[int] = None,
 ) -> Type:
     ctx = f_ctx.context
     ctx.line = line_number or ctx.line
 
-    f_ctx.api.msg.fail(
-        msg=msg[1],
-        context=ctx,
-        code=msg[0],
-    )
+    msg_fn(msg[1], ctx, code=msg[0])
 
     return f_ctx.default_return_type
 
 
-def _load_specs(oas_dir: Path) -> Mapping[Path, OASSpecification]:
-    oas_dir = oas_dir.resolve()
-    yml_files = oas_dir.rglob('**/*.yml')
+def _load_specs(oas_dirs: Iterable[Path]) -> Mapping[Path, OASSpecification]:
+    yml_files: List[Path] = reduce(
+        list.__iadd__,
+        map(lambda oas_dir: list(oas_dir.rglob('**/*.yml')), oas_dirs),
+    )
 
     loaded_spec: Dict[Path, OASSpecification] = {}
+
     for maybe_spec_file in yml_files:
         oas_spec = load_oas_spec(maybe_spec_file.resolve())
         loaded_spec[maybe_spec_file.resolve()] = oas_spec
