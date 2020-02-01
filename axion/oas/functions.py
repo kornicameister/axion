@@ -12,6 +12,14 @@ _PARAM_IN_TO_CLS_MAP = {
     'header': model.OASHeaderParameter,
 }  # type: t.Dict[model.OASParameterLocation, t.Type[model.OASParameter]]
 _PARAM_CLS_TO_IN_MAP = {v: k for k, v in _PARAM_IN_TO_CLS_MAP.items()}
+DV = t.Union[int,
+             float,
+             complex,
+             str,
+             bool,
+             t.Mapping[t.Any, t.Any],
+             t.Collection[t.Any],
+             ]
 
 
 @functools.lru_cache()
@@ -36,3 +44,27 @@ def operation_filter_parameters(
 
 def parameter_in(param: model.OASParameter) -> model.OASParameterLocation:
     return _PARAM_CLS_TO_IN_MAP[type(param)]
+
+
+def parameter_default_values(param: model.OASParameter) -> t.Sequence[DV]:
+    def _filter(v: t.Any) -> bool:
+        return v is not None and isinstance(
+            v,
+            (
+                int,
+                float,
+                complex,
+                str,
+                bool,
+                dict,
+                list,
+                set,
+            ),
+        )
+
+    if isinstance(param.schema, tuple):
+        oas_type, _ = param.schema
+        dvs = [oas_type.default]
+    else:
+        dvs = [v.schema.default for v in param.schema.values()]
+    return t.cast(t.Sequence[DV], tuple(filter(_filter, dvs)))
