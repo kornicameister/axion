@@ -12,14 +12,14 @@ jobs:
     strategy:
       matrix:
         linter: [flake8, mypy, yapf, safety]
-        python-version: [3.6, 3.7, 3.8]
-        include:
+        python-version: [3.7, 3.8]
+        exclude:
           - linter: flake8
-            python-version: 3.8
+            python-version: 3.7
           - linter: yapf
-            python-version: 3.8
+            python-version: 3.7
           - linter: safety
-            python-version: 3.8
+            python-version: 3.7
       
     steps:
     - uses: actions/cache@v1.1.0
