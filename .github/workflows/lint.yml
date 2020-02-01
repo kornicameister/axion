@@ -11,8 +11,15 @@ jobs:
     
     strategy:
       matrix:
-        python-version: [3.8]
         linter: [flake8, mypy, yapf, safety]
+        python-version: [3.6, 3.7, 3.8]
+        include:
+          - linter: flake8
+            python-version: 3.8
+          - linter: yapf
+            python-version: 3.8
+          - linter: safety
+            python-version: 3.8
       
     steps:
     - uses: actions/cache@v1.1.0
