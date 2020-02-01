@@ -46,9 +46,9 @@ from axion.oas import (
     OASParameter,
     OASSpecification,
     operation_filter_parameters,
+    parameter_default_values,
     parameter_in,
 )
-from axion.oas.functions import default_value
 from axion.oas.model import (
     OASArrayType,
     OASBooleanType,
@@ -207,7 +207,7 @@ def _oas_handler_analyzer(
     ):
         handler_arg_type: Optional[Type] = signature.pop(f_param, None)
         handler_arg_default_value = _get_default_value(f_param, oas_handler)
-        oas_default_values = default_value(oas_param)
+        oas_default_values = parameter_default_values(oas_param)
 
         if handler_arg_type is None:
             # log the fact that argument is not there
