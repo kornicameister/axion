@@ -208,7 +208,7 @@ class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
     ) -> None:
         self.default = default
         self.example = example
-        self.nullable = nullable
+        self.nullable = nullable if nullable is not None else False
         self.deprecated = deprecated
         self.read_only = read_only
         self.write_only = write_only
