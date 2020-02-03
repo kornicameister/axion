@@ -1,0 +1,141 @@
+---
+- case: required_not_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{argA}:
+        get:
+          operationId: main.oas_op
+          parameters:
+            - name: argA
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      arg_a: int,
+    ) -> response.Response:
+      return {}
+- case: required_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{argB}:
+        get:
+          operationId: main.oas_op
+          parameters:
+            - name: argB
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      arg_b: t.Optional[int],
+    ) -> response.Response:
+      return {}
+- case: path_param_not_in_oas
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b}:
+        get:
+          operationId: main.bad_param
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: integer
+            - name: b
+              in: path
+              required: true
+              schema:
+                type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def bad_param(
+      a: int,
+    ) -> response.Response:
+      return {}
+  out: |
+    main:6: error: bad_param does not declare OAS path (b -> b) argument  [axion-arg-type]
+- case: path_param_mismatch
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b}:
+        get:
+          operationId: main.path_type_mismatch
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: integer
+            - name: b
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def path_type_mismatch(
+      a: float,  # E: [path_type_mismatch(a -> a)] expected "int", but got "float"  [axion-arg-type]
+      b: int,    # E: [path_type_mismatch(b -> b)] expected "str", but got "int"  [axion-arg-type]
+    ) -> response.Response:
+      return {}

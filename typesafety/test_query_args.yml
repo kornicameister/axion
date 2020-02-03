@@ -1,0 +1,171 @@
+---
+- case: query_param_not_in_oas
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.bad_param
+          parameters:
+            - name: argA
+              in: query
+              required: false
+              schema:
+                type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def bad_param(
+      arg_b: t.Optional[str],
+    ) -> response.Response:
+      return {}
+  out: |
+    main:5: error: bad_param does not declare OAS query (argA -> arg_a) argument  [axion-arg-type]
+- case: query_param_not_required_not_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oas_op
+          parameters:
+            - name: argA
+              in: query
+              required: false
+              schema:
+                type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      arg_a: t.Optional[str],
+    ) -> response.Response:
+      return {}
+- case: query_param_not_required_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oas_op
+          parameters:
+            - name: argB
+              in: query
+              required: false
+              schema:
+                type: string
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      arg_b: t.Optional[str],
+    ) -> response.Response:
+      return {}
+- case: query_param_required_not_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oas_op
+          parameters:
+            - name: limit
+              in: query
+              required: true
+              schema:
+                type: integer
+                nullable: false
+            - name: page
+              in: query
+              required: true
+              schema:
+                type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      limit: int,
+      page: int,
+    ) -> response.Response:
+      return {}
+- case: query_param_mismatch
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: test
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.query_type_mismatch
+          parameters:
+            - name: a
+              in: query
+              required: true
+              schema:
+                type: integer
+            - name: b
+              in: query
+              required: true
+              schema:
+                type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def query_type_mismatch(
+      a: float,  # E: [query_type_mismatch(a -> a)] expected "int", but got "float"  [axion-arg-type]
+      b: int,    # E: [query_type_mismatch(b -> b)] expected "str", but got "int"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
