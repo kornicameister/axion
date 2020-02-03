@@ -15,4 +15,4 @@ ignore_errors = True
 omit =
     tests/*
     .tox/*
-    axion/mypy.py
+    axion/oas_mypy.py
