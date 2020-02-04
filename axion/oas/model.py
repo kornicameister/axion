@@ -54,15 +54,24 @@ class MimeType:
     __slots__ = (
         'type',
         'subtype',
+        'is_discrete',
     )
 
     def __init__(self, raw_type: str) -> None:
         _type, _subtype = raw_type.split('/')
+
         self.type = _type.lower()
         self.subtype = _subtype.lower()
+        self.is_discrete = any(map(lambda v: v == self.type, (
+            'multipart',
+            'message',
+        )))
 
     def is_json(self) -> bool:
         return 'json' in self.subtype and self.type == 'application'
+
+    def is_text(self) -> bool:
+        return 'text' == self.type
 
     def __hash__(self) -> int:
         return hash((self.type, self.subtype))
@@ -199,7 +208,7 @@ class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
     ) -> None:
         self.default = default
         self.example = example
-        self.nullable = nullable
+        self.nullable = nullable if nullable is not None else False
         self.deprecated = deprecated
         self.read_only = read_only
         self.write_only = write_only

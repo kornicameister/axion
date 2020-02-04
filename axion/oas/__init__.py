@@ -1,6 +1,7 @@
 from axion.oas.endpoint import oas_endpoint
 from axion.oas.functions import (
     operation_filter_parameters,
+    parameter_default_values,
     parameter_in,
 )
 from axion.oas.loader import (load_spec as load)
@@ -40,4 +41,5 @@ __all__ = (
     # utils
     'operation_filter_parameters',
     'parameter_in',
+    'parameter_default_values',
 )

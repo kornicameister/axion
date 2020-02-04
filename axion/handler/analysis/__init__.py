@@ -19,7 +19,7 @@ def analyze(
 ) -> model.AnalysisResult:
     logger.opt(
         record=True,
-        lazy=False,
+        lazy=True,
     ).debug(
         'Analyzing operation {id}',
         id=lambda: operation.id,
