@@ -7,6 +7,7 @@ from axion import response
 @oas_endpoint
 async def list_pets(
         tags: t.Optional[t.List[str]] = None,
+        page: t.Optional[int] = 0,
         limit: t.Optional[int] = None,
 ) -> response.Response:
     return {
