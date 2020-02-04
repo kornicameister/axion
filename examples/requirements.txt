@@ -1,0 +1,5 @@
+-e ../
+-r ../requirements/mypy.txt
+
+setupmeta==2.6.18
+more_itertools==8.2.0
