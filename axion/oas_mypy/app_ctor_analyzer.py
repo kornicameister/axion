@@ -9,7 +9,7 @@ from axion import _plugins as axion_plugins
 from axion.oas_mypy import errors
 
 
-def analyzer(f_ctx: FunctionContext) -> Type:
+def hook(f_ctx: FunctionContext) -> Type:
     plugin_id_idx = f_ctx.callee_arg_names.index('plugin_id')
     plugin_id_type = f_ctx.arg_types[plugin_id_idx][0]
 
