@@ -33,8 +33,12 @@ def caplog(caplog: _logging.LogCaptureFixture) -> _logging.LogCaptureFixture:
         def emit(self, record: logging.LogRecord) -> None:
             logging.getLogger(record.name).handle(record)
 
+    logger.enable('axion')
+
     logger.add(
         LoguruHandler(),
         format='{message}',
     )
     yield caplog
+
+    logger.disable('axion')
