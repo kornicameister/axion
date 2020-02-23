@@ -22,9 +22,9 @@ def hook(f_ctx: FunctionContext) -> Type:
         err_ctx = f_ctx.context
         err_ctx.line = f_ctx.args[plugin_id_idx][0].line
 
-        f_ctx.api.fail(
+        f_ctx.api.msg.fail(
             f'{plugin_id} is not axion plugin',
-            ctx=err_ctx,
+            context=err_ctx,
             code=errors.ERROR_UNKNOWN_PLUGIN,
         )
 
