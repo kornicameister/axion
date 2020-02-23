@@ -120,7 +120,7 @@ def test_signature_mismatch_bad_type() -> None:
 def test_signature_all_bad_type() -> None:
     async def foo(
             id: float,
-            limit: t.Optional[t.Union[int, float]],
+            limit: t.Optional[t.Union[float, int]],
             page: t.Optional[t.AbstractSet[bool]],
             include_extra: t.Union[int, str],
     ) -> response.Response:
