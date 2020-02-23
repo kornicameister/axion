@@ -1,4 +1,3 @@
-from configparser import ConfigParser
 from functools import (partial, reduce, singledispatch)
 from operator import attrgetter
 from pathlib import Path
@@ -26,8 +25,6 @@ from mypy.types import (
     AnyType,
     CallableType,
     get_proper_type,
-    Instance,
-    LiteralType,
     NoneType,
     Type,
     TypeOfAny,
@@ -36,74 +33,20 @@ from mypy.types import (
 from mypy_extensions import DefaultNamedArg
 from typing_extensions import Final
 
-from axion import (
-    _plugins as axion_plugins,
-)
-from axion.handler.model import get_f_param
-from axion.oas import (
-    load as load_oas_spec,
-    OASOperation,
-    OASParameter,
-    OASSpecification,
-    operation_filter_parameters,
-    parameter_default_values,
-    parameter_in,
-)
-from axion.oas.model import (
-    OASArrayType,
-    OASBooleanType,
-    OASNumberType,
-    OASObjectType,
-    OASStringType,
-)
+from axion import oas
+from axion.handler import model as handler_model
+from axion.oas import model as oas_model
+from axion.oas_mypy import app_ctor_analyzer
+from axion.oas_mypy import conf
+from axion.oas_mypy import errors
 
 AXION_CTR: Final[str] = 'axion.Axion'
 AXION_ENDPOINT: Final[str] = 'axion.oas.endpoint.oas_endpoint'
 
 CONFIGFILE_KEY: Final[str] = 'axion-mypy'
 
-ERROR_UNKNOWN_PLUGIN: Final[ErrorCode] = ErrorCode(
-    'axion-no-plugin',
-    'Unknown axion plugin',
-    'Plugin',
-)
-ERROR_NOT_OAS_OP: Final[ErrorCode] = ErrorCode(
-    'axion-no-op',
-    'Handler does not match any OAS operation',
-    'OAS',
-)
-ERROR_INVALID_OAS_ARG: Final[ErrorCode] = ErrorCode(
-    'axion-arg-type',
-    'Handler argument type does not conform to OAS specification',
-    'OAS',
-)
-ERROR_INVALID_OAS_VALUE: Final[ErrorCode] = ErrorCode(
-    'axion-arg-value',
-    'Handler argument (default) value does not conform to OAS specification',
-    'OAS',
-)
-
 _ARG_NO_DEFAULT_VALUE_MARKER = object()
 HandlerArgDefaultValue = Any
-
-
-class OASPluginConfig:
-    __slots__ = ('oas_dirs', )
-
-    def __init__(self, options: Options) -> None:
-        if options.config_file is None:  # pragma: no cover
-            return
-
-        plugin_config = ConfigParser()
-        plugin_config.read(options.config_file)
-
-        self.oas_dirs = (
-            Path(rd) for rd in plugin_config.get(
-                CONFIGFILE_KEY,
-                'oas_directories',
-                fallback='',
-            ).split(',')
-        )
 
 
 class OASPlugin(Plugin):
@@ -114,7 +57,7 @@ class OASPlugin(Plugin):
 
     def __init__(self, options: Options) -> None:
         super().__init__(options)
-        self._cfg = OASPluginConfig(options)
+        self._cfg = conf.OASPluginConfig(options)
         self._specifications = _load_specs(list(self._cfg.oas_dirs))
 
     def get_function_hook(
@@ -122,7 +65,7 @@ class OASPlugin(Plugin):
             fullname: str,
     ) -> Optional[Callable[[FunctionContext], Type]]:
         if AXION_CTR == fullname:
-            return _axion_ctor_analyzer
+            return app_ctor_analyzer.hook
         elif AXION_ENDPOINT == fullname:
             return partial(
                 _oas_handler_analyzer,
@@ -139,30 +82,8 @@ class OASPlugin(Plugin):
         return super().get_method_hook(fullname)
 
 
-def _axion_ctor_analyzer(f_ctx: FunctionContext) -> Type:
-    plugin_id_idx = f_ctx.callee_arg_names.index('plugin_id')
-    plugin_id_type = f_ctx.arg_types[plugin_id_idx][0]
-
-    assert isinstance(plugin_id_type, Instance)
-    assert isinstance(plugin_id_type.last_known_value, LiteralType)
-
-    plugin_id = plugin_id_type.last_known_value.value
-
-    if plugin_id not in axion_plugins():
-        err_ctx = f_ctx.context
-        err_ctx.line = f_ctx.args[plugin_id_idx][0].line
-
-        f_ctx.api.fail(
-            f'{plugin_id} is not axion plugin',
-            ctx=err_ctx,
-            code=ERROR_UNKNOWN_PLUGIN,
-        )
-
-    return f_ctx.default_return_type
-
-
 def _oas_handler_analyzer(
-        specifications: Mapping[Path, OASSpecification],
+        specifications: Mapping[Path, oas_model.OASSpecification],
         f_ctx: FunctionContext,
 ) -> Type:
     # TODO(kornicameister) make `OASSpectification.operations` a mapping
@@ -183,7 +104,7 @@ def _oas_handler_analyzer(
         return _oas_handler_msg(
             f_ctx.api.msg.fail,
             f_ctx,
-            (ERROR_NOT_OAS_OP, f'{f_name} is not OAS operation'),
+            (errors.ERROR_NOT_OAS_OP, f'{f_name} is not OAS operation'),
             line_number=oas_handler.definition.line,
         )
 
@@ -198,8 +119,8 @@ def _oas_handler_analyzer(
     }.copy()
 
     for oas_param, f_param in map(
-            lambda ofp: (ofp, get_f_param(ofp.name)),
-            operation_filter_parameters(
+            lambda ofp: (ofp, handler_model.get_f_param(ofp.name)),
+            oas.operation_filter_parameters(
                 oas_operation,
                 'path',
                 'query',
@@ -207,7 +128,7 @@ def _oas_handler_analyzer(
     ):
         handler_arg_type: Optional[Type] = signature.pop(f_param, None)
         handler_arg_default_value = _get_default_value(f_param, oas_handler)
-        oas_default_values = parameter_default_values(oas_param)
+        oas_default_values = oas.parameter_default_values(oas_param)
 
         if handler_arg_type is None:
             # log the fact that argument is not there
@@ -215,9 +136,9 @@ def _oas_handler_analyzer(
                 f_ctx.api.msg.fail,
                 f_ctx,
                 (
-                    ERROR_INVALID_OAS_ARG,
+                    errors.ERROR_INVALID_OAS_ARG,
                     (
-                        f'{f_name} does not declare OAS {parameter_in(oas_param)} '
+                        f'{f_name} does not declare OAS {oas.parameter_in(oas_param)} '
                         f'{oas_param.name}::{f_param} argument'
                     ),
                 ),
@@ -242,7 +163,7 @@ def _oas_handler_analyzer(
                 f_ctx.api.msg.fail,
                 f_ctx,
                 (
-                    ERROR_INVALID_OAS_ARG,
+                    errors.ERROR_INVALID_OAS_ARG,
                     f'[{f_name}({f_param} -> {oas_param.name})] '
                     f'expected {format_type(oas_arg)}, '
                     f'but got {format_type(handler_arg_type)}',
@@ -260,7 +181,7 @@ def _oas_handler_analyzer(
                         f_ctx.api.msg.fail,
                         f_ctx,
                         (
-                            ERROR_INVALID_OAS_VALUE,
+                            errors.ERROR_INVALID_OAS_VALUE,
                             f'[{f_name}({f_param} -> {oas_param.name})] '
                             f'Incorrect default value. '
                             f'Expected one of {",".join(map(str, oas_default_values))} '
@@ -279,7 +200,7 @@ def _oas_handler_analyzer(
                         f'OAS does not define a default value. '
                         f'A default value of "{handler_arg_default_value}" '
                         f'should be placed in OAS '
-                        f'{parameter_in(oas_param)} {oas_param.name} parameter '
+                        f'{oas.parameter_in(oas_param)} {oas_param.name} parameter '
                         f'under "default" key '
                         f'given there is an attempt of defining it outside of the OAS.',
                     ),
@@ -290,7 +211,7 @@ def _oas_handler_analyzer(
                 f_ctx.api.msg.fail,
                 f_ctx,
                 (
-                    ERROR_INVALID_OAS_VALUE,
+                    errors.ERROR_INVALID_OAS_VALUE,
                     f'[{f_name}({f_param} -> {oas_param.name})] OAS '
                     f'defines "{oas_default_values[0]}" as a '
                     f'default value. It should be reflected in argument default value.',
@@ -332,7 +253,7 @@ def _get_default_value(
 
 
 def _make_type_from_oas_param(
-        param: OASParameter,
+        param: oas_model.OASParameter,
         handler_arg_type: Type,
         handler_arg_default_value: HandlerArgDefaultValue,
         api: TypeChecker,
@@ -384,7 +305,7 @@ def _make_type_from_oas_type(
 
 @_make_type_from_oas_type.register
 def _from_oas_string(
-        oas_type: OASStringType,
+        oas_type: oas_model.OASStringType,
         orig_arg: Type,
         api: TypeChecker,
 ) -> Type:
@@ -398,7 +319,7 @@ def _from_oas_string(
 
 @_make_type_from_oas_type.register
 def _from_oas_bool(
-        oas_type: OASBooleanType,
+        oas_type: oas_model.OASBooleanType,
         orig_arg: Type,
         api: TypeChecker,
 ) -> Type:
@@ -412,7 +333,7 @@ def _from_oas_bool(
 
 @_make_type_from_oas_type.register
 def _from_oas_number(
-        oas_type: OASNumberType,
+        oas_type: oas_model.OASNumberType,
         orig_arg: Type,
         api: TypeChecker,
 ) -> Type:
@@ -426,7 +347,7 @@ def _from_oas_number(
 
 @_make_type_from_oas_type.register
 def _from_oas_array(
-        oas_type: OASArrayType,
+        oas_type: oas_model.OASArrayType,
         orig_arg: Type,
         api: TypeChecker,
 ) -> Type:
@@ -443,7 +364,7 @@ def _from_oas_array(
 
 @_make_type_from_oas_type.register
 def _from_oas_object(
-        oas_type: OASObjectType,
+        oas_type: oas_model.OASObjectType,
         orig_arg: Type,
         api: TypeChecker,
 ) -> Type:
@@ -474,9 +395,9 @@ def _from_oas_object(
 
 
 def _get_oas_operation(
-        f_oas_id: str,
-        specifications: Mapping[Path, OASSpecification],
-) -> Optional[OASOperation]:
+    f_oas_id: str,
+    specifications: Mapping[Path, oas_model.OASSpecification],
+) -> Optional[oas_model.OASOperation]:
     return next(
         filter(
             lambda op: op and op.id == f_oas_id,
@@ -510,16 +431,16 @@ def _oas_handler_msg(
     return f_ctx.default_return_type
 
 
-def _load_specs(oas_dirs: Iterable[Path]) -> Mapping[Path, OASSpecification]:
+def _load_specs(oas_dirs: Iterable[Path]) -> Mapping[Path, oas_model.OASSpecification]:
     yml_files: List[Path] = reduce(
         list.__iadd__,
         map(lambda oas_dir: list(oas_dir.rglob('**/*.yml')), oas_dirs),
     )
 
-    loaded_spec: Dict[Path, OASSpecification] = {}
+    loaded_spec: Dict[Path, oas_model.OASSpecification] = {}
 
     for maybe_spec_file in yml_files:
-        oas_spec = load_oas_spec(maybe_spec_file.resolve())
+        oas_spec = oas.load(maybe_spec_file.resolve())
         loaded_spec[maybe_spec_file.resolve()] = oas_spec
         # TODO(kornicameister) add path from which spec was loaded onto spec model
 
