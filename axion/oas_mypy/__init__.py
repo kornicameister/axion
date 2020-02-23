@@ -101,10 +101,10 @@ def _oas_handler_analyzer(
     )
 
     if oas_operation is None:
-        return _oas_handler_msg(
-            f_ctx.api.msg.fail,
-            f_ctx,
-            (errors.ERROR_NOT_OAS_OP, f'{f_name} is not OAS operation'),
+        return errors.not_oas_handler(
+            msg=f'{f_name} is not OAS operation',
+            code=errors.ERROR_NOT_OAS_OP,
+            ctx=f_ctx,
             line_number=oas_handler.definition.line,
         )
 

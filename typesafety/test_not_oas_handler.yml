@@ -1,0 +1,55 @@
+---
+- case: not_oas_handler_single
+  disable_cache: true
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: not_oas_handler
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oas_op
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def not_oas() -> response.Response:
+      return {}
+  out: |
+    main:5: error: not_oas is not OAS operation  [axion-no-op]
+- case: not_oas_handler_multiple
+  disable_cache: true
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: not_oas_handler
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oas_op
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op() -> response.Response:
+      return {'http_code': 204}
+
+    @oas_endpoint
+    async def not_oas() -> response.Response:
+      return {}
+  out: |
+    main:9: error: not_oas is not OAS operation  [axion-no-op]
