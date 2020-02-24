@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from functools import (partial, reduce)
 from operator import attrgetter
 from pathlib import Path
@@ -9,7 +10,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    OrderedDict,
     Tuple,
     Type as TypingType,
 )
@@ -419,7 +419,7 @@ def get_typed_dict_type(
     assert td_type_fallback is not None
 
     return TypedDictType(
-        items=OrderedDict[str, Type]({
+        items=OrderedDict({
             oas_prop_name: transform_oas_type(oas_prop_type, handler_arg_type, ctx)
             for oas_prop_name, oas_prop_type in oas_type.properties.items()
         }),
