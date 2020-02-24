@@ -1,3 +1,11 @@
-from axion import _plugins
+import pytest
 
-_plugins()
+
+@pytest.fixture(
+    scope='session',
+    autouse=True,
+)
+def axion_plugins() -> None:
+    from axion import _plugins
+
+    _plugins()
