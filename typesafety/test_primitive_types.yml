@@ -1,4 +1,56 @@
 ---
+- case: primitives_mismatch
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b}:
+        get:
+          operationId: main.primitives_mismatch
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: string
+            - name: b
+              in: path
+              required: true
+              schema:
+                type: number
+            - name: c
+              in: query
+              required: false
+              schema:
+                type: number
+                format: float
+            - name: d
+              in: query
+              required: false
+              schema:
+                type: number
+                format: double
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_mismatch(
+      a: int,   # E: [primitives_mismatch(a -> a)] expected "str", but got "int"  [axion-arg-type]
+      b: str,   # E: [primitives_mismatch(b -> b)] expected "int", but got "str"  [axion-arg-type]
+      c: float, # E: [primitives_mismatch(c -> c)] expected "Optional[float], but got "float"  [axion-arg-type]
+      d: bool,  # E: [primitives_mismatch(d -> d)] expected "Optional[float], but got "bool"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
 - case: primitives_required
   oas_spec: |
     openapi: 3.0.1

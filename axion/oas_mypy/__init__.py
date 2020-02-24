@@ -157,7 +157,7 @@ def _oas_handler_analyzer(
                 is_same_type(handler_arg_type, oas_arg),
                 is_subtype(handler_arg_type, oas_arg),
         )):
-            return errors.invalid_argument(
+            errors.invalid_argument(
                 msg=(
                     f'[{f_name}({f_param} -> {oas_param.name})] '
                     f'expected {format_type(oas_arg)}, '
@@ -166,6 +166,7 @@ def _oas_handler_analyzer(
                 ctx=f_ctx,
                 line_number=handler_arg_type.line,
             )
+            continue
 
         # validate default value
         if handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
