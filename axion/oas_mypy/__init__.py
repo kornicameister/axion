@@ -20,7 +20,8 @@ from mypy.messages import format_type
 from mypy.nodes import FuncDef
 from mypy.options import Options
 from mypy.plugin import (FunctionContext, MethodContext, Plugin)
-from mypy.sametypes import SameTypeVisitor
+from mypy.sametypes import is_same_type
+from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
     CallableType,
@@ -103,7 +104,6 @@ def _oas_handler_analyzer(
     if oas_operation is None:
         return errors.not_oas_handler(
             msg=f'{f_name} is not OAS operation',
-            code=errors.ERROR_NOT_OAS_OP,
             ctx=f_ctx,
             line_number=oas_handler.definition.line,
         )
@@ -145,11 +145,6 @@ def _oas_handler_analyzer(
             )
             continue
 
-        # TODO(kornicameister) maybe SubType visitor or chain of visitors is better
-        # TODO(kornicameister) do not treat lack of Optional for required.false if there
-        # is a default value on handler level
-
-        # validate type
         oas_arg = get_proper_type(
             _make_type_from_oas_param(
                 oas_param,
@@ -158,19 +153,19 @@ def _oas_handler_analyzer(
                 cast(TypeChecker, f_ctx.api),
             ),
         )
-        if not handler_arg_type.accept(SameTypeVisitor(oas_arg)):
-            _oas_handler_msg(
-                f_ctx.api.msg.fail,
-                f_ctx,
-                (
-                    errors.ERROR_INVALID_OAS_ARG,
+        if not any((
+                is_same_type(handler_arg_type, oas_arg),
+                is_subtype(handler_arg_type, oas_arg),
+        )):
+            return errors.invalid_argument(
+                msg=(
                     f'[{f_name}({f_param} -> {oas_param.name})] '
                     f'expected {format_type(oas_arg)}, '
-                    f'but got {format_type(handler_arg_type)}',
+                    f'but got {format_type(handler_arg_type)}'
                 ),
+                ctx=f_ctx,
                 line_number=handler_arg_type.line,
             )
-            continue
 
         # validate default value
         if handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER:

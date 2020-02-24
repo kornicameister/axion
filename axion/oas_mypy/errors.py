@@ -29,7 +29,6 @@ ERROR_INVALID_OAS_VALUE: Final[ErrorCode] = ErrorCode(
 
 def not_oas_handler(
         msg: str,
-        code: ErrorCode,
         ctx: FunctionContext,
         line_number: Optional[int] = None,
 ) -> Type:
@@ -39,7 +38,24 @@ def not_oas_handler(
     ctx.api.msg.fail(
         msg,
         context=context,
-        code=code,
+        code=ERROR_NOT_OAS_OP,
+    )
+
+    return ctx.default_return_type
+
+
+def invalid_argument(
+        msg: str,
+        ctx: FunctionContext,
+        line_number: Optional[int] = None,
+) -> Type:
+    context = ctx.context
+    context.line = line_number or context.line
+
+    ctx.api.msg.fail(
+        msg,
+        context=context,
+        code=ERROR_INVALID_OAS_ARG,
     )
 
     return ctx.default_return_type

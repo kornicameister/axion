@@ -8,7 +8,7 @@
     servers:
       - url: /
     paths:
-      /{a}/{b_1}/{b_2}/{b_3}/{c_1}/{c_2}/{c_3}/{d}:
+      /{a}/{b}/{c}/{d}/{e}/{f}/{g}/{h}:
         get:
           operationId: main.primitives_required
           parameters:
@@ -17,41 +17,41 @@
               required: true
               schema:
                 type: string
-            - name: b_1
+            - name: b
               in: path
               required: true
               schema:
                 type: number
-            - name: b_2
+            - name: c
               in: path
               required: true
               schema:
                 type: number
                 format: float
-            - name: b_3
+            - name: d
               in: path
               required: true
               schema:
                 type: number
                 format: double
-            - name: c_1
+            - name: e
               in: path
               required: true
               schema:
                 type: integer
-            - name: c_2
+            - name: f
               in: path
               required: true
               schema:
                 type: integer
                 format: int32
-            - name: c_3
+            - name: g
               in: path
               required: true
               schema:
                 type: integer
                 format: int64
-            - name: d
+            - name: h
               in: path
               required: true
               schema:
@@ -65,13 +65,13 @@
     @oas_endpoint
     async def primitives_required(
       a: str,
-      b_1: float,
-      b_2: float,
-      b_3: float,
-      c_1: int,
-      c_2: int,
-      c_3: int,
-      d: bool,
+      b: float,
+      c: float,
+      d: float,
+      e: int,
+      f: int,
+      g: int,
+      h: bool,
     ) -> response.Response:
       return {}
 - case: primitives_optional
@@ -92,41 +92,41 @@
               required: false
               schema:
                 type: string
-            - name: b_1
+            - name: b
               in: query
               required: false
               schema:
                 type: number
-            - name: b_2
+            - name: c
               in: query
               required: false
               schema:
                 type: number
                 format: float
-            - name: b_3
+            - name: d
               in: query
               required: false
               schema:
                 type: number
                 format: double
-            - name: c_1
+            - name: e
               in: query
               required: false
               schema:
                 type: integer
-            - name: c_2
+            - name: f
               in: query
               required: false
               schema:
                 type: integer
                 format: int32
-            - name: c_3
+            - name: g
               in: query
-              required: query
+              required: false
               schema:
                 type: integer
                 format: int64
-            - name: d
+            - name: h
               in: query
               required: false
               schema:
@@ -143,13 +143,13 @@
     @oas_endpoint
     async def primitives_optional(
       a: str,
-      b_1: Optional[float],
-      b_2: Optional[float],
-      b_3: Optional[float],
-      c_1: Optional[int],
-      c_2: Optional[int],
-      c_3: Optional[int],
-      d: Optional[bool],
+      b: Optional[float],
+      c: Optional[float],
+      d: Optional[float],
+      e: Optional[int],
+      f: Optional[int],
+      g: Optional[int],
+      h: Optional[bool],
     ) -> response.Response:
       return {}
 - case: primitives_required_nullable
@@ -171,47 +171,47 @@
               schema:
                 type: string
                 nullable: true
-            - name: b_1
+            - name: b
               in: query
               required: true
               schema:
                 type: number
                 nullable: true
-            - name: b_2
+            - name: c
               in: query
               required: true
               schema:
                 type: number
                 format: float
                 nullable: true
-            - name: b_3
+            - name: d
               in: query
               required: true
               schema:
                 type: number
                 format: double
                 nullable: true
-            - name: c_1
+            - name: e
               in: query
               required: true
               schema:
                 type: integer
                 nullable: true
-            - name: c_2
+            - name: f
               in: query
               required: true
               schema:
                 type: integer
                 format: int32
                 nullable: true
-            - name: c_3
+            - name: g
               in: query
               required: true
               schema:
                 type: integer
                 format: int64
                 nullable: true
-            - name: d
+            - name: h
               in: query
               required: true
               schema:
@@ -229,12 +229,12 @@
     @oas_endpoint
     async def primitives_required_nullable(
       a: str,
-      b_1: Optional[float]=None,
-      b_2: Optional[float]=None,
-      b_3: Optional[float]=None,
-      c_1: Optional[int]=None,
-      c_2: Optional[int]=None,
-      c_3: Optional[int]=None,
-      d: Optional[bool]=None,
+      b: Optional[float]=None,
+      c: Optional[float]=None,
+      d: Optional[float]=None,
+      e: Optional[int]=None,
+      f: Optional[int]=None,
+      g: Optional[int]=None,
+      h: Optional[bool]=None,
     ) -> response.Response:
       return {}
