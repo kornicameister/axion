@@ -1,15 +1,15 @@
-from functools import (partial, reduce, singledispatch)
+from functools import (partial, reduce)
 from operator import attrgetter
 from pathlib import Path
 from typing import (
     Any,
     Callable,
-    cast,
     Dict,
     Iterable,
     List,
     Mapping,
     Optional,
+    OrderedDict,
     Tuple,
     Type as TypingType,
 )
@@ -20,14 +20,17 @@ from mypy.messages import format_type
 from mypy.nodes import FuncDef
 from mypy.options import Options
 from mypy.plugin import (FunctionContext, MethodContext, Plugin)
-from mypy.sametypes import is_same_type
-from mypy.subtypes import is_subtype
+from mypy.sametypes import is_same_type, simplify_union
+from mypy.subtypes import is_equivalent as is_equivalent_type
+from mypy.typeops import try_getting_instance_fallback
 from mypy.types import (
     AnyType,
     CallableType,
     get_proper_type,
     NoneType,
+    ProperType,
     Type,
+    TypedDictType,
     TypeOfAny,
     UnionType,
 )
@@ -145,22 +148,20 @@ def _oas_handler_analyzer(
             )
             continue
 
-        oas_arg = get_proper_type(
-            _make_type_from_oas_param(
-                oas_param,
-                handler_arg_type,
-                handler_arg_default_value,
-                cast(TypeChecker, f_ctx.api),
-            ),
+        oas_param_type = transform_parameter_to_type(
+            oas_param,
+            get_proper_type(handler_arg_type),
+            handler_arg_default_value,
+            f_ctx,
         )
         if not any((
-                is_same_type(handler_arg_type, oas_arg),
-                is_subtype(handler_arg_type, oas_arg),
+                is_same_type(handler_arg_type, oas_param_type),
+                is_equivalent_type(handler_arg_type, oas_param_type),
         )):
             errors.invalid_argument(
                 msg=(
                     f'[{f_name}({f_param} -> {oas_param.name})] '
-                    f'expected {format_type(oas_arg)}, '
+                    f'expected {format_type(oas_param_type)}, '
                     f'but got {format_type(handler_arg_type)}'
                 ),
                 ctx=f_ctx,
@@ -248,146 +249,205 @@ def _get_default_value(
     return _ARG_NO_DEFAULT_VALUE_MARKER
 
 
-def _make_type_from_oas_param(
-        param: oas_model.OASParameter,
-        handler_arg_type: Type,
+def transform_parameter_to_type(
+        param: oas.OASParameter,
+        handler_arg_type: ProperType,
         handler_arg_default_value: HandlerArgDefaultValue,
-        api: TypeChecker,
+        ctx: FunctionContext,
 ) -> Type:
+    oas_is_required = param.required
+    handler_has_default = (handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER)
+    needs_optional = not oas_is_required and not handler_has_default
+
     if isinstance(param.schema, tuple):
         oas_type, _ = param.schema
-
-        oas_is_required = param.required
-        oas_is_nullable = oas_type.nullable
-
-        handler_has_default = (
-            handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER
+        oas_m_type = transform_oas_type(
+            oas_type,
+            handler_arg_type,
+            ctx,
         )
-        needs_optional = (
-            oas_is_nullable or (not oas_is_required)
-        ) and not handler_has_default
-
-        oas_mtype = _make_type_from_oas_type(oas_type, handler_arg_type, api)
-        oas_mtype = UnionType.make_union(
-            items=[NoneType(), oas_mtype],
-            line=handler_arg_type.line,
-            column=handler_arg_type.column,
-        ) if needs_optional else oas_mtype
-
-        return oas_mtype
     else:
-        union_members = [
-            _make_type_from_oas_type(
-                oas_type=v.schema,
-                orig_arg=handler_arg_type,
-                api=api,
-            ) for v in param.schema.values()
-        ]
-        return UnionType.make_union(
-            items=union_members,
+        oas_m_type = UnionType.make_union(
+            items=[
+                transform_oas_type(
+                    v.schema,
+                    handler_arg_type,
+                    ctx,
+                ) for v in param.schema.values()
+            ],
+        )
+
+    if needs_optional:
+        oas_m_type = UnionType.make_union(
+            items=[NoneType(), oas_m_type],
             line=handler_arg_type.line,
             column=handler_arg_type.column,
         )
 
+    return simplify_union(oas_m_type)
 
-@singledispatch
-def _make_type_from_oas_type(
-        oas_type: None,
-        orig_arg: Type,
-        api: TypeChecker,
+
+def transform_oas_type(
+        oas_type: oas_model.OASType[Any],
+        handler_type: ProperType,
+        ctx: FunctionContext,
 ) -> Type:
-    raise NotImplementedError(f'{oas_type} not yet implemented')
+    m_type: Optional[Type] = None
+    union_members: List[Type] = []
+
+    assert isinstance(ctx.api, TypeChecker)
+
+    if isinstance(oas_type, oas_model.OASStringType):
+        m_type = ctx.api.str_type()
+    elif isinstance(oas_type, oas_model.OASBooleanType):
+        m_type = ctx.api.named_type('bool')
+    elif isinstance(oas_type, oas_model.OASNumberType):
+        m_type = ctx.api.named_type(
+            'int' if issubclass(int, oas_type.number_cls) else 'float',
+        )
+    elif isinstance(oas_type, oas_model.OASOneOfType):
+        union_members = [
+            transform_oas_type(
+                nested_type,
+                handler_type,
+                ctx,
+            ) for include_type, nested_type in oas_type.schemas if include_type
+        ]
+    elif isinstance(oas_type, oas_model.OASArrayType):
+        m_type = ctx.api.named_generic_type(
+            name='set' if oas_type.unique_items else 'list',
+            args=[transform_oas_type(
+                oas_type.items_type,
+                handler_type,
+                ctx,
+            )],
+        )
+    elif isinstance(oas_type, oas_model.OASObjectType):
+        m_type = transform_oas_object_type(oas_type, handler_type, ctx)
+    else:
+        raise NotImplementedError(f'{oas_type} not yet implemented')
+
+    if m_type is not None:
+        m_type.set_line(handler_type)
+        union_members.append(m_type)
+
+    if oas_type.nullable:
+        union_members.append(NoneType())
+
+    ut = simplify_union(UnionType.make_union(items=union_members))
+    ut.set_line(handler_type)
+    return ut
 
 
-@_make_type_from_oas_type.register
-def _from_oas_string(
-        oas_type: oas_model.OASStringType,
-        orig_arg: Type,
-        api: TypeChecker,
-) -> Type:
-    m_type = api.named_type('str')
-    return UnionType.make_union(
-        [NoneType(), m_type],
-        line=orig_arg.line,
-        column=orig_arg.column,
-    ) if oas_type.nullable else m_type
-
-
-@_make_type_from_oas_type.register
-def _from_oas_bool(
-        oas_type: oas_model.OASBooleanType,
-        orig_arg: Type,
-        api: TypeChecker,
-) -> Type:
-    m_type = api.named_type('bool')
-    return UnionType.make_union(
-        [NoneType(), m_type],
-        line=orig_arg.line,
-        column=orig_arg.column,
-    ) if oas_type.nullable else m_type
-
-
-@_make_type_from_oas_type.register
-def _from_oas_number(
-        oas_type: oas_model.OASNumberType,
-        orig_arg: Type,
-        api: TypeChecker,
-) -> Type:
-    m_type = api.named_type('int' if issubclass(int, oas_type.number_cls) else 'float')
-    return UnionType.make_union(
-        [NoneType(), m_type],
-        line=orig_arg.line,
-        column=orig_arg.column,
-    ) if oas_type.nullable else m_type
-
-
-@_make_type_from_oas_type.register
-def _from_oas_array(
-        oas_type: oas_model.OASArrayType,
-        orig_arg: Type,
-        api: TypeChecker,
-) -> Type:
-    m_type = api.named_generic_type(
-        name='set' if oas_type.unique_items else 'list',
-        args=[_make_type_from_oas_type(oas_type.items_type, orig_arg, api)],
-    )
-    return UnionType.make_union(
-        items=[NoneType(), m_type],
-        line=orig_arg.line,
-        column=orig_arg.column,
-    ) if oas_type.nullable else m_type
-
-
-@_make_type_from_oas_type.register
-def _from_oas_object(
+def transform_oas_object_type(
         oas_type: oas_model.OASObjectType,
-        orig_arg: Type,
-        api: TypeChecker,
+        handler_arg_type: ProperType,
+        ctx: FunctionContext,
 ) -> Type:
-    # this is so far the most generic thing we can have in here
-    # this should, however, match things like:
-    # pydantic.BaseModel
-    # @dataclass
-    # NamedTuple
-    # ior even a dict or mapping where there's at most one distinct property type
-    mm_type = api.named_generic_type(
-        name='mapping',
-        args=[api.str_type(), AnyType(TypeOfAny.unannotated)],
-    )
-    md_type = api.named_generic_type(
-        name='dict',
-        args=[api.str_type(), AnyType(TypeOfAny.unannotated)],
-    )
+    # NOTE(kornicameister) -> should land in documentation
+    #
+    # This test combines very interesting use case from POV of typing
+    # imagine a query param that is optional (i.e.) may not be present in request
+    # so that means that we have a None there
+    # moving on. Each property in it...is not not requires so eech field
+    # of either NamedTuple, TypedDict or @dataclass needs to be Optional
+    # Image full declaration:
+    #
+    # class A(TypedDict):
+    #   a: Optional[str]
+    #   b: Optional[str]
+    # def handler(query_a: Optional[A]):
+    #   ...
+    #
+    # it does not exactly sounds user friendly :D
+    #
+    # typing using content must also include cases with
+    # additionalProperties. For instance:
+    # - additionalProperties: true means that any fixed key set structure
+    #   (NamedTuple, TypedDict) cannot be used.
+    #   because additionalProperties allows
+    #   all dynamic properties to enter
+    # even with types of the additionalProperties properties usage of fixed keys
+    # structure is not possible
 
-    members: List[Type] = [mm_type, md_type]
+    # this should, match things like:
+    # fixed keys:
+    # - pydantic.BaseModel
+    # - @dataclass
+    # - NamedTuple
+    # - TypedDict
+    # generics:
+    # - Mapping
+    # - Dict
+
+    assert isinstance(ctx.api, TypeChecker)
+
+    vt = get_generic_type_vt(ctx, handler_arg_type, oas_type)
+    td_type = get_typed_dict_type(ctx, handler_arg_type, oas_type)
+
+    members: List[Type] = [
+        ctx.api.named_generic_type(
+            name='collections.abc.Mapping',
+            args=[ctx.api.str_type(), vt],
+        ),
+        ctx.api.named_generic_type(
+            name='dict',
+            args=[ctx.api.str_type(), vt],
+        ),
+        td_type,
+    ]
     if oas_type.nullable:
         members.append(NoneType())
 
-    return UnionType.make_union(
-        items=members,
-        line=orig_arg.line,
-        column=orig_arg.column,
+    return simplify_union(UnionType.make_union(items=members))
+
+
+def get_typed_dict_type(
+        ctx: FunctionContext,
+        handler_arg_type: ProperType,
+        oas_type: oas_model.OASObjectType,
+) -> TypedDictType:
+
+    if isinstance(handler_arg_type, UnionType):
+        td_type_fallback = next(
+            try_getting_instance_fallback(get_proper_type(x))
+            for x in handler_arg_type.relevant_items()
+        )
+    else:
+        td_type_fallback = try_getting_instance_fallback(handler_arg_type)
+
+    assert td_type_fallback is not None
+
+    return TypedDictType(
+        items=OrderedDict[str, Type]({
+            oas_prop_name: transform_oas_type(oas_prop_type, handler_arg_type, ctx)
+            for oas_prop_name, oas_prop_type in oas_type.properties.items()
+        }),
+        required_keys=oas_type.required,
+        fallback=td_type_fallback,
+        line=td_type_fallback.line,
+        column=td_type_fallback.column,
     )
+
+
+def get_generic_type_vt(
+        ctx: FunctionContext,
+        handler_arg_type: ProperType,
+        oas_type: oas_model.OASObjectType,
+) -> Type:
+    property_types = {
+        transform_oas_type(
+            ov,
+            handler_arg_type,
+            ctx,
+        )
+        for ov in oas_type.properties.values()
+    }
+    if len(property_types) == 1:
+        vt = next(iter(property_types))
+    else:
+        vt = AnyType(TypeOfAny.explicit)
+    return vt
 
 
 def _get_oas_operation(
