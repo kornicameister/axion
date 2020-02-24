@@ -1,0 +1,240 @@
+---
+- case: primitives_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b_1}/{b_2}/{b_3}/{c_1}/{c_2}/{c_3}/{d}:
+        get:
+          operationId: main.primitives_required
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: string
+            - name: b_1
+              in: path
+              required: true
+              schema:
+                type: number
+            - name: b_2
+              in: path
+              required: true
+              schema:
+                type: number
+                format: float
+            - name: b_3
+              in: path
+              required: true
+              schema:
+                type: number
+                format: double
+            - name: c_1
+              in: path
+              required: true
+              schema:
+                type: integer
+            - name: c_2
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int32
+            - name: c_3
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+            - name: d
+              in: path
+              required: true
+              schema:
+                type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+    @oas_endpoint
+    async def primitives_required(
+      a: str,
+      b_1: float,
+      b_2: float,
+      b_3: float,
+      c_1: int,
+      c_2: int,
+      c_3: int,
+      d: bool,
+    ) -> response.Response:
+      return {}
+- case: primitives_optional
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.primitives_optional
+          parameters:
+            - name: a
+              in: query
+              required: false
+              schema:
+                type: string
+            - name: b_1
+              in: query
+              required: false
+              schema:
+                type: number
+            - name: b_2
+              in: query
+              required: false
+              schema:
+                type: number
+                format: float
+            - name: b_3
+              in: query
+              required: false
+              schema:
+                type: number
+                format: double
+            - name: c_1
+              in: query
+              required: false
+              schema:
+                type: integer
+            - name: c_2
+              in: query
+              required: false
+              schema:
+                type: integer
+                format: int32
+            - name: c_3
+              in: query
+              required: query
+              schema:
+                type: integer
+                format: int64
+            - name: d
+              in: query
+              required: false
+              schema:
+                type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_optional(
+      a: str,
+      b_1: Optional[float],
+      b_2: Optional[float],
+      b_3: Optional[float],
+      c_1: Optional[int],
+      c_2: Optional[int],
+      c_3: Optional[int],
+      d: Optional[bool],
+    ) -> response.Response:
+      return {}
+- case: primitives_required_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.primitives_required_nullable
+          parameters:
+            - name: a
+              in: query
+              required: true
+              schema:
+                type: string
+                nullable: true
+            - name: b_1
+              in: query
+              required: true
+              schema:
+                type: number
+                nullable: true
+            - name: b_2
+              in: query
+              required: true
+              schema:
+                type: number
+                format: float
+                nullable: true
+            - name: b_3
+              in: query
+              required: true
+              schema:
+                type: number
+                format: double
+                nullable: true
+            - name: c_1
+              in: query
+              required: true
+              schema:
+                type: integer
+                nullable: true
+            - name: c_2
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int32
+                nullable: true
+            - name: c_3
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int64
+                nullable: true
+            - name: d
+              in: query
+              required: true
+              schema:
+                type: boolean
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_required_nullable(
+      a: str,
+      b_1: Optional[float]=None,
+      b_2: Optional[float]=None,
+      b_3: Optional[float]=None,
+      c_1: Optional[int]=None,
+      c_2: Optional[int]=None,
+      c_3: Optional[int]=None,
+      d: Optional[bool]=None,
+    ) -> response.Response:
+      return {}
