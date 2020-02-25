@@ -1,5 +1,5 @@
 ---
-- case: oneOf
+- case: oneOf_twoArgs
   oas_spec: |
     openapi: 3.0.1
     info:
@@ -24,43 +24,166 @@
               required: true
               schema:
                 oneOf:
-                  - type: string
-                  - type: boolean
-                  - type: number
                   - type: integer
+                  - type: number
             - name: oneOf3
               in: query
               required: true
               schema:
                 oneOf:
                   - type: integer
-            - name: oneOf4
+                  - type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of1: t.Union[str, bool],
+      one_of2: t.Union[int, float],
+      one_of3: t.Union[str, int],
+    ) -> response.Response:
+      return {}
+- case: oneOf_notRequired
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: requiredOneOf
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+            - name: notRequiredOneOf
               in: query
               required: false
               schema:
                 oneOf:
-                  - type: integer
-                  - type: number
-            - name: oneOf5
-              in: query
-              required: true
-              schema:
-                oneOf:
-                  - type: integer
-                  - type: number
                   - type: string
-                nullable: true
-            - name: oneOf6
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      required_one_of: t.Union[str, bool],
+      not_required_one_of: t.Optional[t.Union[int, str]],
+    ) -> response.Response:
+      return {}
+- case: oneOf_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOf1
               in: query
               required: true
               schema:
                 oneOf:
-                  - type: integer
-                    default: 666
+                  - type: string
+                  - type: boolean
+                nullable: true
+            - name: oneOf2
+              in: query
+              required: false
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of1: t.Optional[t.Union[str, bool]],
+      one_of2: t.Optional[t.Union[str, bool]],
+    ) -> response.Response:
+      return {}
+- case: oneOf_large
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfLarge
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
                   - type: number
-                    default: 0.6
-                default: 666.6
-            - name: oneOf7
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of_large: t.Union[bool, int, float, str],
+    ) -> response.Response:
+      return {}
+- case: oneOf_not
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfNot
               in: query
               required: true
               schema:
@@ -84,12 +207,40 @@
 
     @oas_endpoint
     async def oneOf(
-      one_of1: t.Union[str, bool],
-      one_of2: t.Union[str, bool, int, float],
-      one_of3: int,  # oneOf with one member simplied to primitive
-      one_of4: t.Optional[t.Union[int, float]],
-      one_of5: t.Optional[t.Union[int, float, str]]=None,
-      one_of6: t.Union[int, float]=666.6,
-      one_of7: t.Optional[int]=None,
+      one_of_not: t.Optional[int]=None,
+    ) -> response.Response:
+      return {}
+- case: oneOf_single
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfSingle
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of_single: int,
+      # single type in oneOf simplifies to single type in handler
     ) -> response.Response:
       return {}
