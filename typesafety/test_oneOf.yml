@@ -300,7 +300,7 @@
     @oas_endpoint
     async def mismatching(
       a: float,             # E: [mismatching(a -> a)] expected "int", but got "float"  [axion-arg-type]
-      b: int,               # E: [mismatching(b -> b)] expected "Union[int, str]", but got "str"  [axion-arg-type]
+      b: int,               # E: [mismatching(b -> b)] expected "Union[int, str]", but got "int"  [axion-arg-type]
       c: t.Union[int, str], # E: [mismatching(c -> c)] expected "str", but got "Union[int, str]"  [axion-arg-type]
       d: t.Union[int, str], # E: [mismatching(d -> d)] expected "str", but got "Union[int, str]"  [axion-arg-type]
     ) -> response.Response:
