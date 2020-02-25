@@ -244,3 +244,64 @@
       # single type in oneOf simplifies to single type in handler
     ) -> response.Response:
       return {}
+- case: oneOf_mismatching
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.mismatching
+          parameters:
+            - name: a
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+            - name: b
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+                  - type: string
+            - name: c
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - not:
+                      type: integer
+                  - type: string
+            - name: d
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - type: string
+                  - not:
+                      type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def mismatching(
+      a: float,             # E: [mismatching(a -> a)] expected "int", but got "float"  [axion-arg-type]
+      b: int,               # E: [mismatching(b -> b)] expected "Union[int, str]", but got "str"  [axion-arg-type]
+      c: t.Union[int, str], # E: [mismatching(c -> c)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+      d: t.Union[int, str], # E: [mismatching(d -> d)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
