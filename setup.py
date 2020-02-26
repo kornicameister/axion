@@ -35,7 +35,7 @@ if not any(arg in sys.argv
         os.environ['CFLAGS'] = '-O3'
         ext_modules = cythonize(
             'axion/**/*.py',
-            exclude=['axion/mypy.py'],
+            exclude=['axion/oas_mypy/**/*.py'],
             nthreads=int(os.getenv('CYTHON_NTHREADS', 0)),
             language_level=3,
             compiler_directives=compiler_directives,
