@@ -1,4 +1,66 @@
 ---
+- case: correct_example
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.ce
+          parameters:
+            - name: argA
+              in: query
+              schema:
+                type: integer
+                default: 3
+            - name: argB
+              in: query
+              schema:
+                type: string
+                default: 'argB'
+            - name: argC
+              in: query
+              schema:
+                type: number
+                default: 66.6
+            - name: argD
+              in: query
+              schema:
+                type: boolean
+                default: false
+            - name: argE
+              in: query
+              required: false
+              schema:
+                type: boolean
+            - name: argF
+              in: query
+              required: false
+              schema:
+                type: boolean
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def default_not_equal(
+      arg_a: int=3,
+      arg_b: str='argB',
+      arg_c: float=66.6,
+      arg_d: bool=false,
+      arg_e: t.Optional[bool]=None,
+      arg_f: t.Optional[bool]=None,
+    ) -> response.Response:
+      return {}
 - case: default_not_equal
   oas_spec: |
     openapi: 3.0.1
@@ -181,3 +243,44 @@
   out: |
     main:7: error: [default_not_in_handler(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
     main:8: error: [default_not_in_handler(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+- case: nullable_handling
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.f
+          parameters:
+            - name: argA
+              in: query
+              nullable: true
+              schema:
+                type: integer
+            - name: argB
+              in: query
+              required: true
+              nullable: true
+              schema:
+                type: number
+                default: 10.0
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def f(
+      arg_a: t.Optional[int]=None,
+      arg_b: t.Optional[float]=11.0,
+    ) -> response.Response:
+      return {}
+  out: |
+    main:8: error: [default_not_equal(arg_b -> argB)] Incorrect default value. Expected 10.0 but got 11.0  [axion-arg-value]
