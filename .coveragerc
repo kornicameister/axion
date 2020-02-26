@@ -14,5 +14,6 @@ exclude_lines =
 ignore_errors = True
 omit =
     tests/*
+    typesafety/*
     .tox/*
-    axion/oas_mypy.py
+    axion/oas_mypy/*

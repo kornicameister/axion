@@ -21,12 +21,12 @@ jobs:
       - <<: *install_prepare
       - run:
           name: Verify
-          command: tox -p auto -e yapf,mypy,flake8
+          command: tox -p auto -e yapf,mypy,flake8,safety
       - store_artifacts:
           path: typingcov
   test:
     docker:
-     - image: circleci/python:3.8.1
+      - image: circleci/python:3.8.1
     working_directory: ~/app
     steps:
       - checkout

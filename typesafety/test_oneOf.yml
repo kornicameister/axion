@@ -1,0 +1,346 @@
+---
+- case: oneOf_twoArgs
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOf1
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+            - name: oneOf2
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+                  - type: number
+            - name: oneOf3
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+                  - type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of1: t.Union[str, bool],
+      one_of2: t.Union[int, float],
+      one_of3: t.Union[str, int],
+    ) -> response.Response:
+      return {}
+- case: oneOf_notRequired
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: requiredOneOf
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+            - name: notRequiredOneOf
+              in: query
+              required: false
+              schema:
+                oneOf:
+                  - type: string
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      required_one_of: t.Union[str, bool],
+      not_required_one_of: t.Optional[t.Union[int, str]],
+    ) -> response.Response:
+      return {}
+- case: oneOf_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOf1
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+                nullable: true
+            - name: oneOf2
+              in: query
+              required: false
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of1: t.Optional[t.Union[str, bool]],
+      one_of2: t.Optional[t.Union[str, bool]],
+    ) -> response.Response:
+      return {}
+- case: oneOf_large
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfLarge
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+                  - type: number
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of_large: t.Union[bool, int, float, str],
+    ) -> response.Response:
+      return {}
+- case: oneOf_not
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfNot
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - not:
+                      type: string
+                  - not:
+                      type: boolean
+                  - not:
+                      type: number
+                  - type: integer
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of_not: t.Optional[int]=None,
+    ) -> response.Response:
+      return {}
+- case: oneOf_single
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.oneOf
+          parameters:
+            - name: oneOfSingle
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oneOf(
+      one_of_single: int,
+      # single type in oneOf simplifies to single type in handler
+    ) -> response.Response:
+      return {}
+- case: oneOf_mismatching
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /a:
+        get:
+          operationId: main.mismatching_a
+          parameters:
+            - name: arg1
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+            - name: arg2
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: integer
+                  - type: string
+          responses:
+            default:
+              description: unexpected error
+      /b:
+        get:
+          operationId: main.mismatching_b
+          parameters:
+            - name: arg3
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - not:
+                      type: integer
+                  - type: string
+            - name: arg4
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - type: string
+                  - not:
+                      type: integer
+          responses:
+            default:
+              description: unexpected error
+      /c:
+        get:
+          operationId: main.mismatching_c
+          parameters:
+            - name: arg5
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - type: string
+                    format: email
+                  - type: string
+                    format: phonenumber
+                  - not:
+                      type: integer
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def mismatching_a(
+      arg1: float,             # E: [mismatching_a(arg1 -> arg1)] expected "int", but got "float"  [axion-arg-type]
+      arg2: int,               # E: [mismatching_a(arg2 -> arg2)] expected "Union[int, str]", but got "int"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+
+    StrOrInt = t.Union[int, str]
+
+    @oas_endpoint
+    async def mismatching_b(
+      arg3: StrOrInt, # E: [mismatching_b(arg3 -> arg3)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+      arg4: StrOrInt, # E: [mismatching_b(arg4 -> arg4)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+
+    @oas_endpoint
+    async def mismatching_c(
+      arg5: int,              # E: [mismatching_c(arg5 -> arg5)] expected "str", but got "int"  [axion-arg-type]
+    ) -> response.Response:
+      return {}

@@ -1,8 +1,9 @@
-tox==3.14.3
+tox==3.14.5
 setupmeta==2.6.18
 
 -r requirements/yapf.txt
 -r requirements/mypy.txt
 -r requirements/flake8.txt
+-r requirements/safety.txt
 -r requirements/tests.txt
 -r requirements/cython.txt
