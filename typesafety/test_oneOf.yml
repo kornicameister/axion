@@ -253,24 +253,31 @@
     servers:
       - url: /
     paths:
-      /:
+      /a:
         get:
-          operationId: main.mismatching
+          operationId: main.mismatching_a
           parameters:
-            - name: a
+            - name: arg1
               in: query
               required: true
               schema:
                 oneOf:
                   - type: integer
-            - name: b
+            - name: arg2
               in: query
               required: true
               schema:
                 oneOf:
                   - type: integer
                   - type: string
-            - name: c
+          responses:
+            default:
+              description: unexpected error
+      /b:
+        get:
+          operationId: main.mismatching_b
+          parameters:
+            - name: arg3
               in: query
               required: true
               schema:
@@ -279,13 +286,32 @@
                   - not:
                       type: integer
                   - type: string
-            - name: d
+            - name: arg4
               in: query
               required: true
               schema:
                 nullable: false
                 oneOf:
                   - type: string
+                  - not:
+                      type: integer
+          responses:
+            default:
+              description: unexpected error
+      /c:
+        get:
+          operationId: main.mismatching_c
+          parameters:
+            - name: arg5
+              in: query
+              required: true
+              schema:
+                nullable: false
+                oneOf:
+                  - type: string
+                    format: email
+                  - type: string
+                    format: phonenumber
                   - not:
                       type: integer
           responses:
@@ -298,10 +324,23 @@
     from axion import response
 
     @oas_endpoint
-    async def mismatching(
-      a: float,             # E: [mismatching(a -> a)] expected "int", but got "float"  [axion-arg-type]
-      b: int,               # E: [mismatching(b -> b)] expected "Union[int, str]", but got "int"  [axion-arg-type]
-      c: t.Union[int, str], # E: [mismatching(c -> c)] expected "str", but got "Union[int, str]"  [axion-arg-type]
-      d: t.Union[int, str], # E: [mismatching(d -> d)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+    async def mismatching_a(
+      arg1: float,             # E: [mismatching_a(arg1 -> arg1)] expected "int", but got "float"  [axion-arg-type]
+      arg2: int,               # E: [mismatching_a(arg2 -> arg2)] expected "Union[int, str]", but got "int"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+
+    StrOrInt = t.Union[int, str]
+
+    @oas_endpoint
+    async def mismatching_b(
+      arg3: StrOrInt, # E: [mismatching_b(arg3 -> arg3)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+      arg4: StrOrInt, # E: [mismatching_b(arg4 -> arg4)] expected "str", but got "Union[int, str]"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+
+    @oas_endpoint
+    async def mismatching_c(
+      arg5: int,              # E: [mismatching_c(arg5 -> arg5)] expected "str", but got "int"  [axion-arg-type]
     ) -> response.Response:
       return {}
