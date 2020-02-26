@@ -1,0 +1,183 @@
+---
+- case: default_not_equal
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.default_not_equal
+          parameters:
+            - name: argA
+              in: query
+              schema:
+                type: integer
+                format: int64
+                default: 3
+            - name: argB
+              in: query
+              schema:
+                type: string
+                default: 'argB'
+            - name: argC
+              in: query
+              schema:
+                type: number
+                default: 66.6
+            - name: argD
+              in: query
+              schema:
+                type: boolean
+                default: false
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def default_not_equal(
+      arg_a: int=4,
+      arg_b: str='arg_b',
+      arg_c: float=77.7,
+      arg_d: bool=true,
+    ) -> response.Response:
+      return {}
+  out: |
+    main:7: error: [default_not_equal(arg_a -> argA)] Incorrect default value. Expected 3 but got 4  [axion-arg-value]
+    main:8: error: [default_not_equal(arg_b -> argB)] Incorrect default value. Expected argB but got arg_b  [axion-arg-value]
+    main:9: error: [default_not_equal(arg_c -> argC)] Incorrect default value. Expected 66.6 but got 77.7  [axion-arg-value]
+    main:10: error: [default_not_equal(arg_d -> argD)] Incorrect default value. Expected false but got true  [axion-arg-value]
+- case: default_not_in_oas
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.default_not_in_oas
+          parameters:
+            - name: argA
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int64
+            - name: argB
+              in: query
+              required: true
+              schema:
+                type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def default_not_in_oas(
+      arg_a: int=100,
+      arg_b: str='test',
+    ) -> response.Response:
+      return {}
+  out: |
+    main:7: note: [default_not_in_oas(arg_a -> argA)] OAS does not define a default value. If you want "100" to be default value, declare it in OAS.
+    main:8: note: [default_not_in_oas(arg_b -> argB)] OAS does not define a default value. If you want "test" to be default value, declare it in OAS.
+- case: default_not_in_handler_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.d
+          parameters:
+            - name: argA
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int64
+                default: 100
+            - name: argB
+              in: query
+              required: true
+              schema:
+                type: string
+                default: argB
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def d(
+      arg_a: int,
+      arg_b: str,
+    ) -> response.Response:
+      return {}
+  out: |
+    main:7: error: [default_not_in_handler(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:8: error: [default_not_in_handler(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+- case: default_not_in_handler_not_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.f
+          parameters:
+            - name: argA
+              in: query
+              required: false
+              schema:
+                type: integer
+                format: int64
+                default: 100
+            - name: argB
+              in: query
+              required: false
+              schema:
+                type: string
+                default: argB
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def f(
+      arg_a: t.Optional[int],
+      arg_b: t.Optional[str],
+    ) -> response.Response:
+      return {}
+  out: |
+    main:7: error: [default_not_in_handler(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:8: error: [default_not_in_handler(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
