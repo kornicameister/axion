@@ -261,30 +261,30 @@ def transform_parameter_to_type(
 
     if isinstance(param.schema, tuple):
         oas_type, _ = param.schema
-        oas_m_type = transform_oas_type(
+        items = [transform_oas_type(
             oas_type,
             handler_arg_type,
             ctx,
-        )
+        )]
     else:
-        oas_m_type = UnionType.make_union(
-            items=[
-                transform_oas_type(
-                    v.schema,
-                    handler_arg_type,
-                    ctx,
-                ) for v in param.schema.values()
-            ],
-        )
+        items = [
+            transform_oas_type(
+                v.schema,
+                handler_arg_type,
+                ctx,
+            ) for v in param.schema.values()
+        ]
 
     if needs_optional:
-        oas_m_type = UnionType.make_union(
-            items=[NoneType(), oas_m_type],
-            line=handler_arg_type.line,
-            column=handler_arg_type.column,
-        )
+        items.append(NoneType())
 
-    return simplify_union(oas_m_type)
+    return simplify_union(
+        UnionType.make_union(
+            items=items,
+            line=(handler_arg_type.line or handler_arg_type.end_line) or -1,
+            column=handler_arg_type.column,
+        ),
+    )
 
 
 def transform_oas_type(
