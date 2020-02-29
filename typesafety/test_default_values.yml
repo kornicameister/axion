@@ -198,8 +198,8 @@
     ) -> response.Response:
       return {}
   out: |
-    main:7: error: [default_not_in_handler(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
-    main:8: error: [default_not_in_handler(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:7: error: [d(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:8: error: [d(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
 - case: default_not_in_handler_not_required
   oas_spec: |
     openapi: 3.0.1
@@ -241,8 +241,8 @@
     ) -> response.Response:
       return {}
   out: |
-    main:7: error: [default_not_in_handler(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
-    main:8: error: [default_not_in_handler(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:7: error: [f(arg_a -> argA)] OAS defines "100" as a default value. It should be reflected in argument default value.  [axion-arg-value]
+    main:8: error: [f(arg_b -> argB)] OAS defines "argB" as a default value. It should be reflected in argument default value.  [axion-arg-value]
 - case: nullable_handling
   oas_spec: |
     openapi: 3.0.1
