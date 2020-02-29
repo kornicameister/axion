@@ -17,7 +17,7 @@ from typing import (
 from mypy.checker import TypeChecker
 from mypy.errorcodes import ErrorCode
 from mypy.messages import format_type
-from mypy.nodes import FuncDef
+from mypy.nodes import FuncDef, IntExpr, FloatExpr, NameExpr
 from mypy.options import Options
 from mypy.plugin import (FunctionContext, MethodContext, Plugin)
 from mypy.sametypes import is_same_type, simplify_union
@@ -178,7 +178,7 @@ def _oas_handler_analyzer(
                         msg=(
                             f'[{f_name}({f_param} -> {oas_param.name})] '
                             f'Incorrect default value. '
-                            f'Expected one of {",".join(map(str, oas_default_values))} '
+                            f'Expected {",".join(map(str, oas_default_values))} '
                             f'but got {handler_arg_default_value}'
                         ),
                         ctx=f_ctx,
@@ -194,7 +194,7 @@ def _oas_handler_analyzer(
                         f'[{f_name}({f_param} -> {oas_param.name})] '
                         f'OAS does not define a default value. '
                         f'If you want "{handler_arg_default_value}" to be '
-                        f'defeault value, declare it in OAS.',
+                        f'default value, declare it in OAS.',
                     ),
                     line_number=handler_arg_type.line,
                 )
@@ -235,10 +235,22 @@ def _get_default_value(
         None,
     )
     if arg_expr is not None:
-        maybe_value = getattr(arg_expr, 'value', _ARG_NO_DEFAULT_VALUE_MARKER)
-        if maybe_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
-            # covers literal values
-            return maybe_value
+        if isinstance(arg_expr, (FloatExpr, IntExpr)):
+            return arg_expr.value
+        elif isinstance(arg_expr, NameExpr) and arg_expr.fullname:
+            return {
+                'builtins.None': None,
+                'builtins.True': True,
+                'builtins.False': False,
+            }.get(
+                arg_expr.fullname,
+                _ARG_NO_DEFAULT_VALUE_MARKER,
+            )
+        else:
+            maybe_value = getattr(arg_expr, 'value', _ARG_NO_DEFAULT_VALUE_MARKER)
+            if maybe_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
+                # covers literal values
+                return maybe_value
     return _ARG_NO_DEFAULT_VALUE_MARKER
 
 
