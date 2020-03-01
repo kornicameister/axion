@@ -33,7 +33,7 @@ jobs:
       - <<: *install_prepare
       - run:
           name: Verify
-          command: tox -p auto -e mypy_examples
+          command: tox -e mypy_examples
   test:
     docker:
       - image: circleci/python:3.8.1
