@@ -44,6 +44,12 @@
               schema:
                 type: boolean
                 nullable: true
+            - name: argG
+              in: query
+              required: true
+              schema:
+                type: boolean
+                nullable: true
           responses:
             default:
               description: unexpected error
@@ -61,6 +67,7 @@
       arg_d: bool=False,
       arg_e: t.Optional[bool]=None,
       arg_f: t.Optional[bool]=None,
+      arg_g: t.Optional[bool]=None,
     ) -> response.Response:
       return {}
 - case: default_not_equal
@@ -142,11 +149,17 @@
               required: true
               schema:
                 type: string
+            - name: argC
+              in: query
+              required: true
+              schema:
+                type: boolean
           responses:
             default:
               description: unexpected error
   main: |
     import typing as t
+
     from axion import oas_endpoint
     from axion import response
 
@@ -154,11 +167,13 @@
     async def default_not_in_oas(
       arg_a: int=100,
       arg_b: str='test',
+      arg_c: bool=False,
     ) -> response.Response:
       return {}
   out: |
-    main:7: note: [default_not_in_oas(arg_a -> argA)] OAS does not define a default value. If you want "100" to be default value, declare it in OAS.
-    main:8: note: [default_not_in_oas(arg_b -> argB)] OAS does not define a default value. If you want "test" to be default value, declare it in OAS.
+    main:8: note: [default_not_in_oas(arg_a -> argA)] OAS does not define a default value. If you want "100" to be consistent default value, it should be declared in OAS too.
+    main:9: note: [default_not_in_oas(arg_b -> argB)] OAS does not define a default value. If you want "test" to be consistent default value, it should be declared in OAS too.
+    main:10: note: [default_not_in_oas(arg_c -> argC)] OAS does not define a default value. If you want "False" to be consistent default value, it should be declared in OAS too.
 - case: default_not_in_handler_required
   oas_spec: |
     openapi: 3.0.1
@@ -260,21 +275,22 @@
           parameters:
             - name: argA
               in: query
-              nullable: true
               schema:
                 type: integer
+                nullable: true
             - name: argB
               in: query
               required: true
-              nullable: true
               schema:
                 type: number
                 default: 10.0
+                nullable: true
           responses:
             default:
               description: unexpected error
   main: |
     import typing as t
+
     from axion import oas_endpoint
     from axion import response
 
@@ -285,4 +301,4 @@
     ) -> response.Response:
       return {}
   out: |
-    main:8: error: [default_not_equal(arg_b -> argB)] Incorrect default value. Expected 10.0 but got 11.0  [axion-arg-value]
+    main:9: error: [f(arg_b -> argB)] Incorrect default value. Expected 10.0 but got 11.0  [axion-arg-value]

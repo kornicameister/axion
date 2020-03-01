@@ -76,3 +76,18 @@ def invalid_default_value(
     )
 
     return ctx.default_return_type
+
+
+def default_value_not_in_oas(
+        msg: str,
+        ctx: FunctionContext,
+        line_number: Optional[int] = None,
+) -> None:
+    context = ctx.context
+    context.line = line_number or context.line
+
+    ctx.api.msg.note(
+        msg,
+        context=context,
+        code=ERROR_INVALID_OAS_VALUE,
+    )

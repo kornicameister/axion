@@ -17,7 +17,7 @@ from typing import (
 from mypy.checker import TypeChecker
 from mypy.errorcodes import ErrorCode
 from mypy.messages import format_type
-from mypy.nodes import FuncDef, IntExpr, FloatExpr, NameExpr
+from mypy.nodes import FloatExpr, FuncDef, IntExpr, NameExpr
 from mypy.options import Options
 from mypy.plugin import (FunctionContext, MethodContext, Plugin)
 from mypy.sametypes import is_same_type, simplify_union
@@ -120,6 +120,7 @@ def _oas_handler_analyzer(
             ),
         ).items() if k is not None
     }.copy()
+    sorted(signature)
 
     for oas_param, f_param in map(
             lambda ofp: (ofp, handler_model.get_f_param(ofp.name)),
@@ -171,7 +172,7 @@ def _oas_handler_analyzer(
 
         # validate default value
         if handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
-            if oas_default_values:
+            if len(oas_default_values):
                 default_matches = handler_arg_default_value in oas_default_values
                 if not default_matches:
                     errors.invalid_default_value(
@@ -185,17 +186,15 @@ def _oas_handler_analyzer(
                         line_number=handler_arg_type.line,
                     )
                     continue
-            else:
-                _oas_handler_msg(
-                    f_ctx.api.msg.note,
-                    f_ctx,
-                    (
-                        None,
+            elif not isinstance(handler_arg_default_value, type(None)):
+                errors.default_value_not_in_oas(
+                    msg=(
                         f'[{f_name}({f_param} -> {oas_param.name})] '
                         f'OAS does not define a default value. '
                         f'If you want "{handler_arg_default_value}" to be '
-                        f'default value, declare it in OAS.',
+                        f'consistent default value, it should be declared in OAS too. '
                     ),
+                    ctx=f_ctx,
                     line_number=handler_arg_type.line,
                 )
         elif oas_default_values:
@@ -242,10 +241,7 @@ def _get_default_value(
                 'builtins.None': None,
                 'builtins.True': True,
                 'builtins.False': False,
-            }.get(
-                arg_expr.fullname,
-                _ARG_NO_DEFAULT_VALUE_MARKER,
-            )
+            }[arg_expr.fullname]
         else:
             maybe_value = getattr(arg_expr, 'value', _ARG_NO_DEFAULT_VALUE_MARKER)
             if maybe_value is not _ARG_NO_DEFAULT_VALUE_MARKER:
@@ -262,7 +258,12 @@ def transform_parameter_to_type(
 ) -> Type:
     oas_is_required = param.required
     handler_has_default = (handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER)
-    needs_optional = not oas_is_required and not handler_has_default
+    if not oas_is_required and not handler_has_default:
+        needs_optional = True
+    elif isinstance(handler_arg_default_value, type(None)):
+        needs_optional = True
+    else:
+        needs_optional = False
 
     if isinstance(param.schema, tuple):
         oas_type, _ = param.schema
