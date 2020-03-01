@@ -271,7 +271,7 @@
     paths:
       /:
         get:
-          operationId: main.f
+          operationId: main.nh
           parameters:
             - name: argA
               in: query
@@ -295,10 +295,10 @@
     from axion import response
 
     @oas_endpoint
-    async def f(
+    async def nh(
       arg_a: t.Optional[int]=None,
       arg_b: t.Optional[float]=11.0,
     ) -> response.Response:
       return {}
   out: |
-    main:9: error: [f(arg_b -> argB)] Incorrect default value. Expected 10.0 but got 11.0  [axion-arg-value]
+    main:9: error: [nh(arg_b -> argB)] Incorrect default value. Expected 10.0 but got 11.0  [axion-arg-value]
