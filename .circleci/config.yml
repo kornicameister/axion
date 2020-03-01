@@ -24,6 +24,16 @@ jobs:
           command: tox -p auto -e yapf,mypy,flake8,safety
       - store_artifacts:
           path: typingcov
+  verify_examples:
+    working_directory: ~/app
+    docker:
+      - image: circleci/python:3.8.1
+    steps:
+      - checkout
+      - <<: *install_prepare
+      - run:
+          name: Verify
+          command: tox -e mypy_examples
   test:
     docker:
       - image: circleci/python:3.8.1
@@ -121,5 +131,6 @@ workflows:
   verify:
     jobs:
       - verify
+      - verify_examples
       - test
       - install
