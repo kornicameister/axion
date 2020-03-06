@@ -177,7 +177,7 @@ components:
     Messages:
       type: object
       additionalProperties:
-        $ref: '#/components/schemas/Message'
+        $ref: "#/components/schemas/Message"
     Message:
       type: object
       properties:
@@ -276,7 +276,7 @@ components:
         - messages
       properties:
         messages:
-          $ref: '#/components/schemas/Messages'
+          $ref: "#/components/schemas/Messages"
   headers:
     X-Custom-B:
       schema:

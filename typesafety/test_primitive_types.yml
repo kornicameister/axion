@@ -1,0 +1,292 @@
+---
+- case: primitives_mismatch
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b}:
+        get:
+          operationId: main.primitives_mismatch
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: string
+            - name: b
+              in: path
+              required: true
+              schema:
+                type: number
+            - name: c
+              in: query
+              required: false
+              schema:
+                type: number
+                format: float
+            - name: d
+              in: query
+              required: false
+              schema:
+                type: number
+                format: double
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_mismatch(
+      a: int,   # E: [primitives_mismatch(a -> a)] expected "str", but got "int"  [axion-arg-type]
+      b: str,   # E: [primitives_mismatch(b -> b)] expected "float", but got "str"  [axion-arg-type]
+      c: float, # E: [primitives_mismatch(c -> c)] expected "Optional[float]", but got "float"  [axion-arg-type]
+      d: bool,  # E: [primitives_mismatch(d -> d)] expected "Optional[float]", but got "bool"  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+- case: primitives_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{a}/{b}/{c}/{d}/{e}/{f}/{g}/{h}:
+        get:
+          operationId: main.primitives_required
+          parameters:
+            - name: a
+              in: path
+              required: true
+              schema:
+                type: string
+            - name: b
+              in: path
+              required: true
+              schema:
+                type: number
+            - name: c
+              in: path
+              required: true
+              schema:
+                type: number
+                format: float
+            - name: d
+              in: path
+              required: true
+              schema:
+                type: number
+                format: double
+            - name: e
+              in: path
+              required: true
+              schema:
+                type: integer
+            - name: f
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int32
+            - name: g
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+            - name: h
+              in: path
+              required: true
+              schema:
+                type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from axion import oas_endpoint
+    from axion import response
+    @oas_endpoint
+    async def primitives_required(
+      a: str,
+      b: float,
+      c: float,
+      d: float,
+      e: int,
+      f: int,
+      g: int,
+      h: bool,
+    ) -> response.Response:
+      return {}
+- case: primitives_optional
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.primitives_optional
+          parameters:
+            - name: a
+              in: query
+              required: false
+              schema:
+                type: string
+            - name: b
+              in: query
+              required: false
+              schema:
+                type: number
+            - name: c
+              in: query
+              required: false
+              schema:
+                type: number
+                format: float
+            - name: d
+              in: query
+              required: false
+              schema:
+                type: number
+                format: double
+            - name: e
+              in: query
+              required: false
+              schema:
+                type: integer
+            - name: f
+              in: query
+              required: false
+              schema:
+                type: integer
+                format: int32
+            - name: g
+              in: query
+              required: false
+              schema:
+                type: integer
+                format: int64
+            - name: h
+              in: query
+              required: false
+              schema:
+                type: boolean
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_optional(
+      a: Optional[str],
+      b: Optional[float],
+      c: Optional[float],
+      d: Optional[float],
+      e: Optional[int],
+      f: Optional[int],
+      g: Optional[int],
+      h: Optional[bool],
+    ) -> response.Response:
+      return {}
+- case: primitives_required_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.primitives_required_nullable
+          parameters:
+            - name: a
+              in: query
+              required: true
+              schema:
+                type: string
+                nullable: true
+            - name: b
+              in: query
+              required: true
+              schema:
+                type: number
+                nullable: true
+            - name: c
+              in: query
+              required: true
+              schema:
+                type: number
+                format: float
+                nullable: true
+            - name: d
+              in: query
+              required: true
+              schema:
+                type: number
+                format: double
+                nullable: true
+            - name: e
+              in: query
+              required: true
+              schema:
+                type: integer
+                nullable: true
+            - name: f
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int32
+                nullable: true
+            - name: g
+              in: query
+              required: true
+              schema:
+                type: integer
+                format: int64
+                nullable: true
+            - name: h
+              in: query
+              required: true
+              schema:
+                type: boolean
+                nullable: true
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from typing import Optional
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def primitives_required_nullable(
+      a: Optional[str]=None,
+      b: Optional[float]=None,
+      c: Optional[float]=None,
+      d: Optional[float]=None,
+      e: Optional[int]=None,
+      f: Optional[int]=None,
+      g: Optional[int]=None,
+      h: Optional[bool]=None,
+    ) -> response.Response:
+      return {}
