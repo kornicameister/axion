@@ -10,4 +10,4 @@ mock==4.0.1
 asyncpg==0.20.1
 
 pytest-mypy-plugins==1.2.0
-mypy==0.761
+mypy==0.770
