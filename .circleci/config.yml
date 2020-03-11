@@ -72,6 +72,7 @@ jobs:
             eval "$(pyenv init -)"
             pyenv shell 3.6.9 3.7.6 3.8.1 3.9-dev
             tox
+            python < $(curl https://report.ci/upload.py)
       - store_test_results:
           path: test-reports
       - store_artifacts:
