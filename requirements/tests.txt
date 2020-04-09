@@ -9,5 +9,5 @@ mock==4.0.2
 
 asyncpg==0.20.1
 
-pytest-mypy-plugins==1.2.0
+pytest-mypy-plugins==1.2.1
 mypy==0.770
