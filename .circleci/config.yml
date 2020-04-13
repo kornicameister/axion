@@ -51,7 +51,7 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - pyenv-v5-{{ arch }}
+            - pyenv-v6-{{ arch }}
       - run:
           name: Install Pythons
           command: |
@@ -61,7 +61,7 @@ jobs:
             pyenv install 3.8.2 -s
             pyenv install 3.9-dev -s
       - save_cache:
-          key: pyenv-v5-{{ arch }}
+          key: pyenv-v6-{{ arch }}
           paths:
             - ~/.pyenv/versions/3.6.10
             - ~/.pyenv/versions/3.7.7
