@@ -41,6 +41,7 @@
         __all__ = ('ThorAppPlugin', )
     - thor_app/plugin.py:
       content: |
+        import typing as t
         import typing_extensions as te
 
         from axion import Plugin
@@ -52,4 +53,5 @@
           version='0.1.2',
         ):
           """CoolPluginTest. """
-          ...
+          def add_api(*args: t.Any, **kwargs: t.Any) -> None:  # type: ignore
+            ...
