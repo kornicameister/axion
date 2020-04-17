@@ -11,3 +11,4 @@ An OpenAPI3 framework built on top of asyncio with love and need.
 ![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/kornicameister/axion)
 [![License](https://img.shields.io/github/license/kornicameister/axion.svg)](https://github.com/kornicameister/axion/blob/master/LICENSE)
 [![time tracker](https://wakatime.com/badge/github/kornicameister/axion.svg)](https://wakatime.com/badge/github/kornicameister/axion)
+[![Known Vulnerabilities](https://snyk.io/test/github/kornicameister/axion/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/kornicameister/axion?targetFile=requirements.txt)
