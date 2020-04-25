@@ -12,8 +12,8 @@ from axion.utils import types
 
 
 def analyze(
-        operation: oas.OASOperation,
-        signature: t.Dict[str, t.Any],
+    operation: oas.OASOperation,
+    signature: t.Dict[str, t.Any],
 ) -> t.Set[exceptions.Error]:
     if 'return' not in signature:
         logger.opt(
@@ -76,8 +76,8 @@ def analyze(
 
 
 def _analyze_headers(
-        operation: oas.OASOperation,
-        headers: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    headers: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
     if headers is not None:
         if types.is_any_type(headers):
@@ -101,8 +101,8 @@ def _analyze_headers(
 
 
 def _analyze_cookies(
-        operation: oas.OASOperation,
-        cookies: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    cookies: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
     if cookies is not None:
         if types.is_any_type(cookies):
@@ -126,8 +126,8 @@ def _analyze_cookies(
 
 
 def _analyze_http_code(
-        operation: oas.OASOperation,
-        rt_http_code: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    rt_http_code: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
 
     if rt_http_code is None:

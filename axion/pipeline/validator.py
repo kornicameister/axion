@@ -37,8 +37,8 @@ class Validator(t.Generic[VT], metaclass=abc.ABCMeta):
     __slots__ = ('_oas_operation', )
 
     def __init__(
-            self,
-            oas_operation: oas.OASOperation,
+        self,
+        oas_operation: oas.OASOperation,
     ) -> None:
         self._oas_operation = oas_operation
 
@@ -54,8 +54,8 @@ class HttpCodeValidator(Validator[int]):
     )
 
     def __init__(
-            self,
-            oas_operation: oas.OASOperation,
+        self,
+        oas_operation: oas.OASOperation,
     ) -> None:
         super().__init__(oas_operation)
         self._allowed_codes = set(

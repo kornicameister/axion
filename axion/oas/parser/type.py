@@ -13,8 +13,8 @@ __all__ = ('resolve', )
 
 
 def resolve(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASType[t.Any]:
     if '$ref' in work_item:
         logger.opt(
@@ -77,8 +77,8 @@ def _resolve_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
 
 
 def _resolve_one_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASOneOfType:
     mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('oneOf', [])
 
@@ -121,8 +121,8 @@ def _resolve_one_of(
 
 
 def _resolve_all_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASType[t.Any]:
     # check what allOf stuff we build
     # - check if there is a conflict in definitions
@@ -172,8 +172,8 @@ def _resolve_all_of(
 
 
 def _resolve_any_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Union[model.OASAnyType, model.OASAnyOfType]:
     mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('anyOf', [])
 
@@ -232,8 +232,8 @@ def _resolve_any_of(
 
 
 def _handle_any_one_all_of_not(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Tuple[bool, model.OASType[t.Any]]:
     negated = work_item.get('not', None)
     if negated is not None:
@@ -243,8 +243,8 @@ def _handle_any_one_all_of_not(
 
 
 def _resolve_oas_array(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASArrayType:
     items_schema = work_item['items']
     items_oas_type = resolve(
@@ -266,8 +266,8 @@ def _resolve_oas_array(
 
 
 def _resolve_oas_object(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASObjectType:
     def _resolve_additional_properties() -> t.Union[bool, model.OASType[t.Any]]:
         raw_additional_properties = work_item.get(
@@ -325,7 +325,7 @@ def _resolve_oas_object(
 
 
 def _resolve_discriminator(
-        work_item: t.Dict[str, t.Any],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Optional[model.OASDiscriminator]:
     raw_discriminator = work_item.get('discriminator')
     if raw_discriminator is not None:
@@ -401,8 +401,8 @@ def _resolve_oas_string(
 
 
 def _resolve_oas_number(
-        number_cls: t.Type[model.N],
-        work_item: t.Dict[str, t.Any],
+    number_cls: t.Type[model.N],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASNumberType:
     detected_types = set()
 

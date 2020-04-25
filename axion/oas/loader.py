@@ -11,8 +11,8 @@ JinjaArguments = t.Dict[str, t.Any]
 
 
 def load_spec(
-        spec: Path,
-        arguments: t.Optional[JinjaArguments] = None,
+    spec: Path,
+    arguments: t.Optional[JinjaArguments] = None,
 ) -> model.OASSpecification:
     if isinstance(spec, Path):
         with spec.open('rb') as handler:

@@ -19,23 +19,23 @@ LOG = logger.opt(record=True, lazy=True)
 
 @t.overload
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: te.Literal[True],
+    operation: oas.OASOperation,
+    asynchronous: te.Literal[True],
 ) -> model.AsyncHandler:
     ...  # pragma: no cover
 
 
 @t.overload
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: te.Literal[False],
+    operation: oas.OASOperation,
+    asynchronous: te.Literal[False],
 ) -> model.SyncHandler:
     ...  # pragma: no cover
 
 
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: bool,
+    operation: oas.OASOperation,
+    asynchronous: bool,
 ) -> model.Handler[types.AnyCallable]:
     LOG.info(
         'Making user handler for op={op}',
@@ -45,8 +45,8 @@ def resolve(
 
 
 def _resolve(
-        handler: types.AnyCallable,
-        operation: oas.OASOperation,
+    handler: types.AnyCallable,
+    operation: oas.OASOperation,
 ) -> model.Handler[types.AnyCallable]:
     analysis_result = analysis.analyze(handler, operation)
 
@@ -63,8 +63,8 @@ def _resolve(
 
 @functools.lru_cache()
 def _import(
-        operation_id: oas.OASOperationId,
-        asynchronous: bool,
+    operation_id: oas.OASOperationId,
+    asynchronous: bool,
 ) -> types.AnyCallable:
     LOG.debug(
         'Resolving user handler via operation_id={operation_id}',

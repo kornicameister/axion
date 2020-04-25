@@ -13,8 +13,8 @@ from axion.oas import model
     ('application/ld+json', True),
 ])
 def test_spec_mime_type_is_json(
-        raw_mime_type: str,
-        expected_json: bool,
+    raw_mime_type: str,
+    expected_json: bool,
 ) -> None:
     assert model.MimeType(raw_mime_type).is_json() == expected_json
 
@@ -29,8 +29,8 @@ def test_spec_mime_type_is_json(
     ('text/html', True),
 ])
 def test_spec_mime_type_is_text(
-        raw_mime_type: str,
-        expected_text: bool,
+    raw_mime_type: str,
+    expected_text: bool,
 ) -> None:
     assert model.MimeType(raw_mime_type).is_text() == expected_text
 
@@ -45,8 +45,8 @@ def test_spec_mime_type_is_text(
     ('message/global', True),
 ])
 def test_is_discrete(
-        mime_type: str,
-        is_discrete: bool,
+    mime_type: str,
+    is_discrete: bool,
 ) -> None:
     assert model.MimeType(mime_type).is_discrete == is_discrete
 

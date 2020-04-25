@@ -14,8 +14,8 @@ from axion.utils import types
 
 
 def analyze(
-        handler: types.AnyCallable,
-        operation: oas.OASOperation,
+    handler: types.AnyCallable,
+    operation: oas.OASOperation,
 ) -> model.AnalysisResult:
     logger.opt(
         record=True,
