@@ -30,9 +30,9 @@ from axion.oas.parser import type as parse_type
     ),
 )
 def test_free_form(
-        properties: t.Optional[t.Dict[str, t.Any]],
-        additional_properties: t.Union[bool, model.OASType[t.Any]],
-        expected_result: bool,
+    properties: t.Optional[t.Dict[str, t.Any]],
+    additional_properties: t.Union[bool, model.OASType[t.Any]],
+    expected_result: bool,
 ) -> None:
     oas_object = parse_type.resolve(
         {},
@@ -81,8 +81,8 @@ def test_discriminator() -> None:
     ((True, False), (False, True)),
 )
 def test_discriminator_and__additional_properties(
-        additional_properties: bool,
-        should_raise: bool,
+    additional_properties: bool,
+    should_raise: bool,
 ) -> None:
     try:
         parse_type.resolve(

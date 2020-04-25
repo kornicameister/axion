@@ -90,8 +90,8 @@ def test_signature_empty_no_oas_cookies(caplog: logging.LogCaptureFixture) -> No
     ),
 )
 def test_signature_set_no_oas_cookies(
-        the_type: t.Type[t.Any],
-        caplog: logging.LogCaptureFixture,
+    the_type: t.Type[t.Any],
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...
@@ -144,8 +144,8 @@ def test_signature_empty_oas_cookies(caplog: logging.LogCaptureFixture) -> None:
     ),
 )
 def test_signature_set_oas_cookies(
-        the_type: t.Type[t.Any],
-        caplog: logging.LogCaptureFixture,
+    the_type: t.Type[t.Any],
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...
@@ -205,8 +205,8 @@ def test_signature_set_oas_cookies(
     ),
 )
 def test_signature_set_bad_oas_cookies_type_mismatch(
-        the_type: t.Type[t.Any],
-        expected_errors: t.List[t.Tuple[str, str]],
+    the_type: t.Type[t.Any],
+    expected_errors: t.List[t.Tuple[str, str]],
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...
@@ -238,8 +238,8 @@ def test_signature_set_bad_oas_cookies_type_mismatch(
 )
 @pytest.mark.parametrize('op_id', ('no_cookies_op', 'cookies_op'))
 def test_invalid_cookies_type(
-        op_id: str,
-        the_type: t.Type[t.Any],
+    op_id: str,
+    the_type: t.Type[t.Any],
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...
@@ -267,8 +267,8 @@ def test_invalid_cookies_type(
     ),
 )
 def test_valid_cookies_any_type(
-        the_type: t.Type[t.Any],
-        caplog: logging.LogCaptureFixture,
+    the_type: t.Type[t.Any],
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...
@@ -311,8 +311,8 @@ def test_valid_cookies_any_type(
     ),
 )
 def test_signature_set_bad_oas_cookies_unknown(
-        the_type: t.Type[t.Any],
-        extra_param: str,
+    the_type: t.Type[t.Any],
+    extra_param: str,
 ) -> None:
     async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
         ...

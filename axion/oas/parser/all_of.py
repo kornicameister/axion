@@ -12,9 +12,9 @@ __all__ = ('merge', )
 
 
 def merge(
-        oas_type: str,
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    oas_type: str,
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     cls_to_fn = {
         'string': _string,
@@ -31,8 +31,8 @@ def merge(
 
 
 def _any(
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     return {
         'default': _get_value('default', a.get('default'), b.get('default')),
@@ -45,8 +45,8 @@ def _any(
 
 
 def _boolean(
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     return {
         'type': 'boolean',
@@ -60,8 +60,8 @@ def _boolean(
 
 
 def _string(
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     return {
         'type': 'string',
@@ -79,9 +79,9 @@ def _string(
 
 
 def _number(
-        oas_type: str,
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    oas_type: str,
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     return {
         'type': oas_type,
@@ -109,8 +109,8 @@ def _number(
 
 
 def _array(
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     return {
         'type': 'array',
@@ -132,8 +132,8 @@ def _array(
 
 
 def _object(
-        a: t.Dict[str, t.Any],
-        b: t.Dict[str, t.Any],
+    a: t.Dict[str, t.Any],
+    b: t.Dict[str, t.Any],
 ) -> t.Dict[str, t.Any]:
     new_properties = _merge_object_properties(
         a=a.get('properties'),
@@ -174,8 +174,8 @@ def _object(
 
 
 def _merge_discriminator(
-        a: t.Optional[t.Dict[str, t.Any]] = None,
-        b: t.Optional[t.Dict[str, t.Any]] = None,
+    a: t.Optional[t.Dict[str, t.Any]] = None,
+    b: t.Optional[t.Dict[str, t.Any]] = None,
 ) -> t.Optional[t.Dict[str, t.Any]]:
     if a is not None and b is not None:
         property_name = _get_value(
@@ -307,9 +307,9 @@ def _merge_object_properties(
 
 
 def _get_value(
-        oas_property: str,
-        a: t.Optional[V],
-        b: t.Optional[V],
+    oas_property: str,
+    a: t.Optional[V],
+    b: t.Optional[V],
 ) -> t.Optional[V]:
     if a is None and b is None:
         return None

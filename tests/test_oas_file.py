@@ -14,8 +14,8 @@ from axion.oas.parser import type as parse_type
     ),
 )
 def test_oas_file(
-        str_format: str,
-        expected_cls: t.Type[t.Any],
+    str_format: str,
+    expected_cls: t.Type[t.Any],
 ) -> None:
     assert isinstance(
         parse_type.resolve(

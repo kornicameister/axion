@@ -152,10 +152,10 @@ def test_header_param_invalid_name(param_name: str) -> None:
     (('string', str), ('number', float), ('integer', int), ('boolean', bool)),
 )
 def test_param_python_type(
-        oas_type: str,
-        param_in: t.Type[t.Any],
-        param_required: bool,
-        python_type: t.Type[t.Any],
+    oas_type: str,
+    param_in: t.Type[t.Any],
+    param_required: bool,
+    python_type: t.Type[t.Any],
 ) -> None:
     param = parser._resolve_parameter(
         components={},

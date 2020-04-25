@@ -159,8 +159,8 @@ def test_is_none_type(the_type: t.Any, expected_result: bool) -> None:
     reason='https://bugs.python.org/issue39308',
 )
 def test_literal_types(
-        the_type: t.Any,
-        expected_types: t.Sequence[t.Any],
+    the_type: t.Any,
+    expected_types: t.Sequence[t.Any],
 ) -> None:
     actual_types = axion_types.literal_types(the_type)
     assert expected_types == actual_types

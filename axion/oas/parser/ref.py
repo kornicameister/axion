@@ -6,8 +6,8 @@ __all__ = ('resolve', )
 
 
 def resolve(
-        components: t.Dict[str, t.Any],
-        ref: t.Optional[str] = None,
+    components: t.Dict[str, t.Any],
+    ref: t.Optional[str] = None,
 ) -> t.Dict[str, t.Any]:
     raw_schema: t.Dict[str, t.Any] = {}
     while ref is not None:

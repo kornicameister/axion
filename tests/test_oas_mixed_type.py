@@ -64,9 +64,9 @@ from axion.oas.parser import type as parse_type
     # yapf: enable
 )
 def test_any_one_of(
-        mix_key: str,
-        in_mix: t.List[t.Dict[str, t.Any]],
-        expected_schemas: t.List[t.Tuple[bool, t.Type[model.OASType[t.Any]]]],
+    mix_key: str,
+    in_mix: t.List[t.Dict[str, t.Any]],
+    expected_schemas: t.List[t.Tuple[bool, t.Type[model.OASType[t.Any]]]],
 ) -> None:
     mix_type = parse_type.resolve(
         components={},
@@ -147,9 +147,9 @@ def test_any_of_is_any() -> None:
     ),
 )
 def test_one_any_of_discriminator(
-        mix_key: str,
-        weapon_discriminator: t.Optional[t.Dict[str, t.Any]],
-        mix_discriminator: t.Optional[t.Dict[str, t.Any]],
+    mix_key: str,
+    weapon_discriminator: t.Optional[t.Dict[str, t.Any]],
+    mix_discriminator: t.Optional[t.Dict[str, t.Any]],
 ) -> None:
     mix_type = parse_type.resolve(
         components={
@@ -264,9 +264,9 @@ def test_all_of_more_than_one_type() -> None:
     ),
 )
 def test_all_of_conflict_in_value(
-        oas_type: str,
-        prop_key: str,
-        prop_value: bool,
+    oas_type: str,
+    prop_key: str,
+    prop_value: bool,
 ) -> None:
     with pytest.raises(exceptions.OASConflict) as err:
         parse_type.resolve(
@@ -674,9 +674,9 @@ def test_all_of_object_ref_properties() -> None:
     ),
 )
 def test_all_of_object_additional_properties(
-        should_raise: bool,
-        ap_1: t.Optional[t.Union[bool, t.Dict[str, t.Any]]],
-        ap_2: t.Optional[t.Union[bool, t.Dict[str, t.Any]]],
+    should_raise: bool,
+    ap_1: t.Optional[t.Union[bool, t.Dict[str, t.Any]]],
+    ap_2: t.Optional[t.Union[bool, t.Dict[str, t.Any]]],
 ) -> None:
     def _do() -> t.Any:
         return parse_type.resolve(
@@ -910,9 +910,9 @@ def test_all_of_object_additional_properties(
     ),
 )
 def test_all_of_object_discriminator_prop_name(
-        p_1: t.Optional[t.Dict[str, t.Any]],
-        p_2: t.Optional[t.Dict[str, t.Any]],
-        should_raise: bool,
+    p_1: t.Optional[t.Dict[str, t.Any]],
+    p_2: t.Optional[t.Dict[str, t.Any]],
+    should_raise: bool,
 ) -> None:
     def _do() -> t.Any:
         return parse_type.resolve(
@@ -1071,9 +1071,9 @@ def test_all_of_object_discriminator_prop_name(
     ),
 )
 def test_all_of_object_discriminator_mapping(
-        m_1: t.Optional[t.Dict[str, t.Any]],
-        m_2: t.Optional[t.Dict[str, t.Any]],
-        should_raise: bool,
+    m_1: t.Optional[t.Dict[str, t.Any]],
+    m_2: t.Optional[t.Dict[str, t.Any]],
+    should_raise: bool,
 ) -> None:
     def _do() -> t.Any:
         return parse_type.resolve(

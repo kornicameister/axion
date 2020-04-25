@@ -139,8 +139,8 @@ def test_no_request_body_signature_set(caplog: logging.LogCaptureFixture) -> Non
 
 @pytest.mark.parametrize('required', (True, False))
 def test_request_body_empty_signature(
-        required: bool,
-        caplog: logging.LogCaptureFixture,
+    required: bool,
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     async def foo() -> R:
         ...
@@ -174,7 +174,7 @@ def test_request_body_empty_signature(
 
 
 def _make_operation(
-        request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
+    request_body_def: t.Optional[t.Dict[str, t.Any]] = None,
 ) -> model.OASOperation:
     return list(
         parser._resolve_operations(

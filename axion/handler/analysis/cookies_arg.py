@@ -104,7 +104,7 @@ def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMap
 
 
 def _signature_set_oas_gone(
-        cookies_arg: t.Any,
+    cookies_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
     logger.opt(
         record=True,
@@ -119,8 +119,8 @@ def _signature_set_oas_gone(
 
 
 def _signature_set_oas_set(
-        parameters: t.Sequence[oas.OASParameter],
-        cookies_arg: t.Any,
+    parameters: t.Sequence[oas.OASParameter],
+    cookies_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
     logger.opt(record=True).debug('"cookies" found both in signature and operation')
 

@@ -136,8 +136,8 @@ else:
     reason='https://bugs.python.org/issue39308',
 )
 def test_get_type_repr(
-        the_type: t.Optional[t.Type[t.Any]],
-        expected_type_repr: str,
+    the_type: t.Optional[t.Type[t.Any]],
+    expected_type_repr: str,
 ) -> None:
     if the_type is None:
         with pytest.raises(AssertionError):

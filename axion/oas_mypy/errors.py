@@ -28,9 +28,9 @@ ERROR_INVALID_OAS_VALUE: Final[ErrorCode] = ErrorCode(
 
 
 def not_oas_handler(
-        msg: str,
-        ctx: FunctionContext,
-        line_number: Optional[int] = None,
+    msg: str,
+    ctx: FunctionContext,
+    line_number: Optional[int] = None,
 ) -> Type:
     context = ctx.context
     context.line = line_number or context.line
@@ -45,9 +45,9 @@ def not_oas_handler(
 
 
 def invalid_argument(
-        msg: str,
-        ctx: FunctionContext,
-        line_number: Optional[int] = None,
+    msg: str,
+    ctx: FunctionContext,
+    line_number: Optional[int] = None,
 ) -> Type:
     context = ctx.context
     context.line = line_number or context.line
@@ -62,9 +62,9 @@ def invalid_argument(
 
 
 def invalid_default_value(
-        msg: str,
-        ctx: FunctionContext,
-        line_number: Optional[int] = None,
+    msg: str,
+    ctx: FunctionContext,
+    line_number: Optional[int] = None,
 ) -> Type:
     context = ctx.context
     context.line = line_number or context.line
@@ -79,9 +79,9 @@ def invalid_default_value(
 
 
 def default_value_not_in_oas(
-        msg: str,
-        ctx: FunctionContext,
-        line_number: Optional[int] = None,
+    msg: str,
+    ctx: FunctionContext,
+    line_number: Optional[int] = None,
 ) -> None:
     context = ctx.context
     context.line = line_number or context.line

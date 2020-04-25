@@ -29,10 +29,10 @@ class Axion:
     )
 
     def __init__(
-            self,
-            root_dir: Path,
-            plugin_id: Union[PluginId, str],
-            configuration: Configuration,
+        self,
+        root_dir: Path,
+        plugin_id: Union[PluginId, str],
+        configuration: Configuration,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
@@ -40,11 +40,11 @@ class Axion:
         self.plugged = _plugins()[PluginId(plugin_id)](configuration)
 
     def add_api(
-            self,
-            spec_location: Path,
-            server_base_path: Optional[str] = None,
-            *_: None,
-            **kwargs: Any,
+        self,
+        spec_location: Path,
+        server_base_path: Optional[str] = None,
+        *_: None,
+        **kwargs: Any,
     ) -> None:
 
         if not spec_location.is_absolute():
