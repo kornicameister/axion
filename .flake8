@@ -2,7 +2,7 @@
 statistics = True
 show-source = True
 
-select = E,F,W,C,I,B,S,T,Q
+select = E,F,W,C,I,B,S,T,Q,N400
 ignore = S101,S608
 per-file-ignores =
     tests/test_init_import.py:F401
