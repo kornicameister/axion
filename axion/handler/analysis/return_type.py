@@ -90,7 +90,7 @@ def _analyze_headers(
         elif not types.is_dict_like(headers):
             return {
                 exceptions.Error(
-                    param_name=f'return.headers',
+                    param_name='return.headers',
                     reason=exceptions.IncorrectTypeReason(
                         expected=model.COOKIES_HEADERS_TYPE,
                         actual=headers,
@@ -115,7 +115,7 @@ def _analyze_cookies(
         elif not types.is_dict_like(cookies):
             return {
                 exceptions.Error(
-                    param_name=f'return.cookies',
+                    param_name='return.cookies',
                     reason=exceptions.IncorrectTypeReason(
                         expected=model.COOKIES_HEADERS_TYPE,
                         actual=cookies,

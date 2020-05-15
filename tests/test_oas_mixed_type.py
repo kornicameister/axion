@@ -768,17 +768,17 @@ def test_all_of_object_additional_properties(
                 raise AssertionError('This should not happen')
         elif isinstance(ap_1, bool) and isinstance(ap_2, dict):
             assert (
-                f'additionalProperties value differs between mixed schemas. '
-                f'a=bool != b=dict. When using "anyOf,oneOf,allOf" values in '
-                f'same location must be equal. '
-                f'Either make it so or remove one of the duplicating properties.'
+                'additionalProperties value differs between mixed schemas. '
+                'a=bool != b=dict. When using "anyOf,oneOf,allOf" values in '
+                'same location must be equal. '
+                'Either make it so or remove one of the duplicating properties.'
             ) == str(err.value)
         elif isinstance(ap_1, dict) and isinstance(ap_2, bool):
             assert (
-                f'additionalProperties value differs between mixed schemas. '
-                f'a=dict != b=bool. When using "anyOf,oneOf,allOf" values in '
-                f'same location must be equal. '
-                f'Either make it so or remove one of the duplicating properties.'
+                'additionalProperties value differs between mixed schemas. '
+                'a=dict != b=bool. When using "anyOf,oneOf,allOf" values in '
+                'same location must be equal. '
+                'Either make it so or remove one of the duplicating properties.'
             ) == str(err.value)
         else:
             raise AssertionError('This should not happen')

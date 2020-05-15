@@ -43,7 +43,7 @@ def is_new_type(tt: t.Type[t.Any]) -> bool:
 
 @functools.lru_cache(maxsize=30, typed=True)
 def is_none_type(tt: t.Type[t.Any]) -> bool:
-    return tt is type(None)  # noqa
+    return tt is type(None)
 
 
 @functools.lru_cache(maxsize=30, typed=True)
