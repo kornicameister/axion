@@ -78,24 +78,6 @@ def test_is_dict_like(the_type: t.Any, expected_result: bool) -> None:
 @pytest.mark.parametrize(
     'the_type,expected_result',
     (
-        (int, False),
-        (str, False),
-        (t.NewType('INT', int), True),
-        (t.NewType('INT', str), True),
-        (t.Mapping[str, str], False),
-        (t.NewType('F', t.Mapping[str, str]), True),  # type: ignore
-        (te.TypedDict('X', x=int), False),  # type: ignore
-    ),
-    ids=lambda x: repr(x),
-)
-def test_is_new_type(the_type: t.Any, expected_result: bool) -> None:
-    actual_result = axion_types.is_new_type(the_type)
-    assert expected_result == actual_result
-
-
-@pytest.mark.parametrize(
-    'the_type,expected_result',
-    (
         (None, False),
         (type(None), True),
         (int, False),
