@@ -381,7 +381,7 @@ def _resolve_oas_string(
         if min_length is not None and max_length is not None:
             if min_length > max_length:
                 raise exceptions.OASInvalidConstraints(
-                    f'type=string cannot have max_length < min_length. ',
+                    'type=string cannot have max_length < min_length. ',
                     f'min_length={min_length} '
                     f'max_length={max_length}.',
                 )
