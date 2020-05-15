@@ -10,7 +10,7 @@ aiohttp==3.6.2
 
 # typings
 typing-extensions==3.7.4.1 ; python_version < '3.8'
-typing_inspect==0.5.0
+typing_inspect==0.6.0
 
 # itertools
 more_itertools==8.2.0
