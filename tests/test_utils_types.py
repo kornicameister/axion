@@ -157,8 +157,6 @@ def test_literal_types_not_literal_input() -> None:
     'the_type',
     (
         te.Literal[te.TypedDict('X', x=int)],  # type: ignore
-        te.Literal[[1, 2]],
-        te.Literal[{1, 2}],
     ),
 )
 def test_literal_types_not_resolvable_type(the_type: t.Any) -> None:
