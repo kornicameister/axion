@@ -34,11 +34,10 @@ def caplog(caplog: _logging.LogCaptureFixture) -> _logging.LogCaptureFixture:
             logging.getLogger(record.name).handle(record)
 
     logger.enable('axion')
-
-    logger.add(
+    handler_id = logger.add(
         LoguruHandler(),
         format='{message}',
     )
     yield caplog
-
+    logger.remove(handler_id)
     logger.disable('axion')

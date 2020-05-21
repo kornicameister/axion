@@ -24,8 +24,8 @@ from axion import plugin
     ),
 )
 def test_missing_plugin_meta(
-        meta_dict: t.Dict[str, str],
-        expected_err: str,
+    meta_dict: t.Dict[str, str],
+    expected_err: str,
 ) -> None:
     with pytest.raises(plugin.InvalidPluginDefinition) as err:
 

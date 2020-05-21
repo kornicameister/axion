@@ -35,8 +35,8 @@ async def async_f() -> response.Response:
     ),
 )
 def test_make_handler_bad_cases(
-        operation_id: str,
-        error_msg: str,
+    operation_id: str,
+    error_msg: str,
 ) -> None:
     operation = list(
         parser._resolve_operations(
@@ -100,10 +100,10 @@ def test_empty_handler_signature(caplog: logging.LogCaptureFixture) -> None:
 
 def test_not_empty_signature(caplog: logging.LogCaptureFixture) -> None:
     async def foo(
-            name: str,
-            foo: str,
-            bar: str,
-            lorem_ipsum: t.List[str],
+        name: str,
+        foo: str,
+        bar: str,
+        lorem_ipsum: t.List[str],
     ) -> response.Response:
         ...
 

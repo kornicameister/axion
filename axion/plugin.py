@@ -12,12 +12,12 @@ class PluginMeta(abc.ABCMeta):
     all_known_plugins: t.ClassVar[t.Dict['PluginId', t.Type['Plugin']]] = {}
 
     def __new__(
-            cls,
-            name: t.Any,
-            bases: t.Any,
-            dct: t.Any,
-            id: t.Optional[str] = None,
-            version: t.Optional[str] = None,
+        cls,
+        name: t.Any,
+        bases: t.Any,
+        dct: t.Any,
+        id: t.Optional[str] = None,
+        version: t.Optional[str] = None,
     ) -> t.Any:
         p = super().__new__(cls, name, bases, dct)
 
@@ -106,11 +106,11 @@ class Plugin(metaclass=PluginMeta):
 
     @abc.abstractmethod
     def add_api(
-            self,
-            spec: oas.OASSpecification,
-            *_: None,
-            base_path: t.Optional[str] = None,
-            **kwargs: t.Any,
+        self,
+        spec: oas.OASSpecification,
+        *_: None,
+        base_path: t.Optional[str] = None,
+        **kwargs: t.Any,
     ) -> None:
         raise NotImplementedError()
 

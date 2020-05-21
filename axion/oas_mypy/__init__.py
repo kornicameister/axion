@@ -65,8 +65,8 @@ class OASPlugin(Plugin):
         self._specifications = _load_specs(list(self._cfg.oas_dirs))
 
     def get_function_hook(
-            self,
-            fullname: str,
+        self,
+        fullname: str,
     ) -> Optional[Callable[[FunctionContext], Type]]:
         if AXION_CTR == fullname:
             return app_ctor_analyzer.hook
@@ -78,8 +78,8 @@ class OASPlugin(Plugin):
         return super().get_function_hook(fullname)
 
     def get_method_hook(
-            self,
-            fullname: str,
+        self,
+        fullname: str,
     ) -> Optional[Callable[[MethodContext], Type]]:
         # TODO(kornicameister) add_api customizations
         # enforcing settings middlewares for aiohttp plugin maybe
@@ -87,8 +87,8 @@ class OASPlugin(Plugin):
 
 
 def _oas_handler_analyzer(
-        specifications: Mapping[Path, oas_model.OASSpecification],
-        f_ctx: FunctionContext,
+    specifications: Mapping[Path, oas_model.OASSpecification],
+    f_ctx: FunctionContext,
 ) -> Type:
     # TODO(kornicameister) make `OASSpectification.operations` a mapping
     # to allow easy access
@@ -217,8 +217,8 @@ def _oas_handler_analyzer(
 
 
 def _get_default_value(
-        arg_name: str,
-        oas_handler: CallableType,
+    arg_name: str,
+    oas_handler: CallableType,
 ) -> HandlerArgDefaultValue:
     assert oas_handler.definition
     assert isinstance(oas_handler.definition, FuncDef)
@@ -251,10 +251,10 @@ def _get_default_value(
 
 
 def transform_parameter_to_type(
-        param: oas.OASParameter,
-        handler_arg_type: ProperType,
-        handler_arg_default_value: HandlerArgDefaultValue,
-        ctx: FunctionContext,
+    param: oas.OASParameter,
+    handler_arg_type: ProperType,
+    handler_arg_default_value: HandlerArgDefaultValue,
+    ctx: FunctionContext,
 ) -> Type:
     oas_is_required = param.required
     handler_has_default = (handler_arg_default_value is not _ARG_NO_DEFAULT_VALUE_MARKER)
@@ -292,9 +292,9 @@ def transform_parameter_to_type(
 
 
 def transform_oas_type(
-        oas_type: oas_model.OASType[Any],
-        handler_type: ProperType,
-        ctx: FunctionContext,
+    oas_type: oas_model.OASType[Any],
+    handler_type: ProperType,
+    ctx: FunctionContext,
 ) -> Type:
     m_type: Optional[Type] = None
     union_members: List[Type] = []
@@ -343,9 +343,9 @@ def transform_oas_type(
 
 
 def transform_oas_object_type(
-        oas_type: oas_model.OASObjectType,
-        handler_arg_type: ProperType,
-        ctx: FunctionContext,
+    oas_type: oas_model.OASObjectType,
+    handler_arg_type: ProperType,
+    ctx: FunctionContext,
 ) -> Type:
     # NOTE(kornicameister) -> should land in documentation
     #
@@ -408,9 +408,9 @@ def transform_oas_object_type(
 
 
 def get_typed_dict_type(
-        ctx: FunctionContext,
-        handler_arg_type: ProperType,
-        oas_type: oas_model.OASObjectType,
+    ctx: FunctionContext,
+    handler_arg_type: ProperType,
+    oas_type: oas_model.OASObjectType,
 ) -> TypedDictType:
 
     if isinstance(handler_arg_type, UnionType):
@@ -436,9 +436,9 @@ def get_typed_dict_type(
 
 
 def get_generic_type_vt(
-        ctx: FunctionContext,
-        handler_arg_type: ProperType,
-        oas_type: oas_model.OASObjectType,
+    ctx: FunctionContext,
+    handler_arg_type: ProperType,
+    oas_type: oas_model.OASObjectType,
 ) -> Type:
     property_types = {
         transform_oas_type(
@@ -475,14 +475,14 @@ def _get_oas_operation(
 
 
 def _oas_handler_msg(
-        msg_fn: Callable[[
-            str,
-            Any,
-            DefaultNamedArg(Optional[ErrorCode], 'code'),
-        ], None],
-        f_ctx: FunctionContext,
-        msg: Tuple[Optional[ErrorCode], str],
-        line_number: Optional[int] = None,
+    msg_fn: Callable[[
+        str,
+        Any,
+        DefaultNamedArg(Optional[ErrorCode], 'code'),
+    ], None],
+    f_ctx: FunctionContext,
+    msg: Tuple[Optional[ErrorCode], str],
+    line_number: Optional[int] = None,
 ) -> Type:
     ctx = f_ctx.context
     ctx.line = line_number or ctx.line

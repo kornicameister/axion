@@ -9,8 +9,8 @@ from axion.handler import model
 
 
 def analyze(
-        request_body: t.Optional[oas.OASRequestBody],
-        body_arg: t.Optional[t.Type[t.Any]],
+    request_body: t.Optional[oas.OASRequestBody],
+    body_arg: t.Optional[t.Type[t.Any]],
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
     if body_arg is None:
         if request_body is None:
@@ -28,8 +28,8 @@ def analyze(
 
 
 def _analyze_signature_set_oas_set(
-        request_body: oas.OASRequestBody,
-        body_arg: t.Type[t.Any],
+    request_body: oas.OASRequestBody,
+    body_arg: t.Type[t.Any],
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
     logger.opt(
         lazy=True,

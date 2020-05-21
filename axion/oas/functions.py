@@ -24,8 +24,8 @@ DV = t.Union[int,
 
 @functools.lru_cache()
 def operation_filter_parameters(
-        operation: model.OASOperation,
-        *types: model.OASParameterLocation,
+    operation: model.OASOperation,
+    *types: model.OASParameterLocation,
 ) -> t.Sequence[model.OASParameter]:
     expected_types = tuple(
         param_type for param_in, param_type in _PARAM_IN_TO_CLS_MAP.items()

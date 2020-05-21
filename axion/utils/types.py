@@ -37,18 +37,13 @@ AnyCallable = t.Callable[..., t.Any]
 
 
 @functools.lru_cache(maxsize=30, typed=True)
-def is_new_type(tt: t.Type[t.Any]) -> bool:
-    return getattr(tt, '__supertype__', None) is not None
-
-
-@functools.lru_cache(maxsize=30, typed=True)
 def is_none_type(tt: t.Type[t.Any]) -> bool:
-    return tt is type(None)  # noqa
+    return tt is type(None)
 
 
 @functools.lru_cache(maxsize=30, typed=True)
 def is_any_type(tt: t.Any) -> bool:
-    if is_new_type(tt):
+    if ti.is_new_type(tt):
         return is_any_type(tt.__supertype__)
     return tt is t.Any
 
@@ -66,7 +61,7 @@ def is_dict_like(tt: t.Any) -> bool:
         maybe_mro = getattr(tt, '__mro__', None)
         maybe_origin = ti.get_origin(tt)
 
-    if is_new_type(tt):
+    if ti.is_new_type(tt):
         return is_dict_like(tt.__supertype__)
     elif maybe_origin:
         return issubclass(maybe_origin, DICT_LIKE_TYPES)
@@ -84,7 +79,7 @@ def literal_types(tt: t.Any) -> t.Iterable[PP]:
 def _literal_types(tt: t.Any) -> t.Iterable[PP]:
     if ti.is_literal_type(tt):
         return literal_types(tt)
-    elif is_new_type(tt):
+    elif ti.is_new_type(tt):
         return literal_types(tt.__supertype__)
     elif isinstance(tt, P_TYPES):
         return (type(tt), )

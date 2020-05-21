@@ -12,8 +12,8 @@ from axion.utils import types
 
 
 def analyze(
-        operation: oas.OASOperation,
-        signature: t.Dict[str, t.Any],
+    operation: oas.OASOperation,
+    signature: t.Dict[str, t.Any],
 ) -> t.Set[exceptions.Error]:
     if 'return' not in signature:
         logger.opt(
@@ -76,8 +76,8 @@ def analyze(
 
 
 def _analyze_headers(
-        operation: oas.OASOperation,
-        headers: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    headers: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
     if headers is not None:
         if types.is_any_type(headers):
@@ -90,7 +90,7 @@ def _analyze_headers(
         elif not types.is_dict_like(headers):
             return {
                 exceptions.Error(
-                    param_name=f'return.headers',
+                    param_name='return.headers',
                     reason=exceptions.IncorrectTypeReason(
                         expected=model.COOKIES_HEADERS_TYPE,
                         actual=headers,
@@ -101,8 +101,8 @@ def _analyze_headers(
 
 
 def _analyze_cookies(
-        operation: oas.OASOperation,
-        cookies: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    cookies: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
     if cookies is not None:
         if types.is_any_type(cookies):
@@ -115,7 +115,7 @@ def _analyze_cookies(
         elif not types.is_dict_like(cookies):
             return {
                 exceptions.Error(
-                    param_name=f'return.cookies',
+                    param_name='return.cookies',
                     reason=exceptions.IncorrectTypeReason(
                         expected=model.COOKIES_HEADERS_TYPE,
                         actual=cookies,
@@ -126,8 +126,8 @@ def _analyze_cookies(
 
 
 def _analyze_http_code(
-        operation: oas.OASOperation,
-        rt_http_code: t.Optional[t.Type[t.Any]],
+    operation: oas.OASOperation,
+    rt_http_code: t.Optional[t.Type[t.Any]],
 ) -> t.Set[exceptions.Error]:
 
     if rt_http_code is None:
@@ -167,7 +167,7 @@ def _analyze_http_code(
             }
         return set()
 
-    elif types.is_new_type(rt_http_code):
+    elif ti.is_new_type(rt_http_code):
         # not quite sure why user would like to alias that
         # but it is not a problem for axion as long `NewType` embedded type
         # is fine

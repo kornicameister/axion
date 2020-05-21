@@ -6,8 +6,8 @@ from axion.pipeline import validator
 
 class TestHttpCode:
     def test_always_true_default_repr(
-            self,
-            mocker: ptm.MockFixture,
+        self,
+        mocker: ptm.MockFixture,
     ) -> None:
 
         oas_op = mocker.stub()
@@ -22,8 +22,8 @@ class TestHttpCode:
             assert v({'http_code': http_code}) == http_code
 
     def test_true_if_code_matches(
-            self,
-            mocker: ptm.MockFixture,
+        self,
+        mocker: ptm.MockFixture,
     ) -> None:
         oas_op = mocker.stub()
         oas_op.id = mocker.ANY
@@ -38,8 +38,8 @@ class TestHttpCode:
             assert v({'http_code': http_code}) == http_code
 
     def test_fail_if_no_match(
-            self,
-            mocker: ptm.MockFixture,
+        self,
+        mocker: ptm.MockFixture,
     ) -> None:
         oas_op = mocker.stub()
         oas_op.id = op_id = mocker.ANY

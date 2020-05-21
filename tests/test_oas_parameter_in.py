@@ -17,8 +17,8 @@ from axion.oas import parser
     ),
 )
 def test_paramter_in(
-        param_in: t.Any,
-        param_loc: str,
+    param_in: t.Any,
+    param_loc: str,
 ) -> None:
     assert functions.parameter_in(
         parser._resolve_parameter(
