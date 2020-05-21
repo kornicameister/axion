@@ -167,7 +167,7 @@ def _analyze_http_code(
             }
         return set()
 
-    elif types.is_new_type(rt_http_code):
+    elif ti.is_new_type(rt_http_code):
         # not quite sure why user would like to alias that
         # but it is not a problem for axion as long `NewType` embedded type
         # is fine
