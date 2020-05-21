@@ -54,9 +54,9 @@ def analyze(
 
         if signature:
             logger.opt(record=True).error(
-                'Unconsumed arguments [{args}] detected in {op_id} handler signature',
+                'Unconsumed arguments [{f_args}] detected in {op_id} handler signature',
                 op_id=operation.id,
-                args=', '.join(arg_key for arg_key in signature.keys()),
+                f_args=', '.join(arg_key for arg_key in signature.keys()),
             )
             errors.update(
                 exceptions.Error(
