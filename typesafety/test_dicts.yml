@@ -149,7 +149,7 @@
       extras: t.Optional[ExtrasQuery]=None,
     ) -> response.Response:
       return {}
-- case: dict_different_prop_types_ok
+- case: dict_different_prop_types_ok_any
   oas_spec: |
     openapi: 3.0.1
     info:
@@ -190,6 +190,49 @@
     @oas_endpoint
     async def dict_different_prop_types_ok(
       filters: t.Dict[str, t.Any],  # must be VT=t.Any
+    ) -> response.Response:
+      return {}
+- case: dict_different_prop_types_ok_exact
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_different_prop_types_ok
+          parameters:
+            - in: query
+              name: filters
+              required: True
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: number
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_different_prop_types_ok(
+      filters: t.Dict[str, t.Union[str, float]],
     ) -> response.Response:
       return {}
 - case: dict_different_prop_types_fail
