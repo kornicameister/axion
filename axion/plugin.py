@@ -38,7 +38,7 @@ class PluginMeta(abc.ABCMeta):
 
         def _is_axion_configuration(v: t.Any) -> bool:
             try:
-                return v[0] == 'configuration' or issubclass(v[1], conf.Configuration)
+                return issubclass(v[1], conf.Configuration)
             except TypeError:
                 return False
 
@@ -50,8 +50,7 @@ class PluginMeta(abc.ABCMeta):
             if not has_conf:
                 raise InvalidPluginDefinition(
                     f'Plugin with ID={p_id} has incorrect __init__ signature. '
-                    f'It should accept an argument either '
-                    f'of {repr(conf.Configuration)} type or called "configuration"',
+                    f'It should accept an argument of {repr(conf.Configuration)} type',
                 )
 
         plugin_name = str(name)
