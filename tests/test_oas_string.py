@@ -7,6 +7,10 @@ from axion.oas import model
 from axion.oas.parser import type as parse_type
 
 
+def test_oas_type() -> None:
+    parse_type.resolve({}, {'type': 'string'}).oas_type == 'string'
+
+
 def test_correct_python_type() -> None:
     oas_string = parse_type.resolve(
         {},
@@ -45,8 +49,8 @@ def test_example_wrong_type(example: t.Any) -> None:
 
 @pytest.mark.parametrize(('min_length', 'max_length'), [(2, 1), (10, 1)])
 def test_invalid_min_max_length(
-        min_length: int,
-        max_length: int,
+    min_length: int,
+    max_length: int,
 ) -> None:
     with pytest.raises(exceptions.OASInvalidConstraints):
         parse_type.resolve(
@@ -67,9 +71,9 @@ def test_invalid_min_max_length(
     ),
 )
 def test_pattern(
-        pattern: str,
-        should_match: t.List[str],
-        should_not_match: t.List[str],
+    pattern: str,
+    should_match: t.List[str],
+    should_not_match: t.List[str],
 ) -> None:
     oas_string = parse_type.resolve(
         {},

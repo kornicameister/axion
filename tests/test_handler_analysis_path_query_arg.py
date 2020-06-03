@@ -61,9 +61,9 @@ operation = next(
 
 def test_signature_mismatch_missing() -> None:
     async def foo(
-            limit: t.Optional[int],
-            page: t.Optional[float],
-            include_extra: t.Optional[bool],
+        limit: t.Optional[int],
+        page: t.Optional[float],
+        include_extra: t.Optional[bool],
     ) -> response.Response:
         ...
 
@@ -98,10 +98,10 @@ def test_signature_all_missing() -> None:
 
 def test_signature_mismatch_bad_type() -> None:
     async def foo(
-            id: bool,
-            limit: t.Optional[int],
-            page: t.Optional[float],
-            include_extra: t.Optional[bool],
+        id: bool,
+        limit: t.Optional[int],
+        page: t.Optional[float],
+        include_extra: t.Optional[bool],
     ) -> response.Response:
         ...
 
@@ -119,10 +119,10 @@ def test_signature_mismatch_bad_type() -> None:
 
 def test_signature_all_bad_type() -> None:
     async def foo(
-            id: float,
-            limit: t.Optional[t.Union[int, float]],
-            page: t.Optional[t.AbstractSet[bool]],
-            include_extra: t.Union[int, str],
+        id: float,
+        limit: t.Optional[t.Union[float, int]],
+        page: t.Optional[t.AbstractSet[bool]],
+        include_extra: t.Union[int, str],
     ) -> response.Response:
         ...
 
@@ -162,10 +162,10 @@ def test_signature_all_bad_type() -> None:
 
 def test_signature_match() -> None:
     async def test_handler(
-            id: str,
-            limit: t.Optional[int],
-            page: t.Optional[float],
-            include_extra: t.Optional[bool],
+        id: str,
+        limit: t.Optional[int],
+        page: t.Optional[float],
+        include_extra: t.Optional[bool],
     ) -> response.Response:
         ...
 

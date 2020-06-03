@@ -21,8 +21,8 @@ info: {}
 
 
 def test_spec_load_from_path(
-        spec_path: Path,
-        mocker: ptm.MockFixture,
+    spec_path: Path,
+    mocker: ptm.MockFixture,
 ) -> None:
     parse_spec = mocker.spy(parser, 'parse_spec')
     assert loader.load_spec(spec_path) is not None

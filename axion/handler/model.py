@@ -97,8 +97,8 @@ class Handler(t.Generic[F]):
     )
 
     def __post_init__(
-            self,
-            param_mapping: ParamMapping,
+        self,
+        param_mapping: ParamMapping,
     ) -> None:
         def _params(param_in: oas.OASParameterLocation) -> t.Mapping[str, str]:
             v: t.Mapping[str, str] = md.CIMultiDict({

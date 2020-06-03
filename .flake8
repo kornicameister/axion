@@ -2,12 +2,15 @@
 statistics = True
 show-source = True
 
-select = E,F,W,C,I,B,S,T,Q
+select = E,F,W,C,I,B,S,T,Q,N400
 ignore = S101,S608
+extend-ignore = F821,E721
 per-file-ignores =
     tests/test_init_import.py:F401
     tests/conftest.py:S311
     axion/handler/__init__.py:F811
+builtins =
+    _,
 
 import-order-style=appnexus
 application-package-names=axion,tests
@@ -18,7 +21,6 @@ hang-closing = false
 max-line-length = 90
 inline-quotes = single
 
-disable-noqa = True
 exclude =
     .git,
     __pycache__,

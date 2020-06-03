@@ -44,12 +44,12 @@ class AioHttpPlugin(
         self.api_base_paths = {}  # type: t.Dict[str, web.Application]
 
     def add_api(
-            self,
-            spec: oas.OASSpecification,
-            base_path: t.Optional[str] = None,
-            *_: None,
-            middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
-            **kwargs: t.Any,
+        self,
+        spec: oas.OASSpecification,
+        base_path: t.Optional[str] = None,
+        *_: None,
+        middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
+        **kwargs: t.Any,
     ) -> None:
         base_path = base_path or _get_base_path(spec.servers)
 
@@ -88,8 +88,8 @@ class OverlappingBasePath(ValueError):
 
 
 def _apply_specification(
-        for_app: web.Application,
-        spec: oas.OASSpecification,
+    for_app: web.Application,
+    spec: oas.OASSpecification,
 ) -> None:
 
     for op in spec.operations:

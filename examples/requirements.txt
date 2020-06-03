@@ -1,0 +1,2 @@
+-e ../
+-r ../requirements/mypy.txt

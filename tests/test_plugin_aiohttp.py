@@ -16,10 +16,10 @@ from axion.plugins import _aiohttp as app
 @pytest.mark.parametrize('server_base_path', ('/', '/test'))
 @pytest.mark.parametrize('add_api_base_path', ('/thor', '/iron_man', None))
 def test_add_api_single_server(
-        server_base_path: str,
-        add_api_base_path: t.Optional[str],
-        mocker: ptm.MockFixture,
-        tmp_path: Path,
+    server_base_path: str,
+    add_api_base_path: t.Optional[str],
+    mocker: ptm.MockFixture,
+    tmp_path: Path,
 ) -> None:
     loaded_spec = mocker.stub()
     loaded_spec.servers = [model.OASServer(
@@ -61,8 +61,8 @@ def test_add_api_single_server(
 
 
 def test_add_api_multiple_servers(
-        mocker: ptm.MockFixture,
-        caplog: _logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
+    caplog: _logging.LogCaptureFixture,
 ) -> None:
     loaded_spec = mocker.stub()
     loaded_spec.servers = [
@@ -101,8 +101,8 @@ def test_add_api_multiple_servers(
     ('/', '/v1', '/api'),
 )
 def test_app_add_api_duplicated_base_path(
-        server_url: str,
-        mocker: ptm.MockFixture,
+    server_url: str,
+    mocker: ptm.MockFixture,
 ) -> None:
     spec_one = mocker.stub()
     spec_one.servers = [model.OASServer(url=server_url, variables={})]
@@ -160,9 +160,9 @@ def test_app_add_api_duplicated_base_path(
     ),
 )
 def test_app_add_api_overlapping_base_paths(
-        server_url: str,
-        overlapping_server_url: str,
-        mocker: ptm.MockFixture,
+    server_url: str,
+    overlapping_server_url: str,
+    mocker: ptm.MockFixture,
 ) -> None:
     spec_one = mocker.stub()
     spec_one.servers = [model.OASServer(url=server_url, variables={})]
@@ -232,8 +232,8 @@ def test_app_add_with_custom_base_path(mocker: ptm.MockFixture) -> None:
 
 
 def test_app_add_api_different_base_path(
-        mocker: ptm.MockFixture,
-        tmp_path: Path,
+    mocker: ptm.MockFixture,
+    tmp_path: Path,
 ) -> None:
     spec_one = mocker.stub()
     spec_one.servers = [model.OASServer(url='/v1', variables={})]
@@ -288,8 +288,8 @@ def test_app_add_api_different_base_path(
 
 
 def test_apply_specification_no_subapp(
-        spec_path: Path,
-        mocker: ptm.MockFixture,
+    spec_path: Path,
+    mocker: ptm.MockFixture,
 ) -> None:
     the_spec = loader.load_spec(spec_path)
     the_app = app.AioHttpPlugin(configuration=mocker.ANY)
@@ -309,8 +309,8 @@ def test_apply_specification_no_subapp(
 
 
 def test_apply_specification_subapp(
-        spec_path: Path,
-        mocker: ptm.MockFixture,
+    spec_path: Path,
+    mocker: ptm.MockFixture,
 ) -> None:
     the_spec = loader.load_spec(spec_path)
     the_app = app.AioHttpPlugin(configuration=mocker.ANY)
@@ -370,9 +370,9 @@ def test_apply_specification_subapp(
     ),
 ))
 def test_app_get_base_path(
-        url: str,
-        variables: t.Dict[str, str],
-        expected_base_path: str,
+    url: str,
+    variables: t.Dict[str, str],
+    expected_base_path: str,
 ) -> None:
     assert expected_base_path == app._get_base_path(
         servers=[model.OASServer(url=url, variables=variables)],

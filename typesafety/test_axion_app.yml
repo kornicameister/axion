@@ -1,0 +1,57 @@
+---
+- case: axion_init_aiohttp
+  main: |
+    from pathlib import Path
+    from axion import Axion, Configuration
+
+    Axion(
+      Path.cwd(),
+      'aiohttp',
+      configuration=Configuration(),
+    )
+- case: axion_unkown_plugin
+  main: |
+    from pathlib import Path
+    from axion import Axion, Configuration
+
+    Axion(
+      Path.cwd(),
+      'LOKI',  # E: LOKI is not axion plugin  [axion-no-plugin]
+      configuration=Configuration(),
+    )
+- case: axion_custom_plugin
+  main: |
+    from pathlib import Path
+    from axion import Axion, Configuration
+
+    import thor_app
+
+    app = Axion(
+      Path.cwd(),
+      'cool',
+      configuration=Configuration(),
+    )
+  files:
+    - path: thor_app/__init__.py
+      content: |
+        from thor_app import plugin
+
+        ThorAppPlugin = plugin.CoolPlugin
+
+        __all__ = ('ThorAppPlugin', )
+    - thor_app/plugin.py:
+      content: |
+        import typing as t
+        import typing_extensions as te
+
+        from axion import Plugin
+
+        @te.final
+        class CoolPlugin(
+          Plugin,
+          id='cool',
+          version='0.1.2',
+        ):
+          """CoolPluginTest. """
+          def add_api(*args: t.Any, **kwargs: t.Any) -> None:  # type: ignore
+            ...

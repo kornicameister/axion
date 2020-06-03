@@ -64,9 +64,9 @@ operations = parser._resolve_operations(
 )
 @pytest.mark.parametrize('op_id', ('no_headers_op', 'headers_op'))
 def test_valid_headers_any_type(
-        the_type: t.Type[t.Any],
-        op_id: str,
-        caplog: logging.LogCaptureFixture,
+    the_type: t.Type[t.Any],
+    op_id: str,
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     async def foo(name: str, headers: the_type) -> response.Response:  # type: ignore
         ...
@@ -174,7 +174,7 @@ def test_no_oas_headers_mapping(caplog: logging.LogCaptureFixture) -> None:
 
 
 def test_no_oas_headers_typed_dict_unknown_header(
-        caplog: logging.LogCaptureFixture,
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     class EXTRA_INVALID(te.TypedDict):
         content_length: str
@@ -195,8 +195,8 @@ def test_no_oas_headers_typed_dict_unknown_header(
 
 @pytest.mark.parametrize('op_id', ('headers_op', 'no_headers_op'))
 def test_typed_dict_bad_type(
-        op_id: str,
-        caplog: logging.LogCaptureFixture,
+    op_id: str,
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     class Invalid(te.TypedDict):
         accept: int
@@ -390,8 +390,8 @@ def test_oas_headers_extra_header_typed_dict(caplog: logging.LogCaptureFixture) 
     ),
 )
 def test_no_oas_headers_typed_dict_bad_type(
-        the_type: t.Type[t.Any],
-        caplog: logging.LogCaptureFixture,
+    the_type: t.Type[t.Any],
+    caplog: logging.LogCaptureFixture,
 ) -> None:
     class Invalid(te.TypedDict):
         x_trace_id: the_type  # type: ignore

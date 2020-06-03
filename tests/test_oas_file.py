@@ -14,8 +14,8 @@ from axion.oas.parser import type as parse_type
     ),
 )
 def test_oas_file(
-        str_format: str,
-        expected_cls: t.Type[t.Any],
+    str_format: str,
+    expected_cls: t.Type[t.Any],
 ) -> None:
     assert isinstance(
         parse_type.resolve(
@@ -37,3 +37,10 @@ def test_oas_file_python_type() -> None:
             'format': 'binary',
         },
     ).python_type
+
+
+def test_oas_type() -> None:
+    assert parse_type.resolve({}, {
+        'type': 'string',
+        'format': 'binary',
+    }).oas_type == 'string'

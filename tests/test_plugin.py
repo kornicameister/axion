@@ -24,8 +24,8 @@ from axion import plugin
     ),
 )
 def test_missing_plugin_meta(
-        meta_dict: t.Dict[str, str],
-        expected_err: str,
+    meta_dict: t.Dict[str, str],
+    expected_err: str,
 ) -> None:
     with pytest.raises(plugin.InvalidPluginDefinition) as err:
 
@@ -111,15 +111,14 @@ def test_bad_init_extra_arg() -> None:
     with pytest.raises(plugin.InvalidPluginDefinition) as err:
 
         class BadInit(plugin.Plugin, id='BadInit', version='0.0.1'):
-            """I am naughty to try and have extra args in __init___"""
+            """I am naughty to try and have config of bad type __init___"""
             def __init__(self, is_debug: bool, cfg: t.Dict[str, str]) -> None:
                 super().__init__(cfg)  # type: ignore
 
     assert err.value
     assert str(err.value) == (
         f'Plugin with ID=BadInit has incorrect __init__ signature. '
-        f'It should accept an argument either '
-        f'of type {repr(conf.Configuration)} or called "configuration".'
+        f'It should accept an argument of {repr(conf.Configuration)} type'
     )
 
 
@@ -128,17 +127,21 @@ def test_good_inits() -> None:
 
     class GoodInit_1(plugin.Plugin, id='g1', version='0.0.1'):
         """I am wonderful"""
-        def __init__(
-                self,
-                cfg: conf.Configuration,
-                some_setting: float,
-        ) -> None:
+        def __init__(self, cfg: conf.Configuration) -> None:
             super().__init__(cfg)
 
     class GoodInit_2(plugin.Plugin, id='g2', version='0.0.1'):
         """I am wonderful"""
 
-    class GoodInit_3(plugin.Plugin, id='g3', version='0.0.1'):
-        """I am wonderful"""
-        def __init__(self, configuration: t.Mapping[str, int]) -> None:
-            super().__init__(configuration)  # type: ignore
+    class GoodInit_3(plugin.Plugin, id='g3', version='0.0.2'):
+        """The configuration named arguments."""
+        def __init__(self, configuration: conf.Configuration) -> None:
+            super().__init__(configuration)
+
+    class GoodInit_4(plugin.Plugin, id='g4', version='0.0.3'):
+        """I work with extra args and life is nice."""
+        is_debug: bool
+
+        def __init__(self, is_debug: bool, cfg: conf.Configuration) -> None:
+            super().__init__(cfg)
+            self.is_debug = is_debug

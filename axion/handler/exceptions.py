@@ -41,10 +41,10 @@ class InvalidHandlerError(
     )
 
     def __init__(
-            self,
-            operation_id: str,
-            errors: t.Optional[t.AbstractSet[Error]] = None,
-            message: t.Optional[str] = None,
+        self,
+        operation_id: str,
+        errors: t.Optional[t.AbstractSet[Error]] = None,
+        message: t.Optional[str] = None,
     ) -> None:
         header_msg = f'\n{operation_id} handler mismatch signature:'
 

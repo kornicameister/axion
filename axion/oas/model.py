@@ -54,15 +54,24 @@ class MimeType:
     __slots__ = (
         'type',
         'subtype',
+        'is_discrete',
     )
 
     def __init__(self, raw_type: str) -> None:
         _type, _subtype = raw_type.split('/')
+
         self.type = _type.lower()
         self.subtype = _subtype.lower()
+        self.is_discrete = any(map(lambda v: v == self.type, (
+            'multipart',
+            'message',
+        )))
 
     def is_json(self) -> bool:
         return 'json' in self.subtype and self.type == 'application'
+
+    def is_text(self) -> bool:
+        return 'text' == self.type
 
     def __hash__(self) -> int:
         return hash((self.type, self.subtype))
@@ -89,9 +98,9 @@ class OASRequestBody(t.Mapping[t.Union[str, MimeType], 'OASMediaType']):
     __slots__ = ('content', 'required')
 
     def __init__(
-            self,
-            content: OASContent,
-            required: bool = False,
+        self,
+        content: OASContent,
+        required: bool = False,
     ) -> None:
         self.content = content
         self.required = required
@@ -150,10 +159,10 @@ class OASSpecification:
     )
 
     def __init__(
-            self,
-            version: str,
-            servers: t.List[OASServer],
-            operations: OASOperations,
+        self,
+        version: str,
+        servers: t.List[OASServer],
+        operations: OASOperations,
     ) -> None:
         self.version = version
         self.servers = servers
@@ -165,8 +174,8 @@ class OASMediaType:
     __slots__ = ('schema')
 
     def __init__(
-            self,
-            schema: 'OASType[t.Any]',
+        self,
+        schema: 'OASType[t.Any]',
     ) -> None:
         self.schema = schema
 
@@ -189,24 +198,39 @@ class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
     )
 
     def __init__(
-            self,
-            default: t.Optional[V],
-            example: t.Optional[V],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],  # so we can put a warning
-            read_only: t.Optional[bool],  # only in responses
-            write_only: t.Optional[bool],  # only in requests
+        self,
+        default: t.Optional[V],
+        example: t.Optional[V],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],  # so we can put a warning
+        read_only: t.Optional[bool],  # only in responses
+        write_only: t.Optional[bool],  # only in requests
     ) -> None:
         self.default = default
         self.example = example
-        self.nullable = nullable
+        self.nullable = nullable if nullable is not None else False
         self.deprecated = deprecated
         self.read_only = read_only
         self.write_only = write_only
 
+    @abc.abstractproperty
+    def oas_type(self) -> str:
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return (
+            f'OASType[{self.oas_type}] :: '
+            f'read_only={self.read_only} '
+            f'write_only={self.write_only} '
+            f'nullable={self.nullable} '
+            f'default={self.default}'
+        )
+
 
 @te.final
 class OASAnyType(OASType[t.Any]):
+    oas_type = 'any'
+
     @property
     def python_type(self) -> t.Type[object]:
         return object
@@ -220,15 +244,15 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
     )
 
     def __init__(
-            self,
-            default: t.Optional[t.Any],
-            example: t.Optional[t.Any],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            discriminator: t.Optional['OASDiscriminator'],
-            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+        self,
+        default: t.Optional[t.Any],
+        example: t.Optional[t.Any],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        discriminator: t.Optional['OASDiscriminator'],
+        schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
             default=default,
@@ -240,6 +264,8 @@ class OASOneOfType(OASType[t.Any], PythonTypeCompatible):
         )
         self.schemas = schemas
         self.discriminator = discriminator
+
+    oas_type = 'oneOf'
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -254,15 +280,15 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
     )
 
     def __init__(
-            self,
-            default: t.Optional[t.Any],
-            example: t.Optional[t.Any],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            discriminator: t.Optional['OASDiscriminator'],
-            schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
+        self,
+        default: t.Optional[t.Any],
+        example: t.Optional[t.Any],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        discriminator: t.Optional['OASDiscriminator'],
+        schemas: t.List[t.Tuple[bool, OASType[t.Any]]],
     ) -> None:
         super().__init__(
             default=default,
@@ -275,6 +301,8 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
         self.schemas = schemas
         self.discriminator = discriminator
 
+    oas_type = 'anyOf'
+
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
         return dict  # pragma: no cover
@@ -282,6 +310,8 @@ class OASAnyOfType(OASType[t.Any], PythonTypeCompatible):
 
 @te.final
 class OASBooleanType(OASType[bool]):
+    oas_type = 'boolean'
+
     @property
     def python_type(self) -> t.Type[bool]:
         return bool
@@ -303,20 +333,20 @@ class OASNumberType(OASType[N]):
     )
 
     def __init__(
-            self,
-            default: t.Optional[N],
-            example: t.Optional[N],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            number_cls: t.Type[N],
-            format: t.Optional[str],
-            minimum: t.Optional[N],
-            maximum: t.Optional[N],
-            multiple_of: t.Optional[N],
-            exclusive_minimum: t.Optional[bool],
-            exclusive_maximum: t.Optional[bool],
+        self,
+        default: t.Optional[N],
+        example: t.Optional[N],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        number_cls: t.Type[N],
+        format: t.Optional[str],
+        minimum: t.Optional[N],
+        maximum: t.Optional[N],
+        multiple_of: t.Optional[N],
+        exclusive_minimum: t.Optional[bool],
+        exclusive_maximum: t.Optional[bool],
     ) -> None:
         super().__init__(
             default=default,
@@ -335,6 +365,10 @@ class OASNumberType(OASType[N]):
         self.exclusive_minimum = exclusive_minimum
 
     @property
+    def oas_type(self) -> str:
+        return 'integer' if issubclass(self.number_cls, int) else 'number'
+
+    @property
     def python_type(self) -> t.Type[N]:
         return self.number_cls
 
@@ -349,17 +383,17 @@ class OASStringType(OASType[str]):
     )
 
     def __init__(
-            self,
-            default: t.Optional[str],
-            example: t.Optional[str],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            min_length: t.Optional[int],
-            max_length: t.Optional[int],
-            pattern: t.Optional[t.Pattern[str]],
-            format: t.Optional[str],
+        self,
+        default: t.Optional[str],
+        example: t.Optional[str],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        min_length: t.Optional[int],
+        max_length: t.Optional[int],
+        pattern: t.Optional[t.Pattern[str]],
+        format: t.Optional[str],
     ) -> None:
         super().__init__(
             default=default,
@@ -374,6 +408,8 @@ class OASStringType(OASType[str]):
         self.pattern = pattern
         self.format = format
 
+    oas_type = 'string'
+
     @property
     def python_type(self) -> t.Type[str]:
         return str
@@ -382,11 +418,11 @@ class OASStringType(OASType[str]):
 @te.final
 class OASFileType(OASType[None]):
     def __init__(
-            self,
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
+        self,
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
     ) -> None:
         super().__init__(
             default=None,
@@ -396,6 +432,8 @@ class OASFileType(OASType[None]):
             read_only=read_only,
             write_only=write_only,
         )
+
+    oas_type = 'string'
 
     @property
     def python_type(self) -> t.Type[bytes]:
@@ -410,9 +448,9 @@ class OASDiscriminator:
     )
 
     def __init__(
-            self,
-            property_name: str,
-            mapping: t.Optional[t.Dict[str, str]] = None,
+        self,
+        property_name: str,
+        mapping: t.Optional[t.Dict[str, str]] = None,
     ) -> None:
         self.property_name = property_name
         self.mapping = mapping or {}
@@ -430,19 +468,19 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
     )
 
     def __init__(
-            self,
-            default: t.Optional[t.Dict[str, t.Any]],
-            example: t.Optional[t.Dict[str, t.Any]],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            min_properties: t.Optional[int] = None,
-            max_properties: t.Optional[int] = None,
-            properties: t.Optional[t.Dict[str, OASType[t.Any]]] = None,
-            required: t.Optional[t.Set[str]] = None,
-            additional_properties: t.Union[bool, OASType[t.Any]] = True,
-            discriminator: t.Optional[OASDiscriminator] = None,
+        self,
+        default: t.Optional[t.Dict[str, t.Any]],
+        example: t.Optional[t.Dict[str, t.Any]],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        min_properties: t.Optional[int] = None,
+        max_properties: t.Optional[int] = None,
+        properties: t.Optional[t.Dict[str, OASType[t.Any]]] = None,
+        required: t.Optional[t.Set[str]] = None,
+        additional_properties: t.Union[bool, OASType[t.Any]] = True,
+        discriminator: t.Optional[OASDiscriminator] = None,
     ) -> None:
         super().__init__(
             default=default,
@@ -458,6 +496,8 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
         self.required = required or set()
         self.additional_properties = additional_properties
         self.discriminator = discriminator
+
+    oas_type = 'object'
 
     @property
     def python_type(self) -> t.Type[t.Dict[t.Any, t.Any]]:
@@ -481,17 +521,17 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
     )
 
     def __init__(
-            self,
-            default: t.Optional[t.Iterable[t.Any]],
-            example: t.Optional[t.Iterable[t.Any]],
-            nullable: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            read_only: t.Optional[bool],
-            write_only: t.Optional[bool],
-            items_type: OASType[t.Any],
-            min_length: t.Optional[int],
-            max_length: t.Optional[int],
-            unique_items: t.Optional[bool],
+        self,
+        default: t.Optional[t.Iterable[t.Any]],
+        example: t.Optional[t.Iterable[t.Any]],
+        nullable: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        read_only: t.Optional[bool],
+        write_only: t.Optional[bool],
+        items_type: OASType[t.Any],
+        min_length: t.Optional[int],
+        max_length: t.Optional[int],
+        unique_items: t.Optional[bool],
     ) -> None:
         super().__init__(
             default=default,
@@ -505,6 +545,8 @@ class OASArrayType(OASType[t.Iterable[t.Any]]):
         self.min_length = min_length
         self.max_length = max_length
         self.unique_items = unique_items
+
+    oas_type = 'array'
 
     @property
     def python_type(self) -> t.Type[t.Union[t.AbstractSet[t.Any], t.List[t.Any]]]:
@@ -524,13 +566,13 @@ class OASParameter(PythonTypeCompatible, abc.ABC):
     available_styles: t.ClassVar[t.AbstractSet[str]] = set()
 
     def __init__(
-            self,
-            name: OASParameterName,
-            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
-            example: t.Optional[t.Any],
-            required: t.Optional[bool],
-            explode: t.Optional[bool],
-            deprecated: t.Optional[bool],
+        self,
+        name: OASParameterName,
+        schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+        example: t.Optional[t.Any],
+        required: t.Optional[bool],
+        explode: t.Optional[bool],
+        deprecated: t.Optional[bool],
     ) -> None:
 
         if isinstance(schema, tuple):
@@ -577,12 +619,12 @@ class OASPathParameter(OASParameter):
     available_styles = {'simple', 'label', 'matrix'}
 
     def __init__(
-            self,
-            name: OASParameterName,
-            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
-            example: t.Optional[t.Any],
-            explode: t.Optional[bool],
-            deprecated: t.Optional[bool],
+        self,
+        name: OASParameterName,
+        schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+        example: t.Optional[t.Any],
+        explode: t.Optional[bool],
+        deprecated: t.Optional[bool],
     ) -> None:
         super().__init__(
             name,
@@ -609,15 +651,15 @@ class OASQueryParameter(OASParameter):
     }
 
     def __init__(
-            self,
-            name: OASParameterName,
-            schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
-            example: t.Optional[t.Any],
-            required: t.Optional[bool],
-            explode: t.Optional[bool],
-            deprecated: t.Optional[bool],
-            allow_empty_value: t.Optional[bool],
-            allow_reserved: t.Optional[bool],
+        self,
+        name: OASParameterName,
+        schema: t.Union[t.Tuple[OASType[t.Any], 'OASParameterStyle'], OASContent],
+        example: t.Optional[t.Any],
+        required: t.Optional[bool],
+        explode: t.Optional[bool],
+        deprecated: t.Optional[bool],
+        allow_empty_value: t.Optional[bool],
+        allow_reserved: t.Optional[bool],
     ) -> None:
         super().__init__(
             name,
@@ -654,10 +696,10 @@ class OASParameterStyle:
     )
 
     def __init__(
-            self,
-            name: str,
-            type: t.Set[t.Type[OASType[t.Any]]],
-            locations: t.Set[t.Type[OASParameter]],
+        self,
+        name: str,
+        type: t.Set[t.Type[OASType[t.Any]]],
+        locations: t.Set[t.Type[OASParameter]],
     ) -> None:
         self.name = name
         self.type = type

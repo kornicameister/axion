@@ -16,4 +16,8 @@ setuptools.setup(
     setup_requires='setupmeta',
     python_requires='>=3.6',
     versioning='post',
+    package_data={
+        'axion': ['py.typed'],
+    },
+    zip_safe=False,  # https://mypy.readthedocs.io/en/latest/installed_packages.html
 )

@@ -12,8 +12,8 @@ from axion.oas import model
 
 @pytest.fixture(params=['aiohttp'])
 def mocked_plugin(
-        request: fixtures.SubRequest,
-        mocker: ptm.MockFixture,
+    request: fixtures.SubRequest,
+    mocker: ptm.MockFixture,
 ) -> t.Generator[t.Tuple[str, mock.Mock], None, None]:
     plugin = mocker.Mock()
     plugin_type = mocker.Mock(side_effect=lambda _: plugin)
@@ -29,8 +29,8 @@ def mocked_plugin(
 
 
 def test_correct_init(
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        mocker: ptm.MockFixture,
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    mocker: ptm.MockFixture,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -54,10 +54,10 @@ def test_correct_init(
     ),
 )
 def test_add_api_single_server(
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        base_path: t.Optional[str],
-        mocker: ptm.MockFixture,
-        tmp_path: Path,
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    base_path: t.Optional[str],
+    mocker: ptm.MockFixture,
+    tmp_path: Path,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -70,7 +70,7 @@ def test_add_api_single_server(
     )]
 
     spec_load = mocker.patch(
-        'axion.oas.load',
+        'axion.load_specification',
         return_value=loaded_spec,
     )
 
@@ -101,9 +101,9 @@ def test_add_api_single_server(
     ),
 )
 def test_add_api_relative_spec_path(
-        base_path: t.Optional[str],
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        mocker: ptm.MockFixture,
+    base_path: t.Optional[str],
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    mocker: ptm.MockFixture,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -116,7 +116,7 @@ def test_add_api_relative_spec_path(
     expected_spec_path = (Path.cwd() / actual_spec_path).resolve()
 
     spec_load = mocker.patch(
-        'axion.oas.load',
+        'axion.load_specification',
         return_value=spec,
     )
 
