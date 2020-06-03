@@ -33,11 +33,16 @@ class Axion:
         root_dir: Path,
         plugin_id: Union[PluginId, str],
         configuration: Configuration,
+        *_: None,
+        **kwargs: Any,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
 
-        self.plugged = _plugins()[PluginId(plugin_id)](configuration)
+        self.plugged = _plugins()[PluginId(plugin_id)](
+            configuration,
+            **kwargs,
+        )
 
     def add_api(
         self,

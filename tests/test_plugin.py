@@ -111,15 +111,15 @@ def test_bad_init_extra_arg() -> None:
     with pytest.raises(plugin.InvalidPluginDefinition) as err:
 
         class BadInit(plugin.Plugin, id='BadInit', version='0.0.1'):
-            """I am naughty to try and have extra args in __init___"""
-            def __init__(self, is_debug: bool, cfg: conf.Configuration) -> None:
-                super().__init__(cfg)
+            """I am naughty to try and have config of bad type __init___"""
+            def __init__(self, is_debug: bool, cfg: t.Dict[str, str]) -> None:
+                super().__init__(cfg)  # type: ignore
 
     assert err.value
     assert str(err.value) == (
         f'Plugin with ID=BadInit has incorrect __init__ signature. '
-        f'It should accept single argument '
-        f'of {repr(conf.Configuration)} type.'
+        f'It should accept an argument either '
+        f'of {repr(conf.Configuration)} type or called "configuration"'
     )
 
 
@@ -133,3 +133,8 @@ def test_good_inits() -> None:
 
     class GoodInit_2(plugin.Plugin, id='g2', version='0.0.1'):
         """I am wonderful"""
+
+    class GoodInit_3(plugin.Plugin, id='g3', version='0.0.2'):
+        """The configuration named arguments."""
+        def __init__(self, configuration: t.Dict[str, t.Any]) -> None:
+            self.cfg = configuration
