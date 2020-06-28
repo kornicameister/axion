@@ -31,9 +31,7 @@ def _analyze_signature_set_oas_set(
     request_body: oas.OASRequestBody,
     body_arg: t.Type[t.Any],
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
-    logger.trace(
-        'Operation defines both request body and argument handler',
-    )
+    logger.trace('Operation defines both request body and argument handler', )
     is_required = request_body.required
     is_arg_required = not ti.is_optional_type(body_arg)
 
