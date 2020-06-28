@@ -109,7 +109,7 @@ def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMap
 def _signature_set_oas_gone(
     headers_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(lazy=True).debug('"headers" found in signature but not in operation')
+    logger.debug('"headers" found in signature but not in operation')
 
     errors: t.Set[exceptions.Error] = set()
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}

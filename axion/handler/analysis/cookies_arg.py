@@ -59,7 +59,7 @@ def analyze(
                 ),
             }, {}
         elif is_any:
-            logger.opt(lazy=True).warning(
+            logger.warning(
                 'Detected usage of "cookies" declared as typing.Any. '
                 'axion will allow such declaration but be warned that '
                 'you will loose all the help linters (like mypy) offer.',

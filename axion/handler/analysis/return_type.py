@@ -16,9 +16,9 @@ def analyze(
     signature: t.Dict[str, t.Any],
 ) -> t.Set[exceptions.Error]:
     if 'return' not in signature:
-        logger.opt(lazy=True).error(
+        logger.error(
             'Operation {id} handler does not define return annotation',
-            id=lambda: operation.id,
+            id=operation.id,
         )
         return {exceptions.Error(param_name='return', reason='missing')}
     else:

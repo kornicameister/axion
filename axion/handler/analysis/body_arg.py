@@ -31,7 +31,7 @@ def _analyze_signature_set_oas_set(
     request_body: oas.OASRequestBody,
     body_arg: t.Type[t.Any],
 ) -> t.Tuple[t.Set[exceptions.Error], bool]:
-    logger.opt(lazy=True).trace(
+    logger.trace(
         'Operation defines both request body and argument handler',
     )
     is_required = request_body.required
@@ -51,7 +51,7 @@ def _analyze_signature_set_oas_set(
 
 
 def _analyze_signature_set_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
-    logger.opt(lazy=True).error(
+    logger.error(
         'Operation does not define a request body, but it is '
         'specified in handler signature.',
     )
@@ -64,12 +64,12 @@ def _analyze_signature_set_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
 
 
 def _analyze_signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], bool]:
-    logger.opt(lazy=True).trace('Operation does not define a request body', )
+    logger.trace('Operation does not define a request body')
     return set(), False
 
 
 def _analyze_signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], bool]:
-    logger.opt(lazy=True).error(
+    logger.error(
         'Operation defines a request body, but it is not specified in '
         'handler signature',
     )

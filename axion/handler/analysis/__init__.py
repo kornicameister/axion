@@ -17,10 +17,7 @@ def analyze(
     handler: types.AnyCallable,
     operation: oas.OASOperation,
 ) -> model.AnalysisResult:
-    logger.opt(lazy=True).debug(
-        'Analyzing operation {id}',
-        id=lambda: operation.id,
-    )
+    logger.debug('Analyzing operation {id}', id=operation.id)
     signature = t.get_type_hints(handler)
 
     errors, has_body = body_arg.analyze(
@@ -67,10 +64,7 @@ def analyze(
         param_mapping.update(h_params)
         param_mapping.update(c_params)
     else:
-        logger.opt(lazy=True).debug(
-            '{op_id} does not declare any parameters',
-            op_id=lambda: operation.id,
-        )
+        logger.debug('{id} does not declare any parameters', id=operation.id)
 
     if errors:
         logger.error(
