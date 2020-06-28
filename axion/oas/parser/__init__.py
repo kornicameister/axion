@@ -56,10 +56,7 @@ def _resolve_operations(
             op_path_definition.pop('parameters', []),
         )
 
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Resolved {count} global parameters',
             count=lambda: len(global_parameters),
         )
@@ -88,10 +85,7 @@ def _resolve_operations(
             )
             operations.add(operation)
 
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).trace(
+            logger.opt(lazy=True).trace(
                 'Resolved operation {operation}',
                 operation=lambda: operation,
             )

@@ -17,10 +17,7 @@ def resolve(
     work_item: t.Dict[str, t.Any],
 ) -> model.OASType[t.Any]:
     if '$ref' in work_item:
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Following reference {ref}',
             ref=lambda: work_item['$ref'],
         )
@@ -30,10 +27,7 @@ def resolve(
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Resolving schema of type={type}',
             type=lambda: oas_type,
         )
@@ -157,10 +151,7 @@ def _resolve_all_of(
     else:
         oas_type = list(schema_types)[0]
 
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).trace(
+    logger.opt(lazy=True).trace(
         'allOf resolves into type: {oas_type}',
         oas_type=lambda: oas_type,
     )

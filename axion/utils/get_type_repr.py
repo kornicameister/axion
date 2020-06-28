@@ -8,10 +8,7 @@ from axion.utils import types
 
 
 def get_repr(val: t.Any) -> str:
-    logger.opt(
-        lazy=True,
-        record=True,
-    ).trace(
+    logger.opt(lazy=True).trace(
         'Getting string representation for val={val}',
         val=lambda: val,
     )

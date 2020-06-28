@@ -74,10 +74,7 @@ def _plugins() -> Plugins:
         None,
     )
 
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).debug(
+    logger.opt(lazy=True).debug(
         '_plugins cache status is {s}=>{c}',
         s=lambda: 'ON' if discovered_plugins else 'OFF',
         c=lambda: len(discovered_plugins or {}),

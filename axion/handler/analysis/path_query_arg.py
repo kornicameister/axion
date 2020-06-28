@@ -7,7 +7,7 @@ from axion import oas
 from axion.handler import exceptions
 from axion.handler import model
 
-LOG: te.Final = logger.opt(lazy=True, record=True)
+LOG: te.Final = logger.opt(lazy=True)
 
 
 def analyze(

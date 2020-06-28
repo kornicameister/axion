@@ -14,7 +14,7 @@ from axion.handler.exceptions import (
 )
 from axion.utils import types
 
-LOG = logger.opt(record=True, lazy=True)
+LOG: te.Final = logger.opt(lazy=True)
 
 
 @t.overload

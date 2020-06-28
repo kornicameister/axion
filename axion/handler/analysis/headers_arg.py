@@ -71,7 +71,7 @@ def analyze(
                 ),
             }, {}
         elif is_any:
-            logger.opt(record=True).warning(
+            logger.warning(
                 'Detected usage of "headers" declared as typing.Any. '
                 'axion will allow such declaration but be warned that '
                 'you will loose all the help linters (like mypy) offer.',
@@ -90,12 +90,12 @@ def analyze(
 
 
 def _signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(record=True).debug('No "headers" in signature and operation parameters')
+    logger.debug('No "headers" in signature and operation parameters')
     return set(), {}
 
 
 def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(record=True).warning(
+    logger.warning(
         '"headers" found in operation but not in signature. '
         'Please double check that. axion cannot infer a correctness of '
         'this situations. If you wish to access any "headers" defined in '
@@ -109,10 +109,7 @@ def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMap
 def _signature_set_oas_gone(
     headers_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).debug('"headers" found in signature but not in operation')
+    logger.opt(lazy=True).debug('"headers" found in signature but not in operation')
 
     errors: t.Set[exceptions.Error] = set()
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
@@ -123,7 +120,7 @@ def _signature_set_oas_gone(
         if entries:
             for hdr_param_name, hdr_param_type in entries:
                 if hdr_param_name not in RESERVED_HEADERS:
-                    logger.opt(record=True).error(
+                    logger.error(
                         '{sig_key} is not one of {reserved_headers} headers',
                         sig_key=hdr_param_name,
                         reserved_headers=oas.OASReservedHeaders,
@@ -171,7 +168,7 @@ def _analyze_headers_signature_set_oas_set(
     parameters: t.Sequence[oas.OASParameter],
     headers_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(record=True).debug('"headers" found both in signature and operation')
+    logger.debug('"headers" found both in signature and operation')
 
     errors: t.Set[exceptions.Error] = set()
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
