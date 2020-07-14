@@ -31,10 +31,7 @@ def operation_filter_parameters(
         param_type for param_in, param_type in _PARAM_IN_TO_CLS_MAP.items()
         if (param_in in types)
     )
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).debug(
+    logger.opt(lazy=True).debug(
         'Filtering operation parameters by {expected_types}',
         expected_types=lambda: expected_types,
     )

@@ -33,11 +33,16 @@ class Axion:
         root_dir: Path,
         plugin_id: Union[PluginId, str],
         configuration: Configuration,
+        *_: None,
+        **kwargs: Any,
     ) -> None:
         self.root_dir = root_dir
         self.plugin_id = plugin_id
 
-        self.plugged = _plugins()[PluginId(plugin_id)](configuration)
+        self.plugged = _plugins()[PluginId(plugin_id)](
+            configuration,
+            **kwargs,
+        )
 
     def add_api(
         self,
@@ -69,10 +74,7 @@ def _plugins() -> Plugins:
         None,
     )
 
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).debug(
+    logger.opt(lazy=True).debug(
         '_plugins cache status is {s}=>{c}',
         s=lambda: 'ON' if discovered_plugins else 'OFF',
         c=lambda: len(discovered_plugins or {}),
