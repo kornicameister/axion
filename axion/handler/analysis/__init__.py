@@ -17,13 +17,7 @@ def analyze(
     handler: types.AnyCallable,
     operation: oas.OASOperation,
 ) -> model.AnalysisResult:
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).debug(
-        'Analyzing operation {id}',
-        id=lambda: operation.id,
-    )
+    logger.debug('Analyzing operation {id}', id=operation.id)
     signature = t.get_type_hints(handler)
 
     errors, has_body = body_arg.analyze(
@@ -53,7 +47,7 @@ def analyze(
         )
 
         if signature:
-            logger.opt(record=True).error(
+            logger.error(
                 'Unconsumed arguments [{f_args}] detected in {op_id} handler signature',
                 op_id=operation.id,
                 f_args=', '.join(arg_key for arg_key in signature.keys()),
@@ -70,16 +64,10 @@ def analyze(
         param_mapping.update(h_params)
         param_mapping.update(c_params)
     else:
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).debug(
-            '{op_id} does not declare any parameters',
-            op_id=lambda: operation.id,
-        )
+        logger.debug('{id} does not declare any parameters', id=operation.id)
 
     if errors:
-        logger.opt(record=True).error(
+        logger.error(
             'Collected {count} mismatch error{s} for {op_id} handler',
             count=len(errors),
             op_id=operation.id,
