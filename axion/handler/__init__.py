@@ -14,8 +14,6 @@ from axion.handler.exceptions import (
 )
 from axion.utils import types
 
-LOG: te.Final = logger.opt(lazy=True)
-
 
 @t.overload
 def resolve(
@@ -37,10 +35,7 @@ def resolve(
     operation: oas.OASOperation,
     asynchronous: bool,
 ) -> model.Handler[types.AnyCallable]:
-    LOG.info(
-        'Making user handler for op={op}',
-        op=lambda: operation,
-    )
+    logger.info('Making user handler for op={op}', op=operation)
     return _resolve(_import(operation.id, asynchronous), operation)
 
 
@@ -66,9 +61,9 @@ def _import(
     operation_id: oas.OASOperationId,
     asynchronous: bool,
 ) -> types.AnyCallable:
-    LOG.debug(
-        'Resolving user handler via operation_id={operation_id}',
-        operation_id=lambda: operation_id,
+    logger.debug(
+        'Resolving user handler via operation_id={id}',
+        id=operation_id,
     )
 
     module_name, function_name = operation_id.rsplit('.', 1)
@@ -85,15 +80,11 @@ def _import(
                     message=f'{operation_id} did not resolve to coroutine',
                 )
 
-            LOG.debug(
-                'Found asynchronous handler for operation {id}',
-                id=lambda: operation_id,
-            )
-        else:
-            LOG.debug(
-                'Found synchronous handler for operation {id}',
-                id=lambda: operation_id,
-            )  # pragma: no cover
+        logger.opt(lazy=True).debug(
+            'Found {type} handler for operation {id}',
+            id=lambda: operation_id,
+            type=lambda: 'asynchronous' if asynchronous else 'synchronous',
+        )
 
         return function
     except ImportError as err:

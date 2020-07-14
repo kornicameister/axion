@@ -83,13 +83,13 @@ def _signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], model.ParamMa
 
 
 def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(lazy=True).warning(
+    logger.warning(
         '"cookies" found in operation but not in signature. '
         'Please double check that. axion cannot infer a correctness of '
         'this situations. If you wish to access any "cookies" defined in '
         'specification, they have to be present in your handler '
         'as {types}.',
-        types=lambda: [
+        types=[
             get_type_repr.get_repr(x)
             for x in (t.Dict[str, t.Any], t.Mapping[str, t.Any], te.TypedDict)
         ],

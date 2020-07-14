@@ -1,13 +1,10 @@
 import typing as t
 
 from loguru import logger
-import typing_extensions as te
 
 from axion import oas
 from axion.handler import exceptions
 from axion.handler import model
-
-LOG: te.Final = logger.opt(lazy=True)
 
 
 def analyze(
@@ -18,14 +15,14 @@ def analyze(
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
 
     for op_param in parameters:
-        LOG.debug('Analyzing parameter={p}', p=lambda: op_param)
+        logger.debug('Analyzing parameter={p}', p=op_param)
         try:
             handler_param_name = model.get_f_param(op_param.name)
 
             handler_param_type = signature.pop(handler_param_name)
             op_param_type = model.convert_oas_param_to_ptype(op_param)
 
-            LOG.trace(
+            logger.opt(lazy=True).trace(
                 'parameter={p} => p_type={p_type} f_type={f_type}',
                 p=lambda: op_param,
                 p_type=lambda: op_param_type,

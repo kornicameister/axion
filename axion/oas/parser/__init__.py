@@ -207,10 +207,10 @@ def _resolve_parameters(
         param_in = param_type_to_cls[param_def['in']]
         param_name = param_def['name']
 
-        logger.opt(lazy=True).trace(
+        logger.trace(
             'Resolving param={param_name} defined in={param_in}',
-            param_name=lambda: param_name,
-            param_in=lambda: param_in,
+            param_name=param_name,
+            param_in=param_in,
         )
 
         resolved_parameters.append(
