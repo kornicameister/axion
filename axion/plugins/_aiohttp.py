@@ -33,9 +33,9 @@ class AioHttpPlugin(
     )
 
     def __init__(
-            self,
-            configuration: conf.Configuration,
-            loop: t.Optional[asyncio.AbstractEventLoop] = None,
+        self,
+        configuration: conf.Configuration,
+        loop: t.Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(configuration)
         self.root_app = web.Application(loop=loop)
