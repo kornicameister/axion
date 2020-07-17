@@ -1,3 +1,4 @@
+import asyncio
 import typing as t
 
 from aiohttp import web
@@ -31,9 +32,13 @@ class AioHttpPlugin(
         'api_base_paths',
     )
 
-    def __init__(self, configuration: conf.Configuration) -> None:
+    def __init__(
+        self,
+        configuration: conf.Configuration,
+        loop: t.Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         super().__init__(configuration)
-        self.root_app = web.Application()
+        self.root_app = web.Application(loop=loop)
         self.api_base_paths = {}  # type: t.Dict[str, web.Application]
 
     def add_api(
