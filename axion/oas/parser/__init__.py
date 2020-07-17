@@ -56,10 +56,7 @@ def _resolve_operations(
             op_path_definition.pop('parameters', []),
         )
 
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Resolved {count} global parameters',
             count=lambda: len(global_parameters),
         )
@@ -88,10 +85,7 @@ def _resolve_operations(
             )
             operations.add(operation)
 
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).trace(
+            logger.opt(lazy=True).trace(
                 'Resolved operation {operation}',
                 operation=lambda: operation,
             )
@@ -213,10 +207,10 @@ def _resolve_parameters(
         param_in = param_type_to_cls[param_def['in']]
         param_name = param_def['name']
 
-        logger.opt(lazy=True).trace(
+        logger.trace(
             'Resolving param={param_name} defined in={param_in}',
-            param_name=lambda: param_name,
-            param_in=lambda: param_in,
+            param_name=param_name,
+            param_in=param_in,
         )
 
         resolved_parameters.append(

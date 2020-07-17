@@ -197,9 +197,9 @@ def _get_target_app(
         logger.debug('Having base_path == / means returning root application')
         return root_app, base_path
     else:
-        logger.opt(lazy=True).debug(
+        logger.debug(
             'Detected base_path == {base_path}, making a sub application',
-            base_path=lambda: base_path,
+            base_path=base_path,
         )
         nested_app = web.Application(middlewares=middlewares or ())
         return nested_app, base_path
