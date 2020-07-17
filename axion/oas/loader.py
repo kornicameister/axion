@@ -7,7 +7,7 @@ import yaml
 from axion.oas import model
 from axion.oas import parser
 
-JinjaArguments = t.Dict[str, t.Any]
+JinjaArguments = t.Mapping[str, str]
 
 
 def load_spec(

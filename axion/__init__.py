@@ -47,15 +47,16 @@ class Axion:
     def add_api(
         self,
         spec_location: Path,
-        server_base_path: Optional[str] = None,
+        spec_arguments: Optional[Mapping[str, str]] = None,
         *_: None,
+        server_base_path: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
 
         if not spec_location.is_absolute():
             spec_location = (self.root_dir / spec_location).resolve().absolute()
 
-        spec = load_specification(spec_location)
+        spec = load_specification(spec_location, spec_arguments)
 
         self.plugged.add_api(
             spec=spec,
