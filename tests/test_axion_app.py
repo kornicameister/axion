@@ -82,9 +82,9 @@ def test_add_api_single_server(
     assert the_app.plugin_id == plugin_id
     assert the_app.plugged == plugin
 
-    the_app.add_api(spec_location, base_path)
+    the_app.add_api(spec_location, server_base_path=base_path)
 
-    spec_load.assert_called_once_with(spec_location)
+    spec_load.assert_called_once_with(spec_location, None)
     plugin.add_api.assert_called_once_with(
         spec=loaded_spec,
         base_path=base_path,
@@ -128,9 +128,9 @@ def test_add_api_relative_spec_path(
     assert the_app.plugin_id == plugin_id
     assert the_app.plugged == plugin
 
-    the_app.add_api(actual_spec_path, base_path)
+    the_app.add_api(actual_spec_path, server_base_path=base_path)
 
-    spec_load.assert_called_once_with(expected_spec_path)
+    spec_load.assert_called_once_with(expected_spec_path, None)
     plugin.add_api.assert_called_once_with(
         spec=spec,
         base_path=base_path,

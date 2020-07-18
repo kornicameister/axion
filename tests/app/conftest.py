@@ -17,12 +17,18 @@ async def app(
     request: FixtureRequest,
 ) -> t.AsyncGenerator[TestClient, None]:
     test_file_path = Path(request.node.fspath)
-    client = await aiohttp_client(_make_app(test_file_path.with_suffix('.yml')))
+    client = await aiohttp_client(
+        _make_app(
+            Path(str(test_file_path.with_suffix('.yml')).replace('test_', 'spec_')),
+            test_module=request.module.__name__,
+        ),
+    )
     yield client
 
 
 def _make_app(
     spec_path: Path,
+    test_module: str,
 ) -> t.Callable[[asyncio.AbstractEventLoop], web.Application]:
     def wrap(loop: asyncio.AbstractEventLoop) -> web.Application:
         the_app = axion.Axion(
@@ -31,7 +37,13 @@ def _make_app(
             configuration=axion.conf.Configuration(),
             loop=loop,
         )
-        the_app.add_api(spec_path)
+        the_app.add_api(
+            spec_path,
+            spec_arguments={
+                'test_tittle': test_module.rsplit('.')[-1],
+                'test_module': test_module,
+            },
+        )
 
         plugged_app = the_app.plugged
         assert isinstance(plugged_app, _aiohttp.AioHttpPlugin)
