@@ -12,8 +12,8 @@ from axion.oas import model
 
 @pytest.fixture(params=['aiohttp'])
 def mocked_plugin(
-        request: fixtures.SubRequest,
-        mocker: ptm.MockFixture,
+    request: fixtures.SubRequest,
+    mocker: ptm.MockFixture,
 ) -> t.Generator[t.Tuple[str, mock.Mock], None, None]:
     plugin = mocker.Mock()
     plugin_type = mocker.Mock(side_effect=lambda _: plugin)
@@ -29,8 +29,8 @@ def mocked_plugin(
 
 
 def test_correct_init(
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        mocker: ptm.MockFixture,
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    mocker: ptm.MockFixture,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -54,10 +54,10 @@ def test_correct_init(
     ),
 )
 def test_add_api_single_server(
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        base_path: t.Optional[str],
-        mocker: ptm.MockFixture,
-        tmp_path: Path,
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    base_path: t.Optional[str],
+    mocker: ptm.MockFixture,
+    tmp_path: Path,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -82,9 +82,9 @@ def test_add_api_single_server(
     assert the_app.plugin_id == plugin_id
     assert the_app.plugged == plugin
 
-    the_app.add_api(spec_location, base_path)
+    the_app.add_api(spec_location, server_base_path=base_path)
 
-    spec_load.assert_called_once_with(spec_location)
+    spec_load.assert_called_once_with(spec_location, None)
     plugin.add_api.assert_called_once_with(
         spec=loaded_spec,
         base_path=base_path,
@@ -101,9 +101,9 @@ def test_add_api_single_server(
     ),
 )
 def test_add_api_relative_spec_path(
-        base_path: t.Optional[str],
-        mocked_plugin: t.Tuple[str, mock.Mock],
-        mocker: ptm.MockFixture,
+    base_path: t.Optional[str],
+    mocked_plugin: t.Tuple[str, mock.Mock],
+    mocker: ptm.MockFixture,
 ) -> None:
     plugin_id, plugin = mocked_plugin
 
@@ -128,9 +128,9 @@ def test_add_api_relative_spec_path(
     assert the_app.plugin_id == plugin_id
     assert the_app.plugged == plugin
 
-    the_app.add_api(actual_spec_path, base_path)
+    the_app.add_api(actual_spec_path, server_base_path=base_path)
 
-    spec_load.assert_called_once_with(expected_spec_path)
+    spec_load.assert_called_once_with(expected_spec_path, None)
     plugin.add_api.assert_called_once_with(
         spec=spec,
         base_path=base_path,

@@ -8,10 +8,7 @@ from axion.utils import types
 
 
 def get_repr(val: t.Any) -> str:
-    logger.opt(
-        lazy=True,
-        record=True,
-    ).trace(
+    logger.opt(lazy=True).trace(
         'Getting string representation for val={val}',
         val=lambda: val,
     )
@@ -26,7 +23,7 @@ def _repr(val: t.Any) -> str:
         return 'NoneType'
     elif ti.is_literal_type(val):
         return str(val)
-    elif types.is_new_type(val):
+    elif ti.is_new_type(val):
         nested_type = val.__supertype__
         return f'{_qualified_name(val)}[{get_repr(nested_type)}]'
     elif ti.is_typevar(val):

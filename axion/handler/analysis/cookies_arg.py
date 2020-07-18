@@ -59,10 +59,7 @@ def analyze(
                 ),
             }, {}
         elif is_any:
-            logger.opt(
-                record=True,
-                lazy=True,
-            ).warning(
+            logger.warning(
                 'Detected usage of "cookies" declared as typing.Any. '
                 'axion will allow such declaration but be warned that '
                 'you will loose all the help linters (like mypy) offer.',
@@ -81,21 +78,18 @@ def analyze(
 
 
 def _signature_gone_oas_gone() -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(record=True).debug('No "cookies" in signature and operation parameters')
+    logger.debug('No "cookies" in signature and operation parameters')
     return set(), {}
 
 
 def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).warning(
+    logger.warning(
         '"cookies" found in operation but not in signature. '
         'Please double check that. axion cannot infer a correctness of '
         'this situations. If you wish to access any "cookies" defined in '
         'specification, they have to be present in your handler '
         'as {types}.',
-        types=lambda: [
+        types=[
             get_type_repr.get_repr(x)
             for x in (t.Dict[str, t.Any], t.Mapping[str, t.Any], te.TypedDict)
         ],
@@ -104,12 +98,9 @@ def _signature_gone_oas_set() -> t.Tuple[t.Set[exceptions.Error], model.ParamMap
 
 
 def _signature_set_oas_gone(
-        cookies_arg: t.Any,
+    cookies_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).error('"cookies" found in signature but not in operation')
+    logger.error('"cookies" found in signature but not in operation')
     return {
         exceptions.Error(
             param_name='cookies',
@@ -119,10 +110,10 @@ def _signature_set_oas_gone(
 
 
 def _signature_set_oas_set(
-        parameters: t.Sequence[oas.OASParameter],
-        cookies_arg: t.Any,
+    parameters: t.Sequence[oas.OASParameter],
+    cookies_arg: t.Any,
 ) -> t.Tuple[t.Set[exceptions.Error], model.ParamMapping]:
-    logger.opt(record=True).debug('"cookies" found both in signature and operation')
+    logger.debug('"cookies" found both in signature and operation')
 
     errors: t.Set[exceptions.Error] = set()
 

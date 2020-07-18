@@ -42,8 +42,8 @@ def parse_spec(spec: t.Dict[str, t.Any]) -> model.OASSpecification:
 
 # extractors for specific parts
 def _resolve_operations(
-        paths: t.Dict['str', t.Dict[str, t.Any]],
-        components: t.Dict['str', t.Dict[str, t.Any]],
+    paths: t.Dict['str', t.Dict[str, t.Any]],
+    components: t.Dict['str', t.Dict[str, t.Any]],
 ) -> model.OASOperations:
     logger.opt(lazy=True).trace('Checking out {count} of paths', count=lambda: len(paths))
     operations = set()
@@ -56,10 +56,7 @@ def _resolve_operations(
             op_path_definition.pop('parameters', []),
         )
 
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Resolved {count} global parameters',
             count=lambda: len(global_parameters),
         )
@@ -88,10 +85,7 @@ def _resolve_operations(
             )
             operations.add(operation)
 
-            logger.opt(
-                lazy=True,
-                record=True,
-            ).trace(
+            logger.opt(lazy=True).trace(
                 'Resolved operation {operation}',
                 operation=lambda: operation,
             )
@@ -100,8 +94,8 @@ def _resolve_operations(
 
 
 def _resolve_request_body(
-        request_body: t.Optional[t.Dict[str, t.Any]],
-        components: t.Dict[str, t.Any],
+    request_body: t.Optional[t.Dict[str, t.Any]],
+    components: t.Dict[str, t.Any],
 ) -> t.Optional[model.OASRequestBody]:
     if not request_body:
         return None
@@ -116,8 +110,8 @@ def _resolve_request_body(
 
 
 def _resolve_responses(
-        responses_dict: t.Dict[str, t.Any],
-        components: t.Dict[str, t.Any],
+    responses_dict: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Any],
 ) -> model.OASResponses:
     responses = {}
 
@@ -144,8 +138,8 @@ def _resolve_responses(
 
 
 def _resolve_content(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASContent:
     if '$ref' in work_item:
         return _resolve_content(
@@ -156,8 +150,8 @@ def _resolve_content(
         work_item = work_item['content']
 
         def _build_media_type(
-                mime_type: str,
-                media_type_def: t.Dict[str, t.Any],
+            mime_type: str,
+            media_type_def: t.Dict[str, t.Any],
         ) -> model.OASMediaType:
             # raw_example = media_type_def.get('example', None)
             # raw_examples = media_type_def.get('examples', {})
@@ -184,8 +178,8 @@ def _resolve_content(
 
 
 def _resolve_parameters(
-        components: t.Dict[str, t.Any],
-        parameters: t.List[t.Dict[str, t.Any]],
+    components: t.Dict[str, t.Any],
+    parameters: t.List[t.Dict[str, t.Any]],
 ) -> model.OASParameters:
     logger.opt(lazy=True).trace(
         'Resolving {count} of parameters',
@@ -213,10 +207,10 @@ def _resolve_parameters(
         param_in = param_type_to_cls[param_def['in']]
         param_name = param_def['name']
 
-        logger.opt(lazy=True).trace(
+        logger.trace(
             'Resolving param={param_name} defined in={param_in}',
-            param_name=lambda: param_name,
-            param_in=lambda: param_in,
+            param_name=param_name,
+            param_in=param_in,
         )
 
         resolved_parameters.append(
@@ -232,10 +226,10 @@ def _resolve_parameters(
 
 
 def _resolve_parameter(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        param_name: str,
-        param_def: t.Dict[str, t.Any],
-        param_in: t.Type[P],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    param_name: str,
+    param_def: t.Dict[str, t.Any],
+    param_in: t.Type[P],
 ) -> P:
     if '$ref' in param_def:
         return _resolve_parameter(

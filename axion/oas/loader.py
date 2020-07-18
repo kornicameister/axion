@@ -7,12 +7,12 @@ import yaml
 from axion.oas import model
 from axion.oas import parser
 
-JinjaArguments = t.Dict[str, t.Any]
+JinjaArguments = t.Mapping[str, str]
 
 
 def load_spec(
-        spec: Path,
-        arguments: t.Optional[JinjaArguments] = None,
+    spec: Path,
+    arguments: t.Optional[JinjaArguments] = None,
 ) -> model.OASSpecification:
     if isinstance(spec, Path):
         with spec.open('rb') as handler:

@@ -95,8 +95,8 @@ from axion.oas.parser import ref
     ),
 ])
 def test_spec_load_follow_ref(
-        reference: str,
-        expected_def: t.Dict[str, t.Any],
+    reference: str,
+    expected_def: t.Dict[str, t.Any],
 ) -> None:
     components = {
         'requestBodies': {

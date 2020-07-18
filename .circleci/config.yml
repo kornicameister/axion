@@ -15,7 +15,7 @@ jobs:
   verify:
     working_directory: ~/app
     docker:
-      - image: circleci/python:3.8.2
+      - image: circleci/python:3.8.3
     steps:
       - checkout
       - <<: *install_prepare
@@ -27,7 +27,7 @@ jobs:
   verify_examples:
     working_directory: ~/app
     docker:
-      - image: circleci/python:3.8.2
+      - image: circleci/python:3.8.3
     steps:
       - checkout
       - <<: *install_prepare
@@ -36,7 +36,7 @@ jobs:
           command: tox -e mypy_examples
   test:
     docker:
-      - image: circleci/python:3.8.2
+      - image: circleci/python:3.8.3
     working_directory: ~/app
     steps:
       - checkout
@@ -51,26 +51,26 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - pyenv-v6-{{ arch }}
+            - pyenv-v7-{{ arch }}
       - run:
           name: Install Pythons
           command: |
             eval "$(pyenv init -)"
             pyenv install 3.6.10 -s
             pyenv install 3.7.7 -s
-            pyenv install 3.8.2 -s
+            pyenv install 3.8.3 -s
             pyenv install 3.9-dev -s
       - save_cache:
-          key: pyenv-v6-{{ arch }}
+          key: pyenv-v7-{{ arch }}
           paths:
             - ~/.pyenv/versions/3.6.10
             - ~/.pyenv/versions/3.7.7
-            - ~/.pyenv/versions/3.8.2
+            - ~/.pyenv/versions/3.8.3
       - run:
           name: Mighty test run
           command: |
             eval "$(pyenv init -)"
-            pyenv shell 3.6.10 3.7.7 3.8.2 3.9-dev
+            pyenv shell 3.6.10 3.7.7 3.8.3 3.9-dev
             tox
       - store_test_results:
           path: test-reports
@@ -83,7 +83,7 @@ jobs:
           when: on_success
   install:
     docker:
-      - image: circleci/python:3.8.2
+      - image: circleci/python:3.8.3
     working_directory: ~/app
     steps:
       - checkout
@@ -100,7 +100,7 @@ jobs:
 
   deploy:
     docker:
-      - image: circleci/python:3.8.2
+      - image: circleci/python:3.8.3
     working_directory: ~/app
     steps:
       - checkout

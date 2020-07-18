@@ -95,8 +95,8 @@ from axion.utils import get_type_repr
     ),
 )
 def test_correct_handler_no_oas_body(
-        response_code: int,
-        return_type: t.Type[t.Any],
+    response_code: int,
+    return_type: t.Type[t.Any],
 ) -> None:
     async def test() -> return_type:  # type: ignore
         ...
@@ -135,7 +135,7 @@ def test_missing_return_annotation() -> None:
 
 @pytest.mark.parametrize('response_code', (200, 300, 400, 'default'))
 def test_omitted_return_code_single_oas_resp(
-        response_code: t.Union[str, te.Literal['default']],
+    response_code: t.Union[str, te.Literal['default']],
 ) -> None:
     test_returns = te.TypedDict(  # type: ignore
         'MissingHttpCode',

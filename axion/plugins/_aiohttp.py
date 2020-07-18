@@ -1,3 +1,4 @@
+import asyncio
 import typing as t
 
 from aiohttp import web
@@ -31,18 +32,22 @@ class AioHttpPlugin(
         'api_base_paths',
     )
 
-    def __init__(self, configuration: conf.Configuration) -> None:
+    def __init__(
+        self,
+        configuration: conf.Configuration,
+        loop: t.Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         super().__init__(configuration)
-        self.root_app = web.Application()
+        self.root_app = web.Application(loop=loop)
         self.api_base_paths = {}  # type: t.Dict[str, web.Application]
 
     def add_api(
-            self,
-            spec: oas.OASSpecification,
-            base_path: t.Optional[str] = None,
-            *_: None,
-            middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
-            **kwargs: t.Any,
+        self,
+        spec: oas.OASSpecification,
+        base_path: t.Optional[str] = None,
+        *_: None,
+        middlewares: t.Optional[t.Sequence[web_app._Middleware]] = None,
+        **kwargs: t.Any,
     ) -> None:
         base_path = base_path or _get_base_path(spec.servers)
 
@@ -81,8 +86,8 @@ class OverlappingBasePath(ValueError):
 
 
 def _apply_specification(
-        for_app: web.Application,
-        spec: oas.OASSpecification,
+    for_app: web.Application,
+    spec: oas.OASSpecification,
 ) -> None:
 
     for op in spec.operations:
@@ -172,9 +177,9 @@ def _get_target_app(
         logger.debug('Having base_path == / means returning root application')
         return root_app, base_path
     else:
-        logger.opt(lazy=True).debug(
+        logger.debug(
             'Detected base_path == {base_path}, making a sub application',
-            base_path=lambda: base_path,
+            base_path=base_path,
         )
         nested_app = web.Application(middlewares=middlewares or ())
         return nested_app, base_path

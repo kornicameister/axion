@@ -12,12 +12,12 @@ class PluginMeta(abc.ABCMeta):
     all_known_plugins: t.ClassVar[t.Dict['PluginId', t.Type['Plugin']]] = {}
 
     def __new__(
-            cls,
-            name: t.Any,
-            bases: t.Any,
-            dct: t.Any,
-            id: t.Optional[str] = None,
-            version: t.Optional[str] = None,
+        cls,
+        name: t.Any,
+        bases: t.Any,
+        dct: t.Any,
+        id: t.Optional[str] = None,
+        version: t.Optional[str] = None,
     ) -> t.Any:
         p = super().__new__(cls, name, bases, dct)
 
@@ -37,20 +37,20 @@ class PluginMeta(abc.ABCMeta):
                 )
 
         def _is_axion_configuration(v: t.Any) -> bool:
-            return issubclass(v, conf.Configuration)
+            try:
+                return issubclass(v[1], conf.Configuration)
+            except TypeError:
+                return False
 
         def _ensure_correct_init_signature(p_id: 'PluginId') -> None:
             signature = t.get_type_hints(getattr(p, '__init__'))  # noqa
             signature.pop('return')
 
-            has_conf = ilen(filter(_is_axion_configuration, signature.values())) > 0
-            has_correct_sig = has_conf and len(signature) == 1
-
-            if not has_correct_sig:
+            has_conf = ilen(filter(_is_axion_configuration, signature.items())) > 0
+            if not has_conf:
                 raise InvalidPluginDefinition(
                     f'Plugin with ID={p_id} has incorrect __init__ signature. '
-                    f'It should accept single argument '
-                    f'of {repr(conf.Configuration)} type.',
+                    f'It should accept an argument of {repr(conf.Configuration)} type',
                 )
 
         plugin_name = str(name)
@@ -101,16 +101,21 @@ class PluginMeta(abc.ABCMeta):
 class Plugin(metaclass=PluginMeta):
     plugin_info: t.ClassVar[t.Callable[[], 'PluginInfo']]
 
-    def __init__(self, configuration: conf.Configuration) -> None:
+    def __init__(
+        self,
+        configuration: conf.Configuration,
+        *_: None,
+        **kwargs: t.Any,
+    ) -> None:
         self.configuration = configuration
 
     @abc.abstractmethod
     def add_api(
-            self,
-            spec: oas.OASSpecification,
-            *_: None,
-            base_path: t.Optional[str] = None,
-            **kwargs: t.Any,
+        self,
+        spec: oas.OASSpecification,
+        *_: None,
+        base_path: t.Optional[str] = None,
+        **kwargs: t.Any,
     ) -> None:
         raise NotImplementedError()
 

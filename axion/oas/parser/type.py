@@ -13,14 +13,11 @@ __all__ = ('resolve', )
 
 
 def resolve(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASType[t.Any]:
     if '$ref' in work_item:
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Following reference {ref}',
             ref=lambda: work_item['$ref'],
         )
@@ -30,10 +27,7 @@ def resolve(
         )
     elif 'type' in work_item:
         oas_type = work_item['type']
-        logger.opt(
-            lazy=True,
-            record=True,
-        ).trace(
+        logger.opt(lazy=True).trace(
             'Resolving schema of type={type}',
             type=lambda: oas_type,
         )
@@ -77,8 +71,8 @@ def _resolve_oas_any(work_item: t.Dict[str, t.Any]) -> model.OASAnyType:
 
 
 def _resolve_one_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASOneOfType:
     mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('oneOf', [])
 
@@ -121,8 +115,8 @@ def _resolve_one_of(
 
 
 def _resolve_all_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASType[t.Any]:
     # check what allOf stuff we build
     # - check if there is a conflict in definitions
@@ -157,10 +151,7 @@ def _resolve_all_of(
     else:
         oas_type = list(schema_types)[0]
 
-    logger.opt(
-        record=True,
-        lazy=True,
-    ).trace(
+    logger.opt(lazy=True).trace(
         'allOf resolves into type: {oas_type}',
         oas_type=lambda: oas_type,
     )
@@ -172,8 +163,8 @@ def _resolve_all_of(
 
 
 def _resolve_any_of(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Union[model.OASAnyType, model.OASAnyOfType]:
     mix_definition: t.List[t.Dict[str, t.Any]] = work_item.get('anyOf', [])
 
@@ -232,8 +223,8 @@ def _resolve_any_of(
 
 
 def _handle_any_one_all_of_not(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Tuple[bool, model.OASType[t.Any]]:
     negated = work_item.get('not', None)
     if negated is not None:
@@ -243,8 +234,8 @@ def _handle_any_one_all_of_not(
 
 
 def _resolve_oas_array(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASArrayType:
     items_schema = work_item['items']
     items_oas_type = resolve(
@@ -266,8 +257,8 @@ def _resolve_oas_array(
 
 
 def _resolve_oas_object(
-        components: t.Dict[str, t.Dict[str, t.Any]],
-        work_item: t.Dict[str, t.Any],
+    components: t.Dict[str, t.Dict[str, t.Any]],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASObjectType:
     def _resolve_additional_properties() -> t.Union[bool, model.OASType[t.Any]]:
         raw_additional_properties = work_item.get(
@@ -325,7 +316,7 @@ def _resolve_oas_object(
 
 
 def _resolve_discriminator(
-        work_item: t.Dict[str, t.Any],
+    work_item: t.Dict[str, t.Any],
 ) -> t.Optional[model.OASDiscriminator]:
     raw_discriminator = work_item.get('discriminator')
     if raw_discriminator is not None:
@@ -381,7 +372,7 @@ def _resolve_oas_string(
         if min_length is not None and max_length is not None:
             if min_length > max_length:
                 raise exceptions.OASInvalidConstraints(
-                    f'type=string cannot have max_length < min_length. ',
+                    'type=string cannot have max_length < min_length. ',
                     f'min_length={min_length} '
                     f'max_length={max_length}.',
                 )
@@ -401,8 +392,8 @@ def _resolve_oas_string(
 
 
 def _resolve_oas_number(
-        number_cls: t.Type[model.N],
-        work_item: t.Dict[str, t.Any],
+    number_cls: t.Type[model.N],
+    work_item: t.Dict[str, t.Any],
 ) -> model.OASNumberType:
     detected_types = set()
 

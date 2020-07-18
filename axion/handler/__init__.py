@@ -14,39 +14,34 @@ from axion.handler.exceptions import (
 )
 from axion.utils import types
 
-LOG = logger.opt(record=True, lazy=True)
-
 
 @t.overload
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: te.Literal[True],
+    operation: oas.OASOperation,
+    asynchronous: te.Literal[True],
 ) -> model.AsyncHandler:
     ...  # pragma: no cover
 
 
 @t.overload
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: te.Literal[False],
+    operation: oas.OASOperation,
+    asynchronous: te.Literal[False],
 ) -> model.SyncHandler:
     ...  # pragma: no cover
 
 
 def resolve(
-        operation: oas.OASOperation,
-        asynchronous: bool,
+    operation: oas.OASOperation,
+    asynchronous: bool,
 ) -> model.Handler[types.AnyCallable]:
-    LOG.info(
-        'Making user handler for op={op}',
-        op=lambda: operation,
-    )
+    logger.info('Making user handler for op={op}', op=operation)
     return _resolve(_import(operation.id, asynchronous), operation)
 
 
 def _resolve(
-        handler: types.AnyCallable,
-        operation: oas.OASOperation,
+    handler: types.AnyCallable,
+    operation: oas.OASOperation,
 ) -> model.Handler[types.AnyCallable]:
     analysis_result = analysis.analyze(handler, operation)
 
@@ -63,12 +58,12 @@ def _resolve(
 
 @functools.lru_cache()
 def _import(
-        operation_id: oas.OASOperationId,
-        asynchronous: bool,
+    operation_id: oas.OASOperationId,
+    asynchronous: bool,
 ) -> types.AnyCallable:
-    LOG.debug(
-        'Resolving user handler via operation_id={operation_id}',
-        operation_id=lambda: operation_id,
+    logger.debug(
+        'Resolving user handler via operation_id={id}',
+        id=operation_id,
     )
 
     module_name, function_name = operation_id.rsplit('.', 1)
@@ -85,15 +80,11 @@ def _import(
                     message=f'{operation_id} did not resolve to coroutine',
                 )
 
-            LOG.debug(
-                'Found asynchronous handler for operation {id}',
-                id=lambda: operation_id,
-            )
-        else:
-            LOG.debug(
-                'Found synchronous handler for operation {id}',
-                id=lambda: operation_id,
-            )  # pragma: no cover
+        logger.opt(lazy=True).debug(
+            'Found {type} handler for operation {id}',
+            id=lambda: operation_id,
+            type=lambda: 'asynchronous' if asynchronous else 'synchronous',
+        )
 
         return function
     except ImportError as err:
