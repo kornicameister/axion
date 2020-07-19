@@ -39,6 +39,7 @@ def resolve(
     return _resolve(_import(operation.id, asynchronous), operation)
 
 
+@functools.lru_cache()
 def _resolve(
     handler: types.AnyCallable,
     operation: oas.OASOperation,
@@ -56,7 +57,6 @@ def _resolve(
     )
 
 
-@functools.lru_cache()
 def _import(
     operation_id: oas.OASOperationId,
     asynchronous: bool,
