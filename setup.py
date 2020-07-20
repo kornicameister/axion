@@ -9,12 +9,12 @@ __author_email__ = 'kornicameister@gmail.com'
 __maintainer__ = __author__
 __url__ = 'https://github.com/kornicameister/axion'
 
-if sys.version_info < (3, 6):
-    raise RuntimeError(f'{__title__}:{__version__} requires Python 3.6 or greater')
+if sys.version_info < (3, 7):
+    raise RuntimeError(f'{__title__}:{__version__} requires Python 3.7 or greater')
 
 setuptools.setup(
     setup_requires='setupmeta',
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     versioning='post',
     package_data={
         'axion': ['py.typed'],

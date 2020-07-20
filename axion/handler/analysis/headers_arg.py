@@ -114,52 +114,36 @@ def _signature_set_oas_gone(
     errors: t.Set[exceptions.Error] = set()
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
 
-    try:
-        # deal with typed dict, only reserved headers are allowed as dict
-        entries = t.get_type_hints(headers_arg).items()
-        if entries:
-            for hdr_param_name, hdr_param_type in entries:
-                if hdr_param_name not in RESERVED_HEADERS:
-                    logger.error(
-                        '{sig_key} is not one of {reserved_headers} headers',
-                        sig_key=hdr_param_name,
-                        reserved_headers=oas.OASReservedHeaders,
-                    )
-                    errors.add(
-                        exceptions.Error(
-                            param_name=f'headers.{hdr_param_name}',
-                            reason='unknown',
-                        ),
-                    )
-                elif hdr_param_type != str:
-                    errors.add(
-                        exceptions.Error(
-                            param_name=f'headers.{hdr_param_name}',
-                            reason=exceptions.IncorrectTypeReason(
-                                actual=hdr_param_type,
-                                expected=[str],
-                            ),
-                        ),
-                    )
-                else:
-                    param_key = model.get_f_param(hdr_param_name)
-                    param_mapping[model.OASParam(
-                        param_in='header',
-                        param_name=RESERVED_HEADERS[param_key],
-                    )] = param_key
-        else:
-            raise TypeError(
-                'Not TypedDict to jump into exception below. '
-                'This is 3.6 compatibility action.',
+    entries = t.get_type_hints(headers_arg).items()
+    for hdr_param_name, hdr_param_type in entries:
+        if hdr_param_name not in RESERVED_HEADERS:
+            logger.error(
+                '{sig_key} is not one of {reserved_headers} headers',
+                sig_key=hdr_param_name,
+                reserved_headers=oas.OASReservedHeaders,
             )
-    except TypeError:
-        # deal with mapping: in that case user will receive all
-        # reserved headers inside of the handler
-        for hdr_f_name, hdr_name in RESERVED_HEADERS.items():
+            errors.add(
+                exceptions.Error(
+                    param_name=f'headers.{hdr_param_name}',
+                    reason='unknown',
+                ),
+            )
+        elif hdr_param_type != str:
+            errors.add(
+                exceptions.Error(
+                    param_name=f'headers.{hdr_param_name}',
+                    reason=exceptions.IncorrectTypeReason(
+                        actual=hdr_param_type,
+                        expected=[str],
+                    ),
+                ),
+            )
+        else:
+            param_key = model.get_f_param(hdr_param_name)
             param_mapping[model.OASParam(
                 param_in='header',
-                param_name=hdr_name.lower(),
-            )] = hdr_f_name
+                param_name=RESERVED_HEADERS[param_key],
+            )] = param_key
 
     return errors, param_mapping
 
@@ -179,69 +163,56 @@ def _analyze_headers_signature_set_oas_set(
         **RESERVED_HEADERS,
     }
 
-    try:
-        entries = t.get_type_hints(headers_arg).items()
-        if entries:
-            for hdr_param_name, hdr_param_type in entries:
-                if hdr_param_name in all_headers_names:
-                    # now tricky part, for reserved headers we enforce str
-                    # for oas headers we do type check
-                    if hdr_param_name in RESERVED_HEADERS and hdr_param_type != str:
-                        errors.add(
-                            exceptions.Error(
-                                param_name=f'headers.{hdr_param_name}',
-                                reason=exceptions.IncorrectTypeReason(
-                                    actual=hdr_param_type,
-                                    expected=[str],
-                                ),
-                            ),
-                        )
-                        continue
-                    elif hdr_param_name in param_headers:
-                        oas_param = next(
-                            filter(
-                                lambda p: p.name == param_headers[
-                                    model.get_f_param(hdr_param_name)],
-                                parameters,
-                            ),
-                        )
-                        oas_param_type = model.convert_oas_param_to_ptype(oas_param)
-                        if oas_param_type != hdr_param_type:
-                            errors.add(
-                                exceptions.Error(
-                                    param_name=f'headers.{hdr_param_name}',
-                                    reason=exceptions.IncorrectTypeReason(
-                                        actual=hdr_param_type,
-                                        expected=[str],
-                                    ),
-                                ),
-                            )
-                            continue
-
-                    param_mapping[model.OASParam(
-                        param_in='header',
-                        param_name=all_headers_names[model.get_f_param(
-                            hdr_param_name,
-                        )].lower(),
-                    )] = model.get_f_param(hdr_param_name)
-
-                else:
+    entries = t.get_type_hints(headers_arg).items()
+    for hdr_param_name, hdr_param_type in entries:
+        if hdr_param_name in all_headers_names:
+            # now tricky part, for reserved headers we enforce str
+            # for oas headers we do type check
+            if hdr_param_name in RESERVED_HEADERS and hdr_param_type != str:
+                errors.add(
+                    exceptions.Error(
+                        param_name=f'headers.{hdr_param_name}',
+                        reason=exceptions.IncorrectTypeReason(
+                            actual=hdr_param_type,
+                            expected=[str],
+                        ),
+                    ),
+                )
+                continue
+            elif hdr_param_name in param_headers:
+                oas_param = next(
+                    filter(
+                        lambda p: p.name == param_headers[
+                            model.get_f_param(hdr_param_name)],
+                        parameters,
+                    ),
+                )
+                oas_param_type = model.convert_oas_param_to_ptype(oas_param)
+                if oas_param_type != hdr_param_type:
                     errors.add(
                         exceptions.Error(
                             param_name=f'headers.{hdr_param_name}',
-                            reason='unknown',
+                            reason=exceptions.IncorrectTypeReason(
+                                actual=hdr_param_type,
+                                expected=[str],
+                            ),
                         ),
                     )
-        else:
-            raise TypeError(
-                'Not TypedDict to jump into exception below. '
-                'This is 3.6 compatibility action.',
-            )
-    except TypeError:
-        for hdr_param_name, hdr_param_type in all_headers_names.items():
+                    continue
+
             param_mapping[model.OASParam(
                 param_in='header',
-                param_name=hdr_param_type.lower(),
-            )] = hdr_param_name
+                param_name=all_headers_names[model.get_f_param(
+                    hdr_param_name,
+                )].lower(),
+            )] = model.get_f_param(hdr_param_name)
+
+        else:
+            errors.add(
+                exceptions.Error(
+                    param_name=f'headers.{hdr_param_name}',
+                    reason='unknown',
+                ),
+            )
 
     return errors, param_mapping
