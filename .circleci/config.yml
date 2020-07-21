@@ -52,6 +52,7 @@ jobs:
       - restore_cache:
           keys:
             - pyenv-v7-{{ arch }}
+            - tox-v0-{{ arch }}
       - run:
           name: Install Pythons
           command: |
@@ -72,6 +73,10 @@ jobs:
             eval "$(pyenv init -)"
             pyenv shell 3.6.10 3.7.7 3.8.3 3.9-dev
             tox
+      - save_cache:
+          key: tox-v0-{{ arch }}
+          paths:
+            - .tox
       - store_test_results:
           path: test-reports
       - store_artifacts:
