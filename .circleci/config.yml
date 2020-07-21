@@ -52,6 +52,9 @@ jobs:
       - restore_cache:
           keys:
             - pyenv-v7-{{ arch }}
+            - pyenv-v7-
+      - restore_cache:
+          keys:
             - tox-v0-{{ arch }}-{{ checksum "requirements.txt" }}
             - tox-v0-{{ arch }}-
             - tox-v0-
