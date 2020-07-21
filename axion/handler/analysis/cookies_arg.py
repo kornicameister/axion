@@ -121,7 +121,19 @@ def _signature_set_oas_set(
     param_cookies = {model.get_f_param(rh.name): rh.name for rh in parameters}
 
     try:
-        entries = t.get_type_hints(cookies_arg).items()
+        r_cookies_arg = types.resolve_root_type(cookies_arg)
+        entries = t.get_type_hints(r_cookies_arg).items()
+        if not entries:
+            logger.debug('cookies_arg {h} is not dict like', h=r_cookies_arg)
+            raise TypeError('Not a dict like structure')
+
+        logger.debug(
+            'cookies_arg is {h}:{t} with entries {e}',
+            h=r_cookies_arg,
+            t=type(r_cookies_arg),
+            e=entries,
+        )
+
         for cookie_param_name, cookie_param_type in entries:
             if cookie_param_name in param_cookies:
 

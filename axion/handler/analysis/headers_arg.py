@@ -115,7 +115,19 @@ def _signature_set_oas_gone(
     param_mapping: t.Dict[model.OASParam, model.FunctionArgName] = {}
 
     try:
-        entries = t.get_type_hints(headers_arg).items()
+        r_headers_arg = types.resolve_root_type(headers_arg)
+        entries = t.get_type_hints(r_headers_arg).items()
+        if not entries:
+            logger.debug('headers_arg {h} is not dict like', h=r_headers_arg)
+            raise TypeError('Not a dict like structure')
+
+        logger.debug(
+            'headers_arg is {h}:{t} with entries {e}',
+            h=r_headers_arg,
+            e=entries,
+            t=type(r_headers_arg),
+        )
+
         for hdr_param_name, hdr_param_type in entries:
             if hdr_param_name not in RESERVED_HEADERS:
                 logger.error(
@@ -173,7 +185,19 @@ def _analyze_headers_signature_set_oas_set(
     }
 
     try:
-        entries = t.get_type_hints(headers_arg).items()
+        r_headers_arg = types.resolve_root_type(headers_arg)
+        entries = t.get_type_hints(r_headers_arg).items()
+        if not entries:
+            logger.debug('headers_arg {h} is not dict like', h=r_headers_arg)
+            raise TypeError('Not a dict like structure')
+
+        logger.debug(
+            'headers_arg is {h}:{t} with entries {e}',
+            h=r_headers_arg,
+            t=type(r_headers_arg),
+            e=entries,
+        )
+
         for hdr_param_name, hdr_param_type in entries:
             if hdr_param_name in all_headers_names:
                 # now tricky part, for reserved headers we enforce str
