@@ -52,7 +52,9 @@ jobs:
       - restore_cache:
           keys:
             - pyenv-v7-{{ arch }}
-            - tox-v0-{{ arch }}
+            - tox-v0-{{ arch }}-{{ checksum "requirements.txt" }}
+            - tox-v0-{{ arch }}-
+            - tox-v0-
       - run:
           name: Install Pythons
           command: |
@@ -74,7 +76,7 @@ jobs:
             pyenv shell 3.6.10 3.7.7 3.8.3 3.9-dev
             tox
       - save_cache:
-          key: tox-v0-{{ arch }}
+          key: tox-v0-{{ arch }}-{{ checksum "requirements.txt" }}
           paths:
             - .tox
       - store_test_results:
