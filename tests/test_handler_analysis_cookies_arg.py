@@ -2,10 +2,11 @@ import typing as t
 
 from _pytest import logging
 import pytest
+import pytest_mock as ptm
 import typing_extensions as te
 
 from axion import handler
-from axion import response
+from axion import pipeline
 from axion.oas import parser
 from axion.utils import get_type_repr
 
@@ -62,16 +63,21 @@ operations = parser._resolve_operations(
 )
 
 
-def test_signature_empty_no_oas_cookies(caplog: logging.LogCaptureFixture) -> None:
-    async def foo(name: str) -> response.Response:
+def test_signature_empty_no_oas_cookies(
+    mocker: ptm.MockFixture,
+    caplog: logging.LogCaptureFixture,
+) -> None:
+    async def foo(name: str) -> pipeline.Response:
         ...
 
     hdrl = handler._resolve(
         foo,
         next(filter(lambda op: op.id == 'no_cookies_op', operations)),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
-    assert id(hdrl.fn) == id(foo)
+    assert id(hdrl.user_handler) == id(foo)
     assert not hdrl.cookie_params
     assert 'No "cookies" in signature and operation parameters' in caplog.messages
 
@@ -92,14 +98,17 @@ def test_signature_empty_no_oas_cookies(caplog: logging.LogCaptureFixture) -> No
 def test_signature_set_no_oas_cookies(
     the_type: t.Type[t.Any],
     caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             foo,
             next(filter(lambda op: op.id == 'no_cookies_op', operations)),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert len(err.value) == 1
@@ -108,13 +117,18 @@ def test_signature_set_no_oas_cookies(
     assert '"cookies" found in signature but not in operation' in caplog.messages
 
 
-def test_signature_empty_oas_cookies(caplog: logging.LogCaptureFixture) -> None:
-    async def foo(name: str) -> response.Response:
+def test_signature_empty_oas_cookies(
+    mocker: ptm.MockFixture,
+    caplog: logging.LogCaptureFixture,
+) -> None:
+    async def foo(name: str) -> pipeline.Response:
         ...
 
     hdrl = handler._resolve(
         foo,
         next(filter(lambda op: op.id == 'cookies_op', operations)),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     msg = (
@@ -125,7 +139,7 @@ def test_signature_empty_oas_cookies(caplog: logging.LogCaptureFixture) -> None:
         'as '
     )
 
-    assert id(hdrl.fn) == id(foo)
+    assert id(hdrl.user_handler) == id(foo)
     assert not hdrl.cookie_params
     assert any(filter(lambda m: t.cast(str, m).startswith(msg), caplog.messages))
 
@@ -146,16 +160,19 @@ def test_signature_empty_oas_cookies(caplog: logging.LogCaptureFixture) -> None:
 def test_signature_set_oas_cookies(
     the_type: t.Type[t.Any],
     caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     hdrl = handler._resolve(
         foo,
         next(filter(lambda op: op.id == 'cookies_op', operations)),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
-    assert id(hdrl.fn) == id(foo)
+    assert id(hdrl.user_handler) == id(foo)
     assert hdrl.cookie_params
 
     assert ('csrftoken', 'csrftoken') in hdrl.cookie_params.items()
@@ -207,14 +224,17 @@ def test_signature_set_oas_cookies(
 def test_signature_set_bad_oas_cookies_type_mismatch(
     the_type: t.Type[t.Any],
     expected_errors: t.List[t.Tuple[str, str]],
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             foo,
             next(filter(lambda op: op.id == 'cookies_op', operations)),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert len(err.value) == len(expected_errors)
@@ -240,14 +260,17 @@ def test_signature_set_bad_oas_cookies_type_mismatch(
 def test_invalid_cookies_type(
     op_id: str,
     the_type: t.Type[t.Any],
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             foo,
             next(filter(lambda op: op.id == op_id, operations)),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert len(err.value) == 1
@@ -269,16 +292,19 @@ def test_invalid_cookies_type(
 def test_valid_cookies_any_type(
     the_type: t.Type[t.Any],
     caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     hdrl = handler._resolve(
         foo,
         next(filter(lambda op: op.id == 'cookies_op', operations)),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
-    assert id(hdrl.fn) == id(foo)
+    assert id(hdrl.user_handler) == id(foo)
     assert hdrl.cookie_params
     assert len(hdrl.cookie_params) == 2
     assert ('csrftoken', 'csrftoken') in hdrl.cookie_params.items()
@@ -313,14 +339,17 @@ def test_valid_cookies_any_type(
 def test_signature_set_bad_oas_cookies_unknown(
     the_type: t.Type[t.Any],
     extra_param: str,
+    mocker: ptm.MockFixture,
 ) -> None:
-    async def foo(name: str, cookies: the_type) -> response.Response:  # type: ignore
+    async def foo(name: str, cookies: the_type) -> pipeline.Response:  # type: ignore
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             foo,
             next(filter(lambda op: op.id == 'cookies_op', operations)),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert len(err.value) == 1

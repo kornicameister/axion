@@ -41,7 +41,7 @@
     from typing import Optional
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def primitives_mismatch(
@@ -49,7 +49,7 @@
       b: str,   # E: [primitives_mismatch(b -> b)] expected "float", but got "str"  [axion-arg-type]
       c: float, # E: [primitives_mismatch(c -> c)] expected "Optional[float]", but got "float"  [axion-arg-type]
       d: bool,  # E: [primitives_mismatch(d -> d)] expected "Optional[float]", but got "bool"  [axion-arg-type]
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: primitives_required
   oas_spec: |
@@ -113,7 +113,7 @@
               description: unexpected error
   main: |
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
     @oas_endpoint
     async def primitives_required(
       a: str,
@@ -124,7 +124,7 @@
       f: int,
       g: int,
       h: bool,
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: primitives_optional
   oas_spec: |
@@ -190,7 +190,7 @@
     from typing import Optional
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def primitives_optional(
@@ -202,7 +202,7 @@
       f: Optional[int],
       g: Optional[int],
       h: Optional[bool],
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: primitives_required_nullable
   oas_spec: |
@@ -276,7 +276,7 @@
     from typing import Optional
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def primitives_required_nullable(
@@ -288,5 +288,5 @@
       f: Optional[int]=None,
       g: Optional[int]=None,
       h: Optional[bool]=None,
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}

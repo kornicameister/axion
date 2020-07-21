@@ -10,6 +10,7 @@ import yarl
 from axion import conf
 from axion import handler
 from axion import oas
+from axion import pipeline
 from axion import plugin
 
 APIs = t.Dict[str, web.Application]
@@ -105,13 +106,29 @@ def _apply_specification(
 
 
 def _make_handler(operation: oas.OASOperation) -> web_app._Handler:
-    user_handler = handler.resolve(operation, asynchronous=True)
+    user_handler = handler.resolve(
+        operation,
+        request_processor=_request_processor(operation),
+        response_processor=_response_processor(operation),
+    )
 
     async def wrapper(request: web.Request) -> web.StreamResponse:
-        await user_handler.fn()  # pragma: no cover
+        await user_handler.user_handler()  # pragma: no cover
         return web.Response()  # pragma: no cover
 
     return wrapper
+
+
+def _response_processor(
+    operation: oas.OASOperation,
+) -> t.Callable[[pipeline.Response], t.Coroutine[None, None, web.Response]]:
+    ...
+
+
+def _request_processor(
+    operation: oas.OASOperation,
+) -> t.Callable[[web.Request], t.Coroutine[None, None, pipeline.Request]]:
+    ...
 
 
 def _get_base_path(servers: t.List[oas.OASServer]) -> str:

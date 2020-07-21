@@ -1,7 +1,7 @@
 import typing as t
 
 from axion import oas_endpoint
-from axion import response
+from axion import pipeline
 
 
 @oas_endpoint

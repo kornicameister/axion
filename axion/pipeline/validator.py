@@ -3,7 +3,7 @@ import dataclasses as dc
 import typing as t
 
 from axion import oas
-from axion import response
+from axion import pipeline
 
 
 @dc.dataclass(frozen=True)
@@ -43,7 +43,7 @@ class Validator(t.Generic[VT], metaclass=abc.ABCMeta):
         self._oas_operation = oas_operation
 
     @abc.abstractmethod
-    def __call__(self, r: response.Response) -> VT:
+    def __call__(self, r: pipeline.Response) -> VT:
         raise NotImplementedError()
 
 
@@ -63,7 +63,7 @@ class HttpCodeValidator(Validator[int]):
         )
         self._has_default = 'default' in oas_operation.responses.keys()
 
-    def __call__(self, r: response.Response) -> int:
+    def __call__(self, r: pipeline.Response) -> int:
         http_code = r['http_code']
         if http_code in self._allowed_codes:
             return http_code

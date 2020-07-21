@@ -5,7 +5,7 @@ import typing_extensions as te
 import typing_inspect as ti
 
 from axion import oas
-from axion import response
+from axion import pipeline
 from axion.handler import exceptions
 from axion.handler import model
 from axion.utils import types
@@ -52,14 +52,14 @@ def analyze(
                 'Operation {id} handler return type is incorrect, '
                 'expected {expected_type} but received {actual_type}',
                 id=lambda: operation.id,
-                expected_type=lambda: response.Response,
+                expected_type=lambda: pipeline.Response,
                 actual_type=lambda: return_type,
             )
             return {
                 exceptions.Error(
                     param_name='return',
                     reason=exceptions.IncorrectTypeReason(
-                        expected=[response.Response],
+                        expected=[pipeline.Response],
                         actual=return_type,
                     ),
                 ),
