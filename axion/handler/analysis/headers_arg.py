@@ -192,8 +192,9 @@ def _analyze_headers_signature_set_oas_set(
                 elif hdr_param_name in param_headers:
                     oas_param = next(
                         filter(
-                            lambda p: p.name == param_headers[
-                                model.get_f_param(hdr_param_name)],
+                            lambda p: p.name == param_headers[model.get_f_param(
+                                hdr_param_name,
+                            )],
                             parameters,
                         ),
                     )

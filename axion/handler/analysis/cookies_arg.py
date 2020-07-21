@@ -127,8 +127,9 @@ def _signature_set_oas_set(
 
                 oas_param = next(
                     filter(
-                        lambda p: p.name == param_cookies[model.
-                                                          get_f_param(cookie_param_name)],
+                        lambda p: p.name == param_cookies[model.get_f_param(
+                            cookie_param_name,
+                        )],
                         parameters,
                     ),
                 )
