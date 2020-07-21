@@ -51,7 +51,7 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - pyenv-v7-{{ arch }}
+            - pyenv-v8-{{ arch }}
       - run:
           name: Install Pythons
           command: |
