@@ -121,49 +121,53 @@ def _signature_set_oas_set(
     param_cookies = {model.get_f_param(rh.name): rh.name for rh in parameters}
 
     try:
-        entries = t.get_type_hints(cookies_arg).items()
-        if entries:
-            for cookie_param_name, cookie_param_type in entries:
-                if cookie_param_name in param_cookies:
+        r_cookies_arg = types.resolve_root_type(cookies_arg)
+        entries = t.get_type_hints(r_cookies_arg).items()
 
-                    oas_param = next(
-                        filter(
-                            lambda p: p.name == param_cookies[
-                                model.get_f_param(cookie_param_name)],
-                            parameters,
-                        ),
-                    )
-                    oas_param_type = model.convert_oas_param_to_ptype(oas_param)
-                    if oas_param_type != cookie_param_type:
-                        errors.add(
-                            exceptions.Error(
-                                param_name=f'cookies.{cookie_param_name}',
-                                reason=exceptions.IncorrectTypeReason(
-                                    actual=cookie_param_type,
-                                    expected=[oas_param_type],
-                                ),
-                            ),
-                        )
-                    else:
-                        param_mapping[model.OASParam(
-                            param_in='cookie',
-                            param_name=param_cookies[model.get_f_param(
-                                cookie_param_name,
-                            )],
-                        )] = model.get_f_param(cookie_param_name)
+        logger.debug(
+            'cookies_arg is {h}:{t} with entries {e}',
+            h=r_cookies_arg,
+            t=type(r_cookies_arg),
+            e=entries,
+        )
 
-                else:
+        for cookie_param_name, cookie_param_type in entries:
+            if cookie_param_name in param_cookies:
+
+                oas_param = next(
+                    filter(
+                        lambda p: p.name == param_cookies[model.get_f_param(
+                            cookie_param_name,
+                        )],
+                        parameters,
+                    ),
+                )
+                oas_param_type = model.convert_oas_param_to_ptype(oas_param)
+                if oas_param_type != cookie_param_type:
                     errors.add(
                         exceptions.Error(
                             param_name=f'cookies.{cookie_param_name}',
-                            reason='unknown',
+                            reason=exceptions.IncorrectTypeReason(
+                                actual=cookie_param_type,
+                                expected=[oas_param_type],
+                            ),
                         ),
                     )
-        else:
-            raise TypeError(
-                'Not TypedDict to jump into exception below. '
-                'This is 3.6 compatibility action.',
-            )
+                else:
+                    param_mapping[model.OASParam(
+                        param_in='cookie',
+                        param_name=param_cookies[model.get_f_param(
+                            cookie_param_name,
+                        )],
+                    )] = model.get_f_param(cookie_param_name)
+
+            else:
+                errors.add(
+                    exceptions.Error(
+                        param_name=f'cookies.{cookie_param_name}',
+                        reason='unknown',
+                    ),
+                )
     except TypeError:
         for hdr_param_name, hdr_param_type in param_cookies.items():
             param_mapping[model.OASParam(

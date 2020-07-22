@@ -1,4 +1,3 @@
-import sys
 import typing as t
 
 from loguru import logger
@@ -37,7 +36,7 @@ def _repr(val: t.Any) -> str:
         else:
             return 'typing.Any'
     elif ti.is_optional_type(val):
-        optional_args = _ti_get_args(val)[:-1]
+        optional_args = ti.get_args(val, True)[:-1]
         nested_union = len(optional_args) > 1
         optional_reprs = (get_repr(tt) for tt in optional_args)
         if nested_union:
@@ -45,22 +44,11 @@ def _repr(val: t.Any) -> str:
         else:
             return f'typing.Optional[{", ".join(optional_reprs)}]'
     elif ti.is_union_type(val):
-        union_reprs = (get_repr(tt) for tt in _ti_get_args(val))
+        union_reprs = (get_repr(tt) for tt in ti.get_args(val, True))
         return f'typing.Union[{", ".join(union_reprs)}]'
     elif ti.is_generic_type(val):
-
-        if sys.version_info < (3, 7):
-            attr_name = val.__name__
-            generic_reprs = [get_repr(tt) for tt in ti.get_last_args(val)]
-            if not generic_reprs:
-                generic_reprs = (get_repr(tt) for tt in ti.get_parameters(val))
-        else:
-            attr_name = val._name
-            generic_reprs = (get_repr(tt) for tt in ti.get_args(val, evaluate=True))
-
-        assert generic_reprs is not None
-        assert attr_name is not None
-
+        attr_name = val._name
+        generic_reprs = (get_repr(tt) for tt in ti.get_args(val, evaluate=True))
         return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
         val_name = _qualified_name(val)
@@ -87,14 +75,3 @@ def _qualified_name(tt: t.Type[t.Any]) -> str:
         the_name = tt.__name__ or tt.__qualname__
 
     return the_name
-
-
-if sys.version_info < (3, 7):
-    logger.trace('python 3.6 detected, using typing_inspect.get_last_args')
-
-    def _ti_get_args(val: t.Any) -> t.Any:
-        return ti.get_last_args(val)
-else:
-
-    def _ti_get_args(val: t.Any) -> t.Any:
-        return ti.get_args(val, True)
