@@ -2,18 +2,19 @@ import typing as t
 
 from _pytest import logging
 import pytest
+import pytest_mock as ptm
 
 from axion import handler
-from axion import response
+from axion import pipeline
 from axion.oas import model
 from axion.oas import parser
 
 
-def normal_f() -> response.Response:
+def normal_f() -> pipeline.Response:
     ...
 
 
-async def async_f() -> response.Response:
+async def async_f() -> pipeline.Response:
     ...
 
 
@@ -37,6 +38,7 @@ async def async_f() -> response.Response:
 def test_make_handler_bad_cases(
     operation_id: str,
     error_msg: str,
+    mocker: ptm.MockFixture,
 ) -> None:
     operation = list(
         parser._resolve_operations(
@@ -58,7 +60,9 @@ def test_make_handler_bad_cases(
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler.resolve(
             operation,
-            True,
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
+            asynchronous=True,
         )
     assert err.match(error_msg)
 
@@ -70,8 +74,11 @@ def test_resolve_handler_couroutine() -> None:
     ) is async_f
 
 
-def test_empty_handler_signature(caplog: logging.LogCaptureFixture) -> None:
-    async def foo() -> response.Response:
+def test_empty_handler_signature(
+    mocker: ptm.MockFixture,
+    caplog: logging.LogCaptureFixture,
+) -> None:
+    async def foo() -> pipeline.Response:
         ...
 
     handler._resolve(
@@ -93,18 +100,23 @@ def test_empty_handler_signature(caplog: logging.LogCaptureFixture) -> None:
                 },
             ),
         )[0],
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     assert 'TestAnalysisNoParameters does not declare any parameters' in caplog.messages
 
 
-def test_not_empty_signature(caplog: logging.LogCaptureFixture) -> None:
+def test_not_empty_signature(
+    caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
+) -> None:
     async def foo(
         name: str,
         foo: str,
         bar: str,
         lorem_ipsum: t.List[str],
-    ) -> response.Response:
+    ) -> pipeline.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
@@ -137,6 +149,8 @@ def test_not_empty_signature(caplog: logging.LogCaptureFixture) -> None:
                     },
                 ),
             )[0],
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert len(err.value) == 3

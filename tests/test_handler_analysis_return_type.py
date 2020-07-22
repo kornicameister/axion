@@ -2,10 +2,11 @@ import typing as t
 
 from _pytest import logging
 import pytest
+import pytest_mock as ptm
 import typing_extensions as te
 
 from axion import handler
-from axion import response
+from axion import pipeline
 from axion.oas import model
 from axion.oas import parser
 from axion.utils import get_type_repr
@@ -27,7 +28,7 @@ from axion.utils import get_type_repr
             500,
             503,
         ] for return_type in (
-            response.Response,
+            pipeline.Response,
             te.TypedDict(  # type: ignore
                 'JustHttpCodeIsOk',
                 {'http_code': int},
@@ -97,6 +98,7 @@ from axion.utils import get_type_repr
 def test_correct_handler_no_oas_body(
     response_code: int,
     return_type: t.Type[t.Any],
+    mocker: ptm.MockFixture,
 ) -> None:
     async def test() -> return_type:  # type: ignore
         ...
@@ -109,10 +111,12 @@ def test_correct_handler_no_oas_body(
     handler._resolve(
         handler=test,
         operation=operation,
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
 
-def test_missing_return_annotation() -> None:
+def test_missing_return_annotation(mocker: ptm.MockFixture) -> None:
     async def test():  # type: ignore
         ...
 
@@ -124,6 +128,8 @@ def test_missing_return_annotation() -> None:
                     'description': 'It will not work anyway',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err
@@ -136,6 +142,7 @@ def test_missing_return_annotation() -> None:
 @pytest.mark.parametrize('response_code', (200, 300, 400, 'default'))
 def test_omitted_return_code_single_oas_resp(
     response_code: t.Union[str, te.Literal['default']],
+    mocker: ptm.MockFixture,
 ) -> None:
     test_returns = te.TypedDict(  # type: ignore
         'MissingHttpCode',
@@ -152,10 +159,12 @@ def test_omitted_return_code_single_oas_resp(
                 'description': 'I am alone',
             },
         }),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
 
-def test_omitted_return_code_couple_oas_resp() -> None:
+def test_omitted_return_code_couple_oas_resp(mocker: ptm.MockFixture) -> None:
     test_returns = te.TypedDict(  # type: ignore
         'MissingHttpCode',
         {'body': t.Dict[str, int]},
@@ -175,6 +184,8 @@ def test_omitted_return_code_couple_oas_resp() -> None:
                     'description': 'I am alone',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err
@@ -194,7 +205,10 @@ def test_omitted_return_code_couple_oas_resp() -> None:
         t.Dict[str, str],
     ),
 )
-def test_incorrect_return_type(return_type: t.Type[t.Any]) -> None:
+def test_incorrect_return_type(
+    return_type: t.Type[t.Any],
+    mocker: ptm.MockFixture,
+) -> None:
     async def test() -> return_type:  # type: ignore
         ...
 
@@ -206,6 +220,8 @@ def test_incorrect_return_type(return_type: t.Type[t.Any]) -> None:
                     'description': 'Incorrect return type',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err
@@ -214,7 +230,7 @@ def test_incorrect_return_type(return_type: t.Type[t.Any]) -> None:
     assert 'return' in err.value
 
     assert (
-        f'expected [{get_type_repr.get_repr(response.Response)}], but got '
+        f'expected [{get_type_repr.get_repr(pipeline.Response)}], but got '
         f'{get_type_repr.get_repr(return_type if return_type else type(None))}'
     ) == err.value['return']
 
@@ -229,7 +245,10 @@ def test_incorrect_return_type(return_type: t.Type[t.Any]) -> None:
         t.Set[t.Tuple[str, str]],
     ),
 )
-def test_incorrect_headers_type(headers_type: t.Type[t.Any]) -> None:
+def test_incorrect_headers_type(
+    headers_type: t.Type[t.Any],
+    mocker: ptm.MockFixture,
+) -> None:
     test_returns = te.TypedDict(  # type: ignore
         'RV_Bad_Headers',
         {'http_code': int, 'headers': headers_type},  # type: ignore
@@ -246,6 +265,8 @@ def test_incorrect_headers_type(headers_type: t.Type[t.Any]) -> None:
                     'description': 'Incorrect return type',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err
@@ -273,7 +294,10 @@ def test_incorrect_headers_type(headers_type: t.Type[t.Any]) -> None:
         t.Set[t.Tuple[str, str]],
     ),
 )
-def test_incorrect_cookies_type(cookies_type: t.Type[t.Any]) -> None:
+def test_incorrect_cookies_type(
+    cookies_type: t.Type[t.Any],
+    mocker: ptm.MockFixture,
+) -> None:
     test_returns = te.TypedDict(  # type: ignore
         'RV_Bad_Cookies',
         {'http_code': int, 'cookies': cookies_type},  # type: ignore
@@ -290,6 +314,8 @@ def test_incorrect_cookies_type(cookies_type: t.Type[t.Any]) -> None:
                     'description': 'Incorrect return type',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err
@@ -307,7 +333,10 @@ def test_incorrect_cookies_type(cookies_type: t.Type[t.Any]) -> None:
     ) == err.value['return.cookies']
 
 
-def test_headers_cookies_any(caplog: logging.LogCaptureFixture) -> None:
+def test_headers_cookies_any(
+    caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
+) -> None:
     class R(te.TypedDict):
         headers: t.Any
         cookies: t.Any
@@ -323,6 +352,8 @@ def test_headers_cookies_any(caplog: logging.LogCaptureFixture) -> None:
                 'description': 'Incorrect return type',
             },
         }),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     for msg in (
@@ -343,7 +374,10 @@ def test_headers_cookies_any(caplog: logging.LogCaptureFixture) -> None:
         te.Literal[13.0],
     ),
 )
-def test_incorrect_return_http_code(return_code: t.Type[t.Any]) -> None:
+def test_incorrect_return_http_code(
+    return_code: t.Type[t.Any],
+    mocker: ptm.MockFixture,
+) -> None:
     test_returns = te.TypedDict(  # type: ignore
         f'ReturnWithCodeAs_{return_code}',
         {'http_code': return_code},
@@ -360,6 +394,8 @@ def test_incorrect_return_http_code(return_code: t.Type[t.Any]) -> None:
                     'description': 'Incorrect return type',
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err

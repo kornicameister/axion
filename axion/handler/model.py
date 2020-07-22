@@ -7,7 +7,7 @@ import multidict as md
 import typing_extensions as te
 
 from axion import oas
-from axion import response
+from axion import pipeline
 from axion.utils import types
 
 HTTP_CODE_TYPE: te.Final = int
@@ -20,7 +20,7 @@ BODY_TYPES: te.Final = [
     t.Mapping[str, t.Any],
     t.Dict[str, t.Any],
 ]
-AXION_RESPONSE_ENTRIES: te.Final = response.Response.__annotations__.copy()
+AXION_RESPONSE_ENTRIES: te.Final = pipeline.Response.__annotations__.copy()
 AXION_RESPONSE_KEYS: te.Final = frozenset(AXION_RESPONSE_ENTRIES.keys())
 
 OASParam = t.NamedTuple(
@@ -58,15 +58,32 @@ def convert_oas_param_to_ptype(param: oas.OASParameter) -> t.Any:
         return p_type
 
 
-F = t.TypeVar('F', bound=types.AnyCallable)
+UF = t.TypeVar('UF', bound=types.AnyCallable)
+UF.__doc__ = 'User defined API handler'
+
+RQP = t.TypeVar('RQP', bound=types.AnyCallable)
+RQP.__doc__ = 'Request processor callable'
+
+RPP = t.TypeVar('RPP', bound=types.AnyCallable)
+RPP.__doc__ = 'Response processor callable'
+
+RQ = t.TypeVar('RQ')  # request
+RP = t.TypeVar('RP')  # response
 
 
 @dc.dataclass(frozen=True, repr=True)
-class Handler(t.Generic[F]):
-    fn: F
-    has_body: bool
-
+class BaseHandler(t.Generic[UF, RQP, RPP]):
+    # init vars
     param_mapping: dc.InitVar[ParamMapping]
+
+    # functions
+    user_handler: UF
+    request_processor: RQP
+    response_processor: RPP
+
+    # handler analysis results
+    # TODO(kornicameister) create own object
+    has_body: bool
     path_params: t.Mapping[str, str] = dc.field(
         init=False,
         metadata={
@@ -118,12 +135,28 @@ class Handler(t.Generic[F]):
             object.__setattr__(self, attr_name, _params(param_loc))
 
 
+SyncCallable = t.Callable[..., pipeline.Response]
+SyncRequestProcessor = t.Callable[[RQ], pipeline.Request]
+SyncResponseProcessor = t.Callable[[pipeline.Response], RP]
+
+AsyncCallable = t.Callable[..., t.Coroutine[None, None, pipeline.Response]]
+AsyncRequestProcessor = t.Callable[[RQ], t.Coroutine[None, None, pipeline.Request]]
+AsyncResponseProcessor = t.Callable[[pipeline.Response], t.Coroutine[None, None, RP]]
+
+RequestProcessor = t.Union[SyncRequestProcessor[RQ], AsyncRequestProcessor[RQ]]
+ResponseProcessor = t.Union[SyncResponseProcessor[RP], AsyncResponseProcessor[RP]]
+
+
 @te.final
-class SyncHandler(Handler[t.Callable[..., response.Response]]):
+class SyncHandler(BaseHandler[SyncCallable, SyncRequestProcessor[RQ],
+                              SyncResponseProcessor[RP]]):
     ...
 
 
 @te.final
-class AsyncHandler(Handler[t.Callable[..., t.Coroutine[t.Any, t.Any,
-                                                       response.Response]]]):
+class AsyncHandler(BaseHandler[AsyncCallable, AsyncRequestProcessor[RQ],
+                               AsyncResponseProcessor[RP]]):
     ...
+
+
+Handler = t.Union[SyncHandler, AsyncHandler]
