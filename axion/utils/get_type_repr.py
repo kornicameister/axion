@@ -1,4 +1,3 @@
-import sys
 import typing as t
 
 from loguru import logger
