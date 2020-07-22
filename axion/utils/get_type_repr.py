@@ -48,19 +48,8 @@ def _repr(val: t.Any) -> str:
         union_reprs = (get_repr(tt) for tt in ti.get_args(val, True))
         return f'typing.Union[{", ".join(union_reprs)}]'
     elif ti.is_generic_type(val):
-
-        if sys.version_info < (3, 7):
-            attr_name = val.__name__
-            generic_reprs = [get_repr(tt) for tt in ti.get_last_args(val)]
-            if not generic_reprs:
-                generic_reprs = (get_repr(tt) for tt in ti.get_parameters(val))
-        else:
-            attr_name = val._name
-            generic_reprs = (get_repr(tt) for tt in ti.get_args(val, evaluate=True))
-
-        assert generic_reprs is not None
-        assert attr_name is not None
-
+        attr_name = val._name
+        generic_reprs = (get_repr(tt) for tt in ti.get_args(val, evaluate=True))
         return f'typing.{attr_name}[{", ".join(generic_reprs)}]'
     else:
         val_name = _qualified_name(val)

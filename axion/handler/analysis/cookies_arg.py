@@ -123,9 +123,6 @@ def _signature_set_oas_set(
     try:
         r_cookies_arg = types.resolve_root_type(cookies_arg)
         entries = t.get_type_hints(r_cookies_arg).items()
-        if not entries:
-            logger.debug('cookies_arg {h} is not dict like', h=r_cookies_arg)
-            raise TypeError('Not a dict like structure')
 
         logger.debug(
             'cookies_arg is {h}:{t} with entries {e}',

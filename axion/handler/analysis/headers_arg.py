@@ -117,9 +117,6 @@ def _signature_set_oas_gone(
     try:
         r_headers_arg = types.resolve_root_type(headers_arg)
         entries = t.get_type_hints(r_headers_arg).items()
-        if not entries:
-            logger.debug('headers_arg {h} is not dict like', h=r_headers_arg)
-            raise TypeError('Not a dict like structure')
 
         logger.debug(
             'headers_arg is {h}:{t} with entries {e}',
@@ -187,9 +184,6 @@ def _analyze_headers_signature_set_oas_set(
     try:
         r_headers_arg = types.resolve_root_type(headers_arg)
         entries = t.get_type_hints(r_headers_arg).items()
-        if not entries:
-            logger.debug('headers_arg {h} is not dict like', h=r_headers_arg)
-            raise TypeError('Not a dict like structure')
 
         logger.debug(
             'headers_arg is {h}:{t} with entries {e}',
