@@ -17,10 +17,10 @@
               description: unexpected error
   main: |
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
-    async def not_oas() -> response.Response:
+    async def not_oas() -> pipeline.Response:
       return {}
   out: |
     main:5: error: not_oas is not OAS operation  [axion-no-op]
@@ -42,14 +42,14 @@
               description: unexpected error
   main: |
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
-    async def oas_op() -> response.Response:
+    async def oas_op() -> pipeline.Response:
       return {'http_code': 204}
 
     @oas_endpoint
-    async def not_oas() -> response.Response:
+    async def not_oas() -> pipeline.Response:
       return {}
   out: |
     main:9: error: not_oas is not OAS operation  [axion-no-op]

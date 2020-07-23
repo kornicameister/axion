@@ -1,9 +1,10 @@
 import typing as t
 
 import pytest
+import pytest_mock as ptm
 
 from axion import handler
-from axion import response
+from axion import pipeline
 from axion.oas import parser
 
 operation = next(
@@ -59,18 +60,20 @@ operation = next(
 )
 
 
-def test_signature_mismatch_missing() -> None:
+def test_signature_mismatch_missing(mocker: ptm.MockFixture) -> None:
     async def foo(
         limit: t.Optional[int],
         page: t.Optional[float],
         include_extra: t.Optional[bool],
-    ) -> response.Response:
+    ) -> pipeline.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             handler=foo,
             operation=operation,
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value.operation_id == 'TestAnalysisParameters'
@@ -79,14 +82,16 @@ def test_signature_mismatch_missing() -> None:
     assert err.value['id'] == 'missing'
 
 
-def test_signature_all_missing() -> None:
-    async def foo() -> response.Response:
+def test_signature_all_missing(mocker: ptm.MockFixture) -> None:
+    async def foo() -> pipeline.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             handler=foo,
             operation=operation,
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value.operation_id == 'TestAnalysisParameters'
@@ -96,19 +101,21 @@ def test_signature_all_missing() -> None:
         assert err.value[key] == 'missing'
 
 
-def test_signature_mismatch_bad_type() -> None:
+def test_signature_mismatch_bad_type(mocker: ptm.MockFixture) -> None:
     async def foo(
         id: bool,
         limit: t.Optional[int],
         page: t.Optional[float],
         include_extra: t.Optional[bool],
-    ) -> response.Response:
+    ) -> pipeline.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             handler=foo,
             operation=operation,
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value.operation_id == 'TestAnalysisParameters'
@@ -117,19 +124,21 @@ def test_signature_mismatch_bad_type() -> None:
     assert err.value['id'] == 'expected [str], but got bool'
 
 
-def test_signature_all_bad_type() -> None:
+def test_signature_all_bad_type(mocker: ptm.MockFixture) -> None:
     async def foo(
         id: float,
         limit: t.Optional[t.Union[float, int]],
         page: t.Optional[t.AbstractSet[bool]],
         include_extra: t.Union[int, str],
-    ) -> response.Response:
+    ) -> pipeline.Response:
         ...
 
     with pytest.raises(handler.InvalidHandlerError) as err:
         handler._resolve(
             handler=foo,
             operation=operation,
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value.operation_id == 'TestAnalysisParameters'
@@ -160,18 +169,20 @@ def test_signature_all_bad_type() -> None:
         assert actual_msg == expected_msg
 
 
-def test_signature_match() -> None:
+def test_signature_match(mocker: ptm.MockFixture) -> None:
     async def test_handler(
         id: str,
         limit: t.Optional[int],
         page: t.Optional[float],
         include_extra: t.Optional[bool],
-    ) -> response.Response:
+    ) -> pipeline.Response:
         ...
 
     hdrl = handler._resolve(
         handler=test_handler,
         operation=operation,
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     assert len(hdrl.path_params) == 1

@@ -70,6 +70,13 @@ def is_dict_like(tt: t.Any) -> bool:
     return False  # pragma: no cover
 
 
+@functools.lru_cache(maxsize=30, typed=True)
+def resolve_root_type(tt: t.Any) -> t.Any:
+    if ti.is_new_type(tt):
+        return resolve_root_type(tt.__supertype__)
+    return tt
+
+
 def literal_types(tt: t.Any) -> t.Iterable[PP]:
     assert ti.is_literal_type(tt)
     pps = [_literal_types(x) for x in ti.get_args(tt, ti.NEW_TYPING)]

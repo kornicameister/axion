@@ -156,7 +156,7 @@ def test_get_type_repr(
     ),
 )
 def test_response_repr() -> None:
-    from axion import response
+    from axion import pipeline
 
     v1 = (
         'Response{'
@@ -166,6 +166,6 @@ def test_response_repr() -> None:
         'http_code: int'
         '}'
     )
-    v2 = get_type_repr.get_repr(response.Response)
+    v2 = get_type_repr.get_repr(pipeline.Response)
 
     assert v1 == v2

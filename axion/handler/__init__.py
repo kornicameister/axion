@@ -18,45 +18,67 @@ from axion.utils import types
 @t.overload
 def resolve(
     operation: oas.OASOperation,
-    asynchronous: te.Literal[True],
-) -> model.AsyncHandler:
+    *,
+    request_processor: model.AsyncRequestProcessor[model.RQ],
+    response_processor: model.AsyncResponseProcessor[model.RP],
+    asynchronous: te.Literal[True] = True,
+) -> model.AsyncHandler[model.RQ, model.RP]:
     ...  # pragma: no cover
 
 
 @t.overload
 def resolve(
     operation: oas.OASOperation,
-    asynchronous: te.Literal[False],
-) -> model.SyncHandler:
+    *,
+    request_processor: model.SyncRequestProcessor[model.RQ],
+    response_processor: model.SyncResponseProcessor[model.RP],
+    asynchronous: te.Literal[False] = False,
+) -> model.SyncHandler[model.RQ, model.RP]:
     ...  # pragma: no cover
 
 
 def resolve(
     operation: oas.OASOperation,
-    asynchronous: bool,
-) -> model.Handler[types.AnyCallable]:
+    *,
+    request_processor: types.AnyCallable,
+    response_processor: types.AnyCallable,
+    asynchronous: bool = False,
+) -> model.Handler:
     logger.info('Making user handler for op={op}', op=operation)
-    return _resolve(_import(operation.id, asynchronous), operation)
-
-
-def _resolve(
-    handler: types.AnyCallable,
-    operation: oas.OASOperation,
-) -> model.Handler[types.AnyCallable]:
-    analysis_result = analysis.analyze(handler, operation)
-
-    handler_cls = (
-        model.AsyncHandler if asyncio.iscoroutinefunction(handler) else model.SyncHandler
-    )  # type: t.Type[model.Handler[types.AnyCallable]]
-
-    return handler_cls(
-        fn=handler,
-        param_mapping=analysis_result.param_mapping,
-        has_body=analysis_result.has_body,
+    return _resolve(
+        _import(
+            operation.id,
+            asynchronous=asynchronous,
+        ),
+        operation,
+        request_processor=request_processor,
+        response_processor=response_processor,
     )
 
 
 @functools.lru_cache()
+def _resolve(
+    handler: model.UF,
+    operation: oas.OASOperation,
+    *,
+    request_processor: types.AnyCallable,
+    response_processor: types.AnyCallable,
+) -> model.Handler:
+    analysis_result = analysis.analyze(handler, operation)
+
+    handler_cls = (
+        model.AsyncHandler if asyncio.iscoroutinefunction(handler) else model.SyncHandler
+    )  # type: t.Type[model.Handler]
+
+    return handler_cls(
+        param_mapping=analysis_result.param_mapping,
+        has_body=analysis_result.has_body,
+        user_handler=handler,
+        request_processor=request_processor,
+        response_processor=response_processor,
+    )
+
+
 def _import(
     operation_id: oas.OASOperationId,
     asynchronous: bool,

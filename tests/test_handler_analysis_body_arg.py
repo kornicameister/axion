@@ -2,6 +2,7 @@ import typing as t
 
 from _pytest import logging
 import pytest
+import pytest_mock as ptm
 import typing_extensions as te
 
 from axion import handler
@@ -14,20 +15,22 @@ class R(te.TypedDict):
     body: te.Literal[None]
 
 
-def test_no_request_body_empty_signature() -> None:
+def test_no_request_body_empty_signature(mocker: ptm.MockFixture) -> None:
     async def test() -> R:
         ...
 
     hdrl = handler._resolve(
         handler=test,
         operation=_make_operation(None),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     assert not hdrl.has_body
 
 
 @pytest.mark.parametrize('required', (True, False))
-def test_request_body_signature_set(required: bool) -> None:
+def test_request_body_signature_set(required: bool, mocker: ptm.MockFixture) -> None:
     async def test(body: t.Dict[str, t.Any]) -> R:
         ...
 
@@ -45,12 +48,14 @@ def test_request_body_signature_set(required: bool) -> None:
                 },
             },
         }),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     assert hdrl.has_body
 
 
-def test_request_body_required_signature_optional() -> None:
+def test_request_body_required_signature_optional(mocker: ptm.MockFixture) -> None:
     async def test(body: t.Optional[t.Dict[str, t.Any]]) -> R:
         ...
 
@@ -69,6 +74,8 @@ def test_request_body_required_signature_optional() -> None:
                     },
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value
@@ -93,7 +100,7 @@ def test_request_body_required_signature_optional() -> None:
         t.NewType('Body', t.Mapping[str, str]),  # type: ignore
     ),
 )
-def test_request_body_different_types(the_type: t.Any) -> None:
+def test_request_body_different_types(the_type: t.Any, mocker: ptm.MockFixture) -> None:
     async def test(body: the_type) -> R:  # type: ignore
         ...
 
@@ -111,12 +118,17 @@ def test_request_body_different_types(the_type: t.Any) -> None:
                 },
             },
         }),
+        request_processor=mocker.Mock(),
+        response_processor=mocker.Mock(),
     )
 
     assert hdrl.has_body
 
 
-def test_no_request_body_signature_set(caplog: logging.LogCaptureFixture) -> None:
+def test_no_request_body_signature_set(
+    caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
+) -> None:
     async def test(body: t.Dict[str, t.Any]) -> R:
         ...
 
@@ -124,6 +136,8 @@ def test_no_request_body_signature_set(caplog: logging.LogCaptureFixture) -> Non
         handler._resolve(
             handler=test,
             operation=_make_operation(None),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value
@@ -141,6 +155,7 @@ def test_no_request_body_signature_set(caplog: logging.LogCaptureFixture) -> Non
 def test_request_body_empty_signature(
     required: bool,
     caplog: logging.LogCaptureFixture,
+    mocker: ptm.MockFixture,
 ) -> None:
     async def foo() -> R:
         ...
@@ -160,6 +175,8 @@ def test_request_body_empty_signature(
                     },
                 },
             }),
+            request_processor=mocker.Mock(),
+            response_processor=mocker.Mock(),
         )
 
     assert err.value

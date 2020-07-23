@@ -40,14 +40,14 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       one_of1: t.Union[str, bool],
       one_of2: t.Union[int, float],
       one_of3: t.Union[str, int],
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_notRequired
   oas_spec: |
@@ -83,13 +83,13 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       required_one_of: t.Union[str, bool],
       not_required_one_of: t.Optional[t.Union[int, str]],
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_nullable
   oas_spec: |
@@ -126,13 +126,13 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       one_of1: t.Optional[t.Union[str, bool]],
       one_of2: t.Optional[t.Union[str, bool]],
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_large
   oas_spec: |
@@ -163,12 +163,12 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       one_of_large: t.Union[bool, int, float, str],
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_not
   oas_spec: |
@@ -203,12 +203,12 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       one_of_not: t.Optional[int]=None,
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_single
   oas_spec: |
@@ -236,13 +236,13 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def oneOf(
       one_of_single: int,
       # single type in oneOf simplifies to single type in handler
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 - case: oneOf_mismatching
   oas_spec: |
@@ -321,13 +321,13 @@
     import typing as t
 
     from axion import oas_endpoint
-    from axion import response
+    from axion import pipeline
 
     @oas_endpoint
     async def mismatching_a(
       arg1: float,             # E: [mismatching_a(arg1 -> arg1)] expected "int", but got "float"  [axion-arg-type]
       arg2: int,               # E: [mismatching_a(arg2 -> arg2)] expected "Union[int, str]", but got "int"  [axion-arg-type]
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 
     StrOrInt = t.Union[int, str]
@@ -336,11 +336,11 @@
     async def mismatching_b(
       arg3: StrOrInt, # E: [mismatching_b(arg3 -> arg3)] expected "str", but got "Union[int, str]"  [axion-arg-type]
       arg4: StrOrInt, # E: [mismatching_b(arg4 -> arg4)] expected "str", but got "Union[int, str]"  [axion-arg-type]
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
 
     @oas_endpoint
     async def mismatching_c(
       arg5: int,              # E: [mismatching_c(arg5 -> arg5)] expected "str", but got "int"  [axion-arg-type]
-    ) -> response.Response:
+    ) -> pipeline.Response:
       return {}
