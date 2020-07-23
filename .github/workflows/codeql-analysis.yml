@@ -18,9 +18,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
-        fetch-depth: 10
+        fetch-depth: 2
 
-    - run: git checkout HEAD^10
+    - run: git checkout 'HEAD^2'
       if: ${{ github.event_name == 'pull_request' }}
 
     - name: Initialize CodeQL
