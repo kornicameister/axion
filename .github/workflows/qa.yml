@@ -25,11 +25,11 @@ jobs:
           - 3.8.x
         exclude:
           - env: flake8
-            python-version: 3.8.x
+            python-version: 3.7.x
           - env: yapf
-            python-version: 3.8.x
+            python-version: 3.7.x
           - env: safety
-            python-version: 3.8.x
+            python-version: 3.7.x
 
     steps:
       - uses: actions/checkout@v2
