@@ -1,0 +1,47 @@
+---
+name: "QA"
+
+"on":
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        env:
+          - flake8
+          - yapf
+          - safety
+          - mypy
+          - mypy_examples
+        python-version:
+          - 3.7.x
+          - 3.8.x
+        exclude:
+          - env: flake8
+            python-version: 3.8.x
+          - env: yapf
+            python-version: 3.8.x
+          - env: safety
+            python-version: 3.8.x
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - run: git checkout 'HEAD^2'
+        if: ${{ github.event_name == 'pull_request' }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: |
+          pip install pip --upgrade setuptools wheel
+          pip install tox==$(grep tox < test-requirements.txt | awk -F'==' '{print $2}')
+      - run: |
+          tox -e ${{ matrix.env }}
