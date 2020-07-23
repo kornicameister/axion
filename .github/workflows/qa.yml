@@ -48,5 +48,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: ${{ matrix.env == 'mypy' }}
         with:
-          name: htmlcov
-          path: htmlcov
+          name: typingcov
+          path: typingcov
