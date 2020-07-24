@@ -99,8 +99,11 @@ workflows:
   release:
     jobs:
       - test:
-          filters:
-            <<: *release_filters
+          filters: &release_filters
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
       - deploy:
           filters:
             <<: *release_filters
