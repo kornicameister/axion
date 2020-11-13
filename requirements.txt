@@ -6,7 +6,7 @@ loguru==0.5.3
 dataclasses==0.7 ; python_version < '3.7'
 yarl==1.6.0
 pydantic==1.7.2
-aiohttp==3.6.2
+aiohttp==3.7.2
 
 # typings
 typing-extensions==3.7.4.1 ; python_version < '3.8'
