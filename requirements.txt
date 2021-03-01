@@ -5,7 +5,7 @@ jinja2==2.11.2
 loguru==0.5.3
 dataclasses==0.7 ; python_version < '3.7'
 yarl==1.6.3
-pydantic==1.7.2
+pydantic==1.8
 aiohttp==3.6.2
 
 # typings
