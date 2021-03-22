@@ -45,6 +45,7 @@ jobs:
           pip install tox==$(grep tox < test-requirements.txt | awk -F'==' '{print $2}')
       - run: |
           tox -e ${{ matrix.env }}
+        continue-on-error: ${{ matrix.env == 'safety' }}
       - uses: actions/upload-artifact@v2
         if: ${{ matrix.env == 'mypy' }}
         with:
