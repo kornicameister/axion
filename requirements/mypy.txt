@@ -1,4 +1,4 @@
-mypy==0.782
+mypy==0.812
 loguru-mypy==0.0.2
 lxml==4.5.2
 pydantic==1.7.2  # needed to run mypy due to a plugin
