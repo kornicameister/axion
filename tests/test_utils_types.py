@@ -56,10 +56,6 @@ def test_is_not_any_type(the_type: t.Any) -> None:
             True,
         ),
         (
-            types.new_class('C3', (t.NamedTuple, )),
-            False,
-        ),
-        (
             t.NewType('C4', t.Dict[str, t.Set[complex]]),
             True,
         ),
