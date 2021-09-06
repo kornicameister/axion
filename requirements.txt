@@ -12,4 +12,4 @@ typing-extensions==3.7.4.1 ; python_version < '3.8'
 typing_inspect==0.7.1
 
 # itertools
-more_itertools==8.8.0
+more_itertools==8.9.0
