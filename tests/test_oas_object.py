@@ -132,4 +132,4 @@ def test_correct_python_type() -> None:
 
 
 def test_oas_type() -> None:
-    parse_type.resolve({}, {'type': 'object'}).oas_type == 'object'
+    assert parse_type.resolve({}, {'type': 'object'}).oas_type == 'object'
