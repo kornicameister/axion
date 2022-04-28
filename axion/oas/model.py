@@ -213,9 +213,28 @@ class OASType(t.Generic[V], PythonTypeCompatible, abc.ABC):
         self.read_only = read_only
         self.write_only = write_only
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def oas_type(self) -> str:
         raise NotImplementedError()
+
+    def __hash__(self) -> int:
+        return hash((
+            self.default,
+            self.nullable,
+            self.oas_type,
+            self.python_type,
+        ))
+
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, OASType):
+            return all((
+                self.default == other.default,
+                self.nullable == other.nullable,
+                self.oas_type == other.oas_type,
+                issubclass(self.python_type, other.python_type),
+            ))
+        return False
 
     def __repr__(self) -> str:
         return (
@@ -492,8 +511,8 @@ class OASObjectType(OASType[t.Dict[str, t.Any]]):
         )
         self.min_properties = min_properties
         self.max_properties = max_properties
-        self.properties = properties or {}
-        self.required = required or set()
+        self.properties = properties or {}  # type: t.Dict[str, OASType[t.Any]]
+        self.required = required or set()  # type: t.Set[str]
         self.additional_properties = additional_properties
         self.discriminator = discriminator
 
