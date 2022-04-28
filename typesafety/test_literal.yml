@@ -1,0 +1,42 @@
+---
+- case: literal_forbidden
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /{argA}:
+        get:
+          operationId: main.lf
+          parameters:
+            - name: argA
+              in: query
+              schema:
+                type: integer
+                format: int64
+                default: 3
+            - name: argB
+              in: query
+              schema:
+                type: string
+                default: 'argB'
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def lf(
+      arg_a: t.Literal[4],
+      arg_b: t.Literal['argB'],
+    ) -> response.Response:
+      return {}
+  out: |
+    main:7: error: [lf(arg_a -> argA)] Unconstrained argument "argA" defined as "Literal[4]"  [axion-arg-type]
+    main:8: error: [lf(arg_b -> argB)] Unconstrained argument "arbB" defined as "Literal[argB]"  [axion-arg-type]
