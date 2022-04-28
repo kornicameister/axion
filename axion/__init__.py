@@ -44,6 +44,9 @@ class Axion:
             **kwargs,
         )
 
+    def __call__(self) -> t.Any:
+        return self.plugged.__call__()
+
     def add_api(
         self,
         spec_location: Path,
