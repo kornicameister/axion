@@ -1,3 +1,4 @@
+import os
 import sys
 
 import setuptools
@@ -12,6 +13,34 @@ __url__ = 'https://github.com/kornicameister/axion'
 if sys.version_info < (3, 7):
     raise RuntimeError(f'{__title__}:{__version__} requires Python 3.7 or greater')
 
+CYTHON_SKIP_COMMANDS = (
+    'clean',
+    'check',
+    'explain',
+)
+
+ext_modules = None
+if not any(arg in sys.argv
+           for arg in CYTHON_SKIP_COMMANDS) and 'SKIP_CYTHON' not in os.environ:
+    try:
+        from Cython.Build import cythonize
+    except ImportError:
+        pass
+    else:
+        compiler_directives = {}
+
+        if 'CYTHON_TRACE' in sys.argv:
+            compiler_directives['linetrace'] = True
+
+        os.environ['CFLAGS'] = '-O3'
+        ext_modules = cythonize(
+            'axion/**/*.py',
+            exclude=['axion/oas_mypy/**/*.py'],
+            nthreads=int(os.getenv('CYTHON_NTHREADS', 0)),
+            language_level=3,
+            compiler_directives=compiler_directives,
+        )
+
 setuptools.setup(
     setup_requires='setupmeta',
     python_requires='>=3.7',
@@ -20,4 +49,5 @@ setuptools.setup(
         'axion': ['py.typed'],
     },
     zip_safe=False,  # https://mypy.readthedocs.io/en/latest/installed_packages.html
+    ext_modules=ext_modules,
 )

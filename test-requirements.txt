@@ -6,3 +6,4 @@ setupmeta==3.3.0
 -r requirements/flake8.txt
 -r requirements/safety.txt
 -r requirements/tests.txt
+-r requirements/cython.txt
