@@ -344,3 +344,90 @@
       arg5: int,              # E: [mismatching_c(arg5 -> arg5)] expected "str", but got "int"  [axion-arg-type]
     ) -> pipeline.Response:
       return {}
+- case: test_with_defaults
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.fff
+          parameters:
+            - name: oneOf1
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+                default: true
+            - name: oneOf2
+              in: query
+              required: true
+              schema:
+                oneOf:
+                  - type: string
+                  - type: boolean
+                  - type: number
+                  - type: integer
+                default: "four"
+            - name: oneOf3
+              in: query
+              required: false
+              schema:
+                oneOf:
+                  - type: integer
+                    default: 1
+                  - type: number
+                    default: 2.0
+            - name: oneOf4
+              in: query
+              required: true
+              schema:
+                default: 123      # this is taken
+                oneOf:
+                  - type: integer
+                  - type: number
+            - name: oneOf5
+              in: query
+              required: true
+              schema:
+                default: yes      # this is taken
+                oneOf:
+                  - type: string
+                    default: no
+                  - type: boolean
+                    default: false
+            - name: oneOf6
+              in: query
+              required: true
+              schema:
+                default: true      # this is taken
+                oneOf:
+                  - type: string
+                    default: no
+                  - type: boolean
+                    default: false
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def oas_op(
+      one_of3: t.Union[int, float],
+      one_of1: t.Union[str, bool]=true,
+      one_of2: t.Union[str, bool, int, float]='four',
+      one_of4: t.Union[int, float]=123,
+      one_of5: t.Union[bool, str]='yes',
+      one_of6: t.Union[bool, str]=true,
+    ) -> response.Response:
+      return {}
