@@ -1,0 +1,790 @@
+---
+- case: alias
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.alias
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    FilterQuery = t.Dict[str, str]
+
+    @oas_endpoint
+    async def alias(
+      filters: t.Optional[FilterQuery]=None,
+    ) -> response.Response:
+      return {}
+- case: alias_bad_type
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.alias_bad_type
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    FilterQuery = t.List[str]
+
+    @oas_endpoint
+    async def alias_bad_type(
+      filters: t.Optional[FilterQuery]=None,
+    ) -> response.Response:
+      return {}
+  out: |
+    main:11: error: [alias_bad_type(filters -> filters)] expected "Union[Mapping[str, str], Dict[str, str], None]", but got "Optional[List[str]]"  [axion-arg-type]
+- case: new_type
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.new_type
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+            - in: query
+              name: extras
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lan:
+                        type: number
+                      lon:
+                        type: number
+                    required:
+                      - lan
+                      - lon
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    FilterQuery = t.NewType('FilterQuery', t.Dict[str, str])
+    ExtrasQuery = t.NewType('ExtrasQuery', t.Mapping[str, float])
+
+    @oas_endpoint
+    async def new_type(
+      filters: t.Optional[FilterQuery]=None,
+      extras: t.Optional[ExtrasQuery]=None,
+    ) -> response.Response:
+      return {}
+- case: dict_different_prop_types_ok_any
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_different_prop_types_ok
+          parameters:
+            - in: query
+              name: filters
+              required: True
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: number
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_different_prop_types_ok(
+      filters: t.Dict[str, t.Any],  # must be VT=t.Any
+    ) -> response.Response:
+      return {}
+- case: dict_different_prop_types_ok_exact
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_different_prop_types_ok
+          parameters:
+            - in: query
+              name: filters
+              required: True
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: number
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_different_prop_types_ok(
+      filters: t.Dict[str, t.Union[str, float]],
+    ) -> response.Response:
+      return {}
+- case: dict_different_prop_types_fail
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_all_required
+          parameters:
+            - in: query
+              name: filters
+              required: True
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: number
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_all_required(
+      filters: t.Mapping[str, str],  # E: str is not only possible type inside parameter definition
+    ) -> response.Response:
+      return {}
+- case: dict_all_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_all_required
+          parameters:
+            - in: query
+              name: filters
+              required: True
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_all_required(
+      filters: t.Dict[str, str],
+    ) -> response.Response:
+      return {}
+- case: dict_properties_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dict_properties_required
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @oas_endpoint
+    async def dict_properties_required(
+      filters: t.Optional[t.Dict[str, str]]=None,
+    ) -> response.Response:
+      return {}
+- case: typed_dict_all_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.typed_dict_all_required
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    import typing_extensions as te
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(te.TypedDict):
+      lang: str
+      country: str
+
+    @oas_endpoint
+    async def typed_dict_all_required(
+      filters: FilterQuery,
+    ) -> response.Response:
+      return {}
+- case: typed_dict_missing_property
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.typed_dict_all_required
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    import typing_extensions as te
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(te.TypedDict):
+      country: str
+
+    @oas_endpoint
+    async def typed_dict_all_required(
+      filters: FilterQuery,  # E: "lang: str" property is missing  [axion-arg-type]
+    ) -> response.Response:
+      return {}
+- case: typed_dict_properties_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.typed_dict_properties_required
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    import typing_extensions as te
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(te.TypedDict):
+      page: int
+      limit: int
+
+    @oas_endpoint
+    async def typed_dict_properties_required(
+      filters: t.Optional[FilterQuery]=None,
+    ) -> response.Response:
+      return {}
+- case: typed_dict_all_properties_optional
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.typed_dict_all_properties_optional
+          parameters:
+            - in: query
+              name: filters
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+    import typing_extensions as te
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(te.TypedDict):
+      page: t.Optional[int]
+      limit:  t.Optional[int]
+
+    @oas_endpoint
+    async def typed_dict_all_properties_optional(
+      filters: t.Optional[FilterQuery],
+    ) -> response.Response:
+      return {}
+- case: dataclass_not_frozen
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dataclass_not_frozen
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @dataclass(frozen=False)  # E: Using not frozen dataclasses stands against immutability of HTTP request
+    class FilterQuery:
+      page: int
+      limit: int
+
+    @dataclass(frozen=False)  # no error here because NotQuery is not used inside function definition
+    class NotQuery:
+      test: str
+      foo: str
+      bar: str
+      car: int
+
+    @oas_endpoint
+    async def dataclass_frozen_properties_required(
+      filters: FilterQuery,
+    ) -> response.Response:
+      nq = NotQuery(test='', foo='foo', bar='bar', car=666)
+      return {}
+- case: dataclass_frozen_properties_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.dataclass_frozen_properties_required
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    from dataclasses import dataclass
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    @dataclass(frozen=True)
+    class FilterQuery:
+      page: int
+      limit: int = 1000
+
+    @oas_endpoint
+    async def dataclass_frozen_properties_required(
+      filters: FilterQuery,
+    ) -> response.Response:
+      return {}
+- case: namedtuple_properties_required
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.namedtuple_properties_required
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(t.NamedTuple):
+      page: int
+      limit: int
+
+    @oas_endpoint
+    async def namedtuple_properties_required(
+      filters: FilterQuery,
+    ) -> response.Response:
+      return {}
+- case: namedtuple_properties_nullable
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.namedtuple_properties_nullable
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                        nullable: true
+                      country:
+                        type: string
+                        nullable: true
+                    required:
+                      - lang
+                      - country
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(t.NamedTuple):
+      page: t.Optional[int] = None
+      limit: t.Optional[int] = None
+
+    @oas_endpoint
+    async def namedtuple_properties_nullable(
+      filters: FilterQuery,
+    ) -> response.Response:
+      return {}
+
+- case: namedtuple_missing_property
+  oas_spec: |
+    openapi: 3.0.1
+    info:
+      title: title
+      version: 1.0.0
+    servers:
+      - url: /
+    paths:
+      /:
+        get:
+          operationId: main.namedtuple_properties_nullable
+          parameters:
+            - in: query
+              name: filters
+              required: true
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      lang:
+                        type: string
+                      country:
+                        type: string
+                    required:
+                      - lang
+          responses:
+            default:
+              description: unexpected error
+  main: |
+    import typing as t
+
+    from axion import oas_endpoint
+    from axion import response
+
+    class FilterQuery(t.NamedTuple):
+      lang: int
+
+    @oas_endpoint
+    async def namedtuple_properties_nullable(
+      filters: FilterQuery,  # E: "country: str" property is missing
+    ) -> response.Response:
+      return {}

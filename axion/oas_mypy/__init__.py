@@ -20,7 +20,7 @@ from mypy.messages import format_type
 from mypy.nodes import FloatExpr, FuncDef, IntExpr, NameExpr
 from mypy.options import Options
 from mypy.plugin import (FunctionContext, MethodContext, Plugin)
-from mypy.sametypes import is_same_type, simplify_union
+from mypy.sametypes import is_same_type
 from mypy.subtypes import is_equivalent as is_equivalent_type
 from mypy.typeops import try_getting_instance_fallback
 from mypy.types import (
@@ -284,12 +284,10 @@ def transform_parameter_to_type(
     if needs_optional:
         items.append(NoneType())
 
-    return simplify_union(
-        UnionType.make_union(
-            items=items,
-            line=(handler_arg_type.line or handler_arg_type.end_line) or -1,
-            column=handler_arg_type.column,
-        ),
+    return UnionType.make_union(
+        items=items,
+        line=(handler_arg_type.line or handler_arg_type.end_line) or -1,
+        column=handler_arg_type.column,
     )
 
 
@@ -336,11 +334,10 @@ def transform_oas_type(
     if m_type is not None:
         m_type.set_line(handler_type)
         union_members.append(m_type)
-
     if oas_type.nullable:
         union_members.append(NoneType())
 
-    ut = simplify_union(UnionType.make_union(items=union_members))
+    ut = UnionType.make_union(items=union_members)
     ut.set_line(handler_type)
     return ut
 
@@ -387,25 +384,27 @@ def transform_oas_object_type(
     # - Dict
 
     assert isinstance(ctx.api, TypeChecker)
+    assert isinstance(oas_type, oas_model.OASObjectType)
 
     vt = get_generic_type_vt(ctx, handler_arg_type, oas_type)
     td_type = get_typed_dict_type(ctx, handler_arg_type, oas_type)
 
     members: List[Type] = [
-        ctx.api.named_generic_type(
-            name='collections.abc.Mapping',
-            args=[ctx.api.str_type(), vt],
-        ),
+        td_type,
         ctx.api.named_generic_type(
             name='dict',
             args=[ctx.api.str_type(), vt],
         ),
-        td_type,
+        ctx.api.named_generic_type(
+            name='collections.abc.Mapping',
+            args=[ctx.api.str_type(), vt],
+        ),
     ]
-    if oas_type.nullable:
-        members.append(NoneType())
 
-    return simplify_union(UnionType.make_union(items=members))
+    ot = UnionType.make_union(items=members)
+    ot.set_line(handler_arg_type)
+
+    return ot
 
 
 def get_typed_dict_type(
