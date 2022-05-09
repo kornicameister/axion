@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 2
       - run: git checkout 'HEAD^2'
         if: ${{ github.event_name == 'pull_request' }}
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       - run: |
