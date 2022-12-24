@@ -7,3 +7,4 @@ flake8-quotes==3.3.1
 flake8-print==5.0.0
 flake8-comprehensions==3.6.1
 flake8-broken-line==0.3.0
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
